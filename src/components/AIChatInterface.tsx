@@ -1,15 +1,18 @@
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, ThumbsUp, ThumbsDown, MessageSquare } from "lucide-react";
 import { Word } from "@/data/words";
+import { toast } from "sonner";
 
 interface Message {
   id: string;
   sender: "user" | "ai";
   text: string;
   timestamp: Date;
+  liked?: boolean;
+  disliked?: boolean;
 }
 
 interface AIChatInterfaceProps {
@@ -27,6 +30,15 @@ export function AIChatInterface({ currentWord }: AIChatInterfaceProps) {
   ]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,11 +60,23 @@ export function AIChatInterface({ currentWord }: AIChatInterfaceProps) {
     setTimeout(() => {
       let responseText = "";
       
-      // Check if the message is asking about etymology
-      if (inputValue.toLowerCase().includes("etymology") && currentWord) {
-        responseText = `Certainly! Let's break down the word "${currentWord.word.toLowerCase()}" according to the template provided in the directive:\n\nGiven Word\n\n${currentWord.word}\n\nMorpheme Breakdown\n\n${generateMorphemeBreakdownText(currentWord)}`;
+      // Check if the message is asking about etymology or morphological breakdown
+      const lowerCaseInput = inputValue.toLowerCase();
+      if ((lowerCaseInput.includes("etymology") || 
+           lowerCaseInput.includes("morpheme") || 
+           lowerCaseInput.includes("breakdown") || 
+           lowerCaseInput.includes("analyze") || 
+           lowerCaseInput.includes("analyse")) && 
+          currentWord) {
+        responseText = `Certainly! Let's break down the word "${currentWord.word.toLowerCase()}" according to its morphological components:\n\n${generateMorphemeBreakdownText(currentWord)}`;
+      } else if (lowerCaseInput.includes("meaning") || lowerCaseInput.includes("definition")) {
+        responseText = `The word "${currentWord?.word || "this word"}" means:\n\n${currentWord?.definitions.map(def => `• ${def.text}`).join('\n\n') || "I don't have the definition for this word."}`;
+      } else if (lowerCaseInput.includes("origin") || lowerCaseInput.includes("history")) {
+        responseText = `The origin of "${currentWord?.word || "this word"}" is:\n\n${currentWord?.etymology.origin || "I don't have the origin information for this word."}\n\n${currentWord?.etymology.evolution || ""}`;
+      } else if (lowerCaseInput.includes("example") || lowerCaseInput.includes("sentence") || lowerCaseInput.includes("usage")) {
+        responseText = `Here's an example of how to use "${currentWord?.word || "this word"}" in a sentence:\n\n"${currentWord?.usage.exampleSentence || "I don't have an example sentence for this word."}"`;
       } else {
-        responseText = `I'd be happy to help with that! What specific aspect of "${currentWord?.word || "this word"}" would you like to explore further?`;
+        responseText = `I'd be happy to help with that! What specific aspect of "${currentWord?.word || "this word"}" would you like to explore further? You can ask about:\n\n• Etymology and origin\n• Morphological breakdown\n• Definitions and meanings\n• Example sentences\n• Synonyms and antonyms`;
       }
       
       const aiMessage: Message = {
@@ -87,6 +111,35 @@ export function AIChatInterface({ currentWord }: AIChatInterfaceProps) {
     return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   };
 
+  const handleFeedback = (messageId: string, type: 'like' | 'dislike') => {
+    setMessages(prev => prev.map(message => {
+      if (message.id === messageId) {
+        const newMessage = { ...message };
+        
+        if (type === 'like') {
+          newMessage.liked = !message.liked;
+          if (newMessage.liked && message.disliked) {
+            newMessage.disliked = false;
+          }
+          if (newMessage.liked) {
+            toast.success("Thank you for your feedback!");
+          }
+        } else {
+          newMessage.disliked = !message.disliked;
+          if (newMessage.disliked && message.liked) {
+            newMessage.liked = false;
+          }
+          if (newMessage.disliked) {
+            toast.success("Thank you for your feedback!");
+          }
+        }
+        
+        return newMessage;
+      }
+      return message;
+    }));
+  };
+
   return (
     <div className="flex flex-col h-[500px] border border-white/10 rounded-lg overflow-hidden bg-background">
       <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
@@ -112,10 +165,20 @@ export function AIChatInterface({ currentWord }: AIChatInterfaceProps) {
             
             {message.sender === "ai" && message.id !== "welcome" && (
               <div className="flex items-center gap-2 mt-1">
-                <Button variant="ghost" size="icon" className="h-6 w-6">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={`h-6 w-6 ${message.liked ? 'text-primary' : ''}`}
+                  onClick={() => handleFeedback(message.id, 'like')}
+                >
                   <ThumbsUp className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-6 w-6">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={`h-6 w-6 ${message.disliked ? 'text-primary' : ''}`}
+                  onClick={() => handleFeedback(message.id, 'dislike')}
+                >
                   <ThumbsDown className="h-4 w-4" />
                 </Button>
                 <span className="text-xs text-muted-foreground">
@@ -143,6 +206,7 @@ export function AIChatInterface({ currentWord }: AIChatInterfaceProps) {
             </div>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
       
       <form onSubmit={handleSendMessage} className="p-4 border-t border-white/10">
