@@ -4,12 +4,14 @@ import words from "@/data/words";
 import WordCard from "@/components/WordCard";
 import Header from "@/components/Header";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, LayoutGrid } from "lucide-react";
+import { Search, Plus, LayoutGrid, Grid3X3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import WordSection from "@/components/WordSection";
+import WordGrid from "@/components/WordGrid";
 
 // Define filter categories
 type FilterCategory = "all" | "prefix" | "root" | "suffix" | "origin";
+type ViewMode = "cards" | "grid";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -17,6 +19,7 @@ const Index = () => {
   const [activeFilter, setActiveFilter] = useState<FilterCategory>("all");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [username, setUsername] = useState("Scholar");
+  const [viewMode, setViewMode] = useState<ViewMode>("cards");
   
   // Filter words based on search query
   const filteredWords = words.filter(word => 
@@ -42,11 +45,25 @@ const Index = () => {
       setUsername(savedName);
     }
     
-    return () => clearTimeout(timer);
-  }, []);
+    // Add event listener for drawer toggle
+    const handleToggleDrawer = () => {
+      setIsDrawerOpen(!isDrawerOpen);
+    };
+    
+    window.addEventListener('toggle-drawer', handleToggleDrawer);
+    
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('toggle-drawer', handleToggleDrawer);
+    };
+  }, [isDrawerOpen]);
 
   const toggleDrawer = () => {
     setIsDrawerOpen(!isDrawerOpen);
+  };
+
+  const toggleViewMode = () => {
+    setViewMode(viewMode === "cards" ? "grid" : "cards");
   };
 
   // Get words filtered by category
@@ -124,29 +141,51 @@ const Index = () => {
         className={`transition-opacity duration-300 ${isDrawerOpen ? "opacity-50" : "opacity-100"}`}
         onClick={isDrawerOpen ? toggleDrawer : undefined}
       >
-        <main className="page-container pt-24">
-          {/* Hero Section with personalized greeting */}
-          <section className="mb-12">
-            <div className="glass-card rounded-2xl p-8 md:p-12 text-center space-y-6 animate-scale-in">
-              <h1 className="text-3xl md:text-4xl font-bold">
-                Welcome back, <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-400">{username}!</span>
-              </h1>
-              <p className="text-lg max-w-2xl mx-auto text-muted-foreground">
-                Master language with interactive quizzes, etymology breakdowns, and daily word insights.
+        <main className={`page-container ${viewMode === "grid" ? "pt-5 md:pt-6" : "pt-24"}`}>
+          {/* Hero Section with personalized greeting - only shown in cards view */}
+          {viewMode === "cards" && (
+            <section className="mb-12">
+              <div className="glass-card rounded-2xl p-8 md:p-12 text-center space-y-6 animate-scale-in">
+                <h1 className="text-3xl md:text-4xl font-bold">
+                  Welcome back, <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-400">{username}!</span>
+                </h1>
+                <p className="text-lg max-w-2xl mx-auto text-muted-foreground">
+                  Master language with interactive quizzes, etymology breakdowns, and daily word insights.
+                </p>
+                
+                <form className="relative max-w-md mx-auto">
+                  <Input
+                    type="text"
+                    placeholder="Search for a word..."
+                    className="w-full bg-secondary/50 border-none h-12 pl-12 focus-visible:ring-primary"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                </form>
+              </div>
+            </section>
+          )}
+          
+          {/* Mini Header - only shown in grid view */}
+          {viewMode === "grid" && (
+            <div className="mb-6">
+              <p className="text-muted-foreground text-sm text-center">
+                Master language with interactive quizzes, etymology breakdowns, and daily word insights
               </p>
               
-              <form className="relative max-w-md mx-auto">
+              <div className="mt-4 relative">
                 <Input
                   type="text"
-                  placeholder="Search for a word..."
-                  className="w-full bg-secondary/50 border-none h-12 pl-12 focus-visible:ring-primary"
+                  placeholder="Search..."
+                  className="w-full bg-secondary/30 border-none h-10 pl-10 focus-visible:ring-primary"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              </form>
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              </div>
             </div>
-          </section>
+          )}
           
           {/* Filters and Add Word Button */}
           <section className="flex flex-wrap items-center justify-between gap-3 mb-6">
@@ -186,9 +225,22 @@ const Index = () => {
             </div>
             
             <div className="flex gap-2">
-              <Button className="gap-2" variant="secondary">
-                <LayoutGrid className="h-4 w-4" />
-                Change View
+              <Button 
+                className="gap-2" 
+                variant="secondary"
+                onClick={toggleViewMode}
+              >
+                {viewMode === "cards" ? (
+                  <>
+                    <Grid3X3 className="h-4 w-4" />
+                    Change View
+                  </>
+                ) : (
+                  <>
+                    <LayoutGrid className="h-4 w-4" />
+                    Change View
+                  </>
+                )}
               </Button>
               <Button className="gap-2">
                 <Plus className="h-4 w-4" />
@@ -207,7 +259,7 @@ const Index = () => {
               <div className="glass-card rounded-lg p-8 text-center">
                 <p className="text-muted-foreground">No words found matching '{searchQuery}'</p>
               </div>
-            ) : (
+            ) : viewMode === "cards" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {displayWords.map((word, index) => (
                   <div 
@@ -219,34 +271,12 @@ const Index = () => {
                       transform: isInitialLoad ? 'translateY(20px)' : 'translateY(0)'
                     }}
                   >
-                    <div className="hover-card rounded-xl overflow-hidden">
-                      <WordCard word={word} />
-                      
-                      <div className="p-4 border-t border-white/10">
-                        <h3 className="text-xl font-medium">{word.word}</h3>
-                        
-                        <div className="mt-2 space-y-2">
-                          <p className="text-sm font-medium">Primary Definition</p>
-                          <p className="text-sm text-muted-foreground">
-                            {word.definitions.find(def => def.type === 'primary')?.text || word.description}
-                          </p>
-                        </div>
-                        
-                        <div className="mt-2 space-y-2">
-                          <p className="text-sm font-medium">Contextual Definition</p>
-                          <p className="text-sm text-muted-foreground">
-                            {word.usage.contextualUsage}
-                          </p>
-                        </div>
-                        
-                        <Button className="w-full mt-4" variant="secondary">
-                          Open
-                        </Button>
-                      </div>
-                    </div>
+                    <WordCard word={word} />
                   </div>
                 ))}
               </div>
+            ) : (
+              <WordGrid words={displayWords} />
             )}
           </section>
         </main>

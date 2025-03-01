@@ -26,7 +26,7 @@ export function WordSection({
           </span>
         )}
       </div>
-      <div className="glass-card rounded-lg p-4 animate-blur-in">
+      <div className="glass-card rounded-lg p-4 animate-blur-in bg-card/90 backdrop-blur-sm">
         {children}
       </div>
     </div>
