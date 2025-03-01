@@ -7,55 +7,50 @@ interface MorphemeBreakdownProps {
 
 export function MorphemeBreakdown({ breakdown }: MorphemeBreakdownProps) {
   return (
-    <div className="grid grid-cols-3 gap-4 mt-6">
-      <div className="flex flex-col items-center">
-        <h4 className="section-title text-center">Prefix</h4>
-        <div className="glass-card w-full p-4 rounded-lg text-center min-h-[80px] flex items-center justify-center">
-          {breakdown.prefix ? (
-            <div className="animate-fade-in">
-              <div className="text-sm font-medium bg-primary/20 rounded-full px-3 py-1 inline-block">
-                {breakdown.prefix.text}
+    <div className="mt-6">
+      <h4 className="section-title mb-4">Morpheme Breakdown</h4>
+      <div className="glass-card rounded-lg p-5 bg-card/90 backdrop-blur-sm">
+        <ul className="space-y-6">
+          {breakdown.prefix && (
+            <li className="flex items-start gap-3">
+              <span className="font-medium min-w-28">• Prefix:</span>
+              <div>
+                <span className="font-medium">
+                  {breakdown.prefix.text}
+                </span>
+                <span className="text-muted-foreground">
+                  {" - " + breakdown.prefix.meaning}
+                </span>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                {breakdown.prefix.meaning}
-              </p>
-            </div>
-          ) : (
-            <span className="text-sm text-muted-foreground">None</span>
+            </li>
           )}
-        </div>
-      </div>
-      
-      <div className="flex flex-col items-center">
-        <h4 className="section-title text-center">Root Word</h4>
-        <div className="glass-card w-full p-4 rounded-lg text-center min-h-[80px] flex items-center justify-center">
-          <div className="animate-fade-in">
-            <div className="text-sm font-medium bg-primary/20 rounded-full px-3 py-1 inline-block">
-              {breakdown.root.text}
+          
+          <li className="flex items-start gap-3">
+            <span className="font-medium min-w-28">• Root Word:</span>
+            <div>
+              <span className="font-medium">
+                {breakdown.root.text}
+              </span>
+              <span className="text-muted-foreground">
+                {" - " + breakdown.root.meaning}
+              </span>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              {breakdown.root.meaning}
-            </p>
-          </div>
-        </div>
-      </div>
-      
-      <div className="flex flex-col items-center">
-        <h4 className="section-title text-center">Suffix</h4>
-        <div className="glass-card w-full p-4 rounded-lg text-center min-h-[80px] flex items-center justify-center">
-          {breakdown.suffix ? (
-            <div className="animate-fade-in">
-              <div className="text-sm font-medium bg-primary/20 rounded-full px-3 py-1 inline-block">
-                {breakdown.suffix.text}
+          </li>
+          
+          {breakdown.suffix && (
+            <li className="flex items-start gap-3">
+              <span className="font-medium min-w-28">• Suffix:</span>
+              <div>
+                <span className="font-medium">
+                  {breakdown.suffix.text}
+                </span>
+                <span className="text-muted-foreground">
+                  {" - " + breakdown.suffix.meaning}
+                </span>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                {breakdown.suffix.meaning}
-              </p>
-            </div>
-          ) : (
-            <span className="text-sm text-muted-foreground">None</span>
+            </li>
           )}
-        </div>
+        </ul>
       </div>
     </div>
   );
