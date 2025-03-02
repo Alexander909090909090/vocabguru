@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { initAirtable, isAirtableConnected, disconnectAirtable } from "@/services/airtableService";
+import { initAirtable, isAirtableConnected, disconnectAirtable, testAirtableConnection } from "@/services/airtableService";
 import { toast } from "sonner";
 
 interface AirtableConnectFormProps {
@@ -26,19 +26,15 @@ export function AirtableConnectForm({ onConnect }: AirtableConnectFormProps) {
     setIsLoading(true);
     
     try {
-      initAirtable(personalAccessToken, baseId);
+      // First test the connection
+      const isValid = await testAirtableConnection(personalAccessToken, baseId);
       
-      // Test the connection by trying to fetch data
-      await fetch(`https://api.airtable.com/v0/${baseId}/Words?maxRecords=1`, {
-        headers: {
-          Authorization: `Bearer ${personalAccessToken}`
-        }
-      }).then(response => {
-        if (!response.ok) {
-          throw new Error(`API returned ${response.status}: ${response.statusText}`);
-        }
-        return response.json();
-      });
+      if (!isValid) {
+        throw new Error("Unable to connect to Airtable. Please check your credentials and ensure your base has a 'Words' table.");
+      }
+      
+      // If connection test is successful, initialize Airtable
+      initAirtable(personalAccessToken, baseId);
       
       toast.success("Successfully connected to Airtable!");
       setIsConnected(true);
@@ -46,7 +42,7 @@ export function AirtableConnectForm({ onConnect }: AirtableConnectFormProps) {
     } catch (error) {
       console.error("Error connecting to Airtable:", error);
       disconnectAirtable(); // Clean up failed connection
-      toast.error("Failed to connect to Airtable. Please check your credentials and ensure your base has a 'Words' table.");
+      toast.error(error instanceof Error ? error.message : "Failed to connect to Airtable. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -94,6 +90,9 @@ export function AirtableConnectForm({ onConnect }: AirtableConnectFormProps) {
               placeholder="pat..."
               required
             />
+            <p className="text-xs text-muted-foreground">
+              Your token should start with "pat". Find or create one in your Airtable account settings.
+            </p>
           </div>
           
           <div className="space-y-2">
@@ -104,9 +103,12 @@ export function AirtableConnectForm({ onConnect }: AirtableConnectFormProps) {
               id="baseId"
               value={baseId}
               onChange={(e) => setBaseId(e.target.value)}
-              placeholder="app123abc..."
+              placeholder="app..."
               required
             />
+            <p className="text-xs text-muted-foreground">
+              Your Base ID should start with "app". Find it in the API documentation for your base.
+            </p>
           </div>
           
           <Button type="submit" className="w-full" disabled={isLoading}>

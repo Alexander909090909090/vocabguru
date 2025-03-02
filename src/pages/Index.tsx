@@ -7,12 +7,16 @@ import { fetchWordsFromAirtable, isAirtableConnected, disconnectAirtable } from 
 import { Word } from "@/data/words";
 import { words as defaultWords } from "@/data/words";
 import { toast } from "sonner";
+import DailyWord from "@/components/DailyWord";
+import WordQuiz from "@/components/WordQuiz";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Index() {
   const [words, setWords] = useState<Word[]>([]);
   const [loading, setLoading] = useState(true);
   const [showConnectForm, setShowConnectForm] = useState(false);
   const [dataSource, setDataSource] = useState<'airtable' | 'default'>('default');
+  const [activeTab, setActiveTab] = useState("all");
 
   const fetchWords = async () => {
     setLoading(true);
@@ -101,19 +105,37 @@ export default function Index() {
         </div>
       )}
 
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-64 rounded-xl bg-gray-200 animate-pulse"></div>
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {words.map((word) => (
-            <WordCard key={word.id} word={word} />
-          ))}
-        </div>
-      )}
+      <Tabs defaultValue="all" className="mb-8" onValueChange={setActiveTab}>
+        <TabsList className="grid grid-cols-3 w-full md:w-[400px]">
+          <TabsTrigger value="all">All Words</TabsTrigger>
+          <TabsTrigger value="daily">Daily Word</TabsTrigger>
+          <TabsTrigger value="quiz">Quiz</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="all" className="mt-6">
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-64 rounded-xl bg-gray-200 animate-pulse"></div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {words.map((word) => (
+                <WordCard key={word.id} word={word} />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="daily" className="mt-6">
+          <DailyWord words={words} />
+        </TabsContent>
+        
+        <TabsContent value="quiz" className="mt-6">
+          <WordQuiz words={words} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

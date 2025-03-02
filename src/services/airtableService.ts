@@ -7,6 +7,7 @@ let base: any = null;
 
 export const initAirtable = (personalAccessToken: string, baseId: string) => {
   try {
+    // Configure Airtable with the personal access token
     Airtable.configure({ apiKey: personalAccessToken });
     base = Airtable.base(baseId);
     
@@ -35,11 +36,22 @@ export const getAirtableBase = () => {
         // Clear stored credentials if there's an error
         localStorage.removeItem('airtablePersonalAccessToken');
         localStorage.removeItem('airtableBaseId');
+        return null;
       }
+    } else {
+      return null;
     }
   }
   
   return base;
+};
+
+// Ensure that arrays are properly handled
+const ensureArray = (value: any): string[] => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') return value.split(',').map(item => item.trim());
+  return [];
 };
 
 // Function to fetch words from Airtable
@@ -51,11 +63,59 @@ export const fetchWordsFromAirtable = async (): Promise<Word[]> => {
   }
   
   try {
-    // Assuming your table is named 'Words'
+    // Try to fetch from Airtable - using 'Words' as the table name
     const records = await base('Words').select().all();
     
     return records.map((record: any) => {
       const fields = record.fields;
+      
+      // Build the morpheme breakdown object
+      const morphemeBreakdown: any = {
+        root: { 
+          text: fields.root || '', 
+          meaning: fields.rootMeaning || '' 
+        }
+      };
+      
+      if (fields.prefix) {
+        morphemeBreakdown.prefix = {
+          text: fields.prefix,
+          meaning: fields.prefixMeaning || ''
+        };
+      }
+      
+      if (fields.suffix) {
+        morphemeBreakdown.suffix = {
+          text: fields.suffix,
+          meaning: fields.suffixMeaning || ''
+        };
+      }
+      
+      // Process image attachments if they exist
+      let images = [];
+      if (fields.images) {
+        // If images are stored as a JSON string
+        if (typeof fields.images === 'string') {
+          try {
+            images = JSON.parse(fields.images);
+          } catch (e) {
+            console.error('Failed to parse images JSON:', e);
+            images = [];
+          }
+        } 
+        // If images are stored as an array of objects
+        else if (Array.isArray(fields.images)) {
+          images = fields.images;
+        }
+        // If images are Airtable attachments
+        else if (fields.Attachments && Array.isArray(fields.Attachments)) {
+          images = fields.Attachments.map((attachment: any, index: number) => ({
+            id: `${record.id}-img-${index}`,
+            url: attachment.url,
+            alt: `Image ${index+1} for ${fields.word || 'word'}`
+          }));
+        }
+      }
       
       // Map Airtable fields to our Word interface
       return {
@@ -84,7 +144,7 @@ export const fetchWordsFromAirtable = async (): Promise<Word[]> => {
             type: 'contextual',
             text: fields.contextualDefinition
           }] : [])
-        ],
+        ].filter(def => def.text), // Only include definitions with text
         forms: {
           noun: fields.formNoun,
           verb: fields.formVerb,
@@ -92,50 +152,17 @@ export const fetchWordsFromAirtable = async (): Promise<Word[]> => {
           adverb: fields.formAdverb
         },
         usage: {
-          commonCollocations: fields.commonCollocations ? 
-            (typeof fields.commonCollocations === 'string' ? 
-              fields.commonCollocations.split(',').map(item => item.trim()) : 
-              fields.commonCollocations) : 
-            [],
+          commonCollocations: ensureArray(fields.commonCollocations),
           contextualUsage: fields.contextualUsage || '',
           sentenceStructure: fields.sentenceStructure,
           exampleSentence: fields.exampleSentence || ''
         },
         synonymsAntonyms: {
-          synonyms: fields.synonyms ? 
-            (typeof fields.synonyms === 'string' ? 
-              fields.synonyms.split(',').map(item => item.trim()) : 
-              fields.synonyms) : 
-            [],
-          antonyms: fields.antonyms ? 
-            (typeof fields.antonyms === 'string' ? 
-              fields.antonyms.split(',').map(item => item.trim()) : 
-              fields.antonyms) : 
-            []
+          synonyms: ensureArray(fields.synonyms),
+          antonyms: ensureArray(fields.antonyms)
         },
-        morphemeBreakdown: {
-          prefix: fields.prefix ? {
-            text: fields.prefix || '',
-            meaning: fields.prefixMeaning || ''
-          } : undefined,
-          root: {
-            text: fields.root || '',
-            meaning: fields.rootMeaning || ''
-          },
-          suffix: fields.suffix ? {
-            text: fields.suffix || '',
-            meaning: fields.suffixMeaning || ''
-          } : undefined
-        },
-        images: fields.images ? 
-          (typeof fields.images === 'string' ? 
-            JSON.parse(fields.images) : 
-            fields.images).map((img: any, index: number) => ({
-              id: img.id || `${record.id}-img-${index}`,
-              url: img.url,
-              alt: img.alt || `Image ${index+1} for ${fields.word}`
-            })) : 
-          []
+        morphemeBreakdown,
+        images
       };
     });
   } catch (error) {
@@ -155,4 +182,17 @@ export const disconnectAirtable = () => {
   localStorage.removeItem('airtableBaseId');
   base = null;
   return true;
+};
+
+// Function to test the Airtable connection
+export const testAirtableConnection = async (personalAccessToken: string, baseId: string): Promise<boolean> => {
+  try {
+    const testBase = new Airtable({ apiKey: personalAccessToken }).base(baseId);
+    // Try to fetch a single record from the Words table
+    await testBase('Words').select({ maxRecords: 1 }).firstPage();
+    return true;
+  } catch (error) {
+    console.error('Error testing Airtable connection:', error);
+    return false;
+  }
 };
