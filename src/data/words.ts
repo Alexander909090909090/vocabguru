@@ -1,4 +1,3 @@
-
 export interface WordImage {
   id: string;
   url: string;
@@ -50,7 +49,7 @@ export interface Word {
   featured?: boolean;
 }
 
-const words: Word[] = [
+export const words: Word[] = [
   {
     id: "abundant",
     word: "Abundant",

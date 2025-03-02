@@ -1,11 +1,9 @@
-
 import { useEffect, useState } from "react";
 import WordCard from "@/components/WordCard";
 import { Button } from "@/components/ui/button";
 import AirtableConnectForm from "@/components/AirtableConnectForm";
 import { fetchWordsFromAirtable, isAirtableConnected } from "@/services/airtableService";
-import { Word } from "@/data/words";
-import { words as defaultWords } from "@/data/words";
+import { Word, words as defaultWords } from "@/data/words";
 import { toast } from "sonner";
 
 export default function Index() {
