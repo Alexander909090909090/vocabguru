@@ -10,22 +10,22 @@ interface AirtableConnectFormProps {
 }
 
 export function AirtableConnectForm({ onConnect }: AirtableConnectFormProps) {
-  const [apiKey, setApiKey] = useState("");
+  const [personalAccessToken, setPersonalAccessToken] = useState("");
   const [baseId, setBaseId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleConnect = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!apiKey || !baseId) {
-      toast.error("Please provide both API Key and Base ID");
+    if (!personalAccessToken || !baseId) {
+      toast.error("Please provide both Personal Access Token and Base ID");
       return;
     }
     
     setIsLoading(true);
     
     try {
-      initAirtable(apiKey, baseId);
+      initAirtable(personalAccessToken, baseId);
       toast.success("Successfully connected to Airtable!");
       onConnect();
     } catch (error) {
@@ -41,21 +41,21 @@ export function AirtableConnectForm({ onConnect }: AirtableConnectFormProps) {
       <div className="space-y-2 text-center">
         <h2 className="text-3xl font-bold">Connect to Airtable</h2>
         <p className="text-muted-foreground">
-          Enter your Airtable API Key and Base ID to sync your vocabulary words.
+          Enter your Airtable Personal Access Token and Base ID to sync your vocabulary words.
         </p>
       </div>
       
       <form onSubmit={handleConnect} className="space-y-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium" htmlFor="apiKey">
-            Airtable API Key
+          <label className="text-sm font-medium" htmlFor="personalAccessToken">
+            Airtable Personal Access Token
           </label>
           <Input
-            id="apiKey"
+            id="personalAccessToken"
             type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="key123abc..."
+            value={personalAccessToken}
+            onChange={(e) => setPersonalAccessToken(e.target.value)}
+            placeholder="pat..."
             required
           />
         </div>

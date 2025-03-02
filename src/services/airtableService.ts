@@ -2,16 +2,15 @@
 import Airtable from 'airtable';
 import { Word } from '@/data/words';
 
-// Initialize Airtable with your API key
-// You'll need to provide your Airtable API key and base ID
+// Initialize Airtable with your personal access token
 let base: any = null;
 
-export const initAirtable = (apiKey: string, baseId: string) => {
-  Airtable.configure({ apiKey });
+export const initAirtable = (personalAccessToken: string, baseId: string) => {
+  Airtable.configure({ apiKey: personalAccessToken });
   base = Airtable.base(baseId);
   
   // Store the credentials in localStorage for future use
-  localStorage.setItem('airtableApiKey', apiKey);
+  localStorage.setItem('airtablePersonalAccessToken', personalAccessToken);
   localStorage.setItem('airtableBaseId', baseId);
   
   return base;
@@ -20,11 +19,11 @@ export const initAirtable = (apiKey: string, baseId: string) => {
 // Check if we have stored credentials and initialize Airtable
 export const getAirtableBase = () => {
   if (!base) {
-    const apiKey = localStorage.getItem('airtableApiKey');
+    const personalAccessToken = localStorage.getItem('airtablePersonalAccessToken');
     const baseId = localStorage.getItem('airtableBaseId');
     
-    if (apiKey && baseId) {
-      initAirtable(apiKey, baseId);
+    if (personalAccessToken && baseId) {
+      initAirtable(personalAccessToken, baseId);
     }
   }
   
@@ -36,7 +35,7 @@ export const fetchWordsFromAirtable = async (): Promise<Word[]> => {
   const base = getAirtableBase();
   
   if (!base) {
-    throw new Error('Airtable not initialized. Please set your API key and Base ID.');
+    throw new Error('Airtable not initialized. Please set your Personal Access Token and Base ID.');
   }
   
   try {
