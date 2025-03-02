@@ -6,14 +6,19 @@ import { Word } from '@/data/words';
 let base: any = null;
 
 export const initAirtable = (personalAccessToken: string, baseId: string) => {
-  Airtable.configure({ apiKey: personalAccessToken });
-  base = Airtable.base(baseId);
-  
-  // Store the credentials in localStorage for future use
-  localStorage.setItem('airtablePersonalAccessToken', personalAccessToken);
-  localStorage.setItem('airtableBaseId', baseId);
-  
-  return base;
+  try {
+    Airtable.configure({ apiKey: personalAccessToken });
+    base = Airtable.base(baseId);
+    
+    // Store the credentials in localStorage for future use
+    localStorage.setItem('airtablePersonalAccessToken', personalAccessToken);
+    localStorage.setItem('airtableBaseId', baseId);
+    
+    return base;
+  } catch (error) {
+    console.error("Error initializing Airtable:", error);
+    throw error;
+  }
 };
 
 // Check if we have stored credentials and initialize Airtable
@@ -23,7 +28,14 @@ export const getAirtableBase = () => {
     const baseId = localStorage.getItem('airtableBaseId');
     
     if (personalAccessToken && baseId) {
-      initAirtable(personalAccessToken, baseId);
+      try {
+        initAirtable(personalAccessToken, baseId);
+      } catch (error) {
+        console.error("Error getting Airtable base:", error);
+        // Clear stored credentials if there's an error
+        localStorage.removeItem('airtablePersonalAccessToken');
+        localStorage.removeItem('airtableBaseId');
+      }
     }
   }
   
@@ -46,30 +58,60 @@ export const fetchWordsFromAirtable = async (): Promise<Word[]> => {
       const fields = record.fields;
       
       // Map Airtable fields to our Word interface
-      // This mapping assumes specific field names in your Airtable
       return {
         id: record.id,
         word: fields.word || '',
+        pronunciation: fields.pronunciation || '',
         description: fields.description || '',
         languageOrigin: fields.languageOrigin || 'Unknown',
+        partOfSpeech: fields.partOfSpeech || '',
         featured: !!fields.featured,
         etymology: {
           origin: fields.etymologyOrigin || '',
-          evolution: fields.etymologyEvolution || ''
+          evolution: fields.etymologyEvolution || '',
+          culturalVariations: fields.culturalVariations
         },
         definitions: [
           {
-            type: 'primary',
+            type: fields.primaryDefinitionType || 'primary',
             text: fields.primaryDefinition || ''
           },
           ...(fields.secondaryDefinition ? [{
-            type: 'secondary',
+            type: fields.secondaryDefinitionType || 'standard',
             text: fields.secondaryDefinition
+          }] : []),
+          ...(fields.contextualDefinition ? [{
+            type: 'contextual',
+            text: fields.contextualDefinition
           }] : [])
         ],
+        forms: {
+          noun: fields.formNoun,
+          verb: fields.formVerb,
+          adjective: fields.formAdjective,
+          adverb: fields.formAdverb
+        },
         usage: {
+          commonCollocations: fields.commonCollocations ? 
+            (typeof fields.commonCollocations === 'string' ? 
+              fields.commonCollocations.split(',').map(item => item.trim()) : 
+              fields.commonCollocations) : 
+            [],
           contextualUsage: fields.contextualUsage || '',
+          sentenceStructure: fields.sentenceStructure,
           exampleSentence: fields.exampleSentence || ''
+        },
+        synonymsAntonyms: {
+          synonyms: fields.synonyms ? 
+            (typeof fields.synonyms === 'string' ? 
+              fields.synonyms.split(',').map(item => item.trim()) : 
+              fields.synonyms) : 
+            [],
+          antonyms: fields.antonyms ? 
+            (typeof fields.antonyms === 'string' ? 
+              fields.antonyms.split(',').map(item => item.trim()) : 
+              fields.antonyms) : 
+            []
         },
         morphemeBreakdown: {
           prefix: fields.prefix ? {
@@ -86,11 +128,14 @@ export const fetchWordsFromAirtable = async (): Promise<Word[]> => {
           } : undefined
         },
         images: fields.images ? 
-          JSON.parse(fields.images).map((img: any, index: number) => ({
-            url: img.url,
-            alt: img.alt || `Image ${index+1} for ${fields.word}`
-          })) 
-          : []
+          (typeof fields.images === 'string' ? 
+            JSON.parse(fields.images) : 
+            fields.images).map((img: any, index: number) => ({
+              id: img.id || `${record.id}-img-${index}`,
+              url: img.url,
+              alt: img.alt || `Image ${index+1} for ${fields.word}`
+            })) : 
+          []
       };
     });
   } catch (error) {
@@ -102,4 +147,12 @@ export const fetchWordsFromAirtable = async (): Promise<Word[]> => {
 // Function to check if Airtable is connected
 export const isAirtableConnected = () => {
   return !!getAirtableBase();
+};
+
+// Function to disconnect from Airtable
+export const disconnectAirtable = () => {
+  localStorage.removeItem('airtablePersonalAccessToken');
+  localStorage.removeItem('airtableBaseId');
+  base = null;
+  return true;
 };

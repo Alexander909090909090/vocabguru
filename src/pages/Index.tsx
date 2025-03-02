@@ -1,31 +1,46 @@
+
 import { useEffect, useState } from "react";
 import WordCard from "@/components/WordCard";
 import { Button } from "@/components/ui/button";
 import AirtableConnectForm from "@/components/AirtableConnectForm";
-import { fetchWordsFromAirtable, isAirtableConnected } from "@/services/airtableService";
-import { Word, words as defaultWords } from "@/data/words";
+import { fetchWordsFromAirtable, isAirtableConnected, disconnectAirtable } from "@/services/airtableService";
+import { Word } from "@/data/words";
+import { words as defaultWords } from "@/data/words";
 import { toast } from "sonner";
 
 export default function Index() {
   const [words, setWords] = useState<Word[]>([]);
   const [loading, setLoading] = useState(true);
   const [showConnectForm, setShowConnectForm] = useState(false);
+  const [dataSource, setDataSource] = useState<'airtable' | 'default'>('default');
 
   const fetchWords = async () => {
     setLoading(true);
     try {
       if (isAirtableConnected()) {
         // Fetch from Airtable
-        const airtableWords = await fetchWordsFromAirtable();
-        setWords(airtableWords);
+        try {
+          const airtableWords = await fetchWordsFromAirtable();
+          setWords(airtableWords);
+          setDataSource('airtable');
+          toast.success(`Loaded ${airtableWords.length} words from Airtable`);
+        } catch (error) {
+          console.error("Error fetching words from Airtable:", error);
+          toast.error("Failed to fetch words from Airtable. Falling back to default data.");
+          disconnectAirtable(); // Disconnect if there's an issue
+          setWords(defaultWords);
+          setDataSource('default');
+        }
       } else {
         // Use default words from the data file
         setWords(defaultWords);
+        setDataSource('default');
       }
     } catch (error) {
       console.error("Error fetching words:", error);
       toast.error("Failed to fetch words. Using default data instead.");
       setWords(defaultWords);
+      setDataSource('default');
     } finally {
       setLoading(false);
     }
@@ -52,9 +67,18 @@ export default function Index() {
         
         <div className="flex items-center gap-2">
           {isAirtableConnected() ? (
-            <Button variant="outline" onClick={fetchWords}>
-              Refresh Words
-            </Button>
+            <>
+              <div className="text-sm text-muted-foreground mr-2">
+                <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>
+                Connected to Airtable
+              </div>
+              <Button variant="outline" onClick={fetchWords}>
+                Refresh Words
+              </Button>
+              <Button variant="secondary" onClick={() => setShowConnectForm(true)}>
+                Manage Connection
+              </Button>
+            </>
           ) : (
             <Button onClick={() => setShowConnectForm(true)}>
               Connect to Airtable
@@ -66,6 +90,14 @@ export default function Index() {
       {showConnectForm && (
         <div className="mb-8">
           <AirtableConnectForm onConnect={handleConnected} />
+        </div>
+      )}
+
+      {dataSource === 'default' && !loading && !showConnectForm && (
+        <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-md">
+          <p className="text-amber-800 dark:text-amber-300 text-sm">
+            Showing demo words. Connect to Airtable to manage your own vocabulary.
+          </p>
         </div>
       )}
 
