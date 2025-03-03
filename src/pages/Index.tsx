@@ -1,56 +1,76 @@
-import React, { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { Search, Plus, LayoutGrid, List, Filter } from "lucide-react";
 
-import { fetchWordsFromAirtable } from "@/lib/airtable";
-import { Word } from "@/data/words";
-import { useAppContext } from "@/contexts/AppContext";
-
+import { useEffect, useState } from "react";
+import words from "@/data/words";
+import WordCard from "@/components/WordCard";
 import Header from "@/components/Header";
 import { Input } from "@/components/ui/input";
+import { Search, Plus, LayoutGrid, Grid3X3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import LearningProgress from "@/components/LearningProgress";
-import SimpleWordBreakdown from "@/components/SimpleWordBreakdown";
-import LearnedButton from "@/components/LearnedButton";
-import { Separator } from "@/components/ui/separator";
-import WordCardWithImage from "@/components/WordCardWithImage";
+import WordSection from "@/components/WordSection";
+import WordGrid from "@/components/WordGrid";
 
+// Define filter categories
 type FilterCategory = "all" | "prefix" | "root" | "suffix" | "origin";
-type ViewMode = "cards" | "list";
+type ViewMode = "cards" | "grid";
 
 const Index = () => {
-  const { setTotalWordsCount } = useAppContext();
   const [searchQuery, setSearchQuery] = useState("");
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterCategory>("all");
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [username, setUsername] = useState("Scholar");
+  const [viewMode, setViewMode] = useState<ViewMode>("cards");
   
-  const {
-    data: words = [],
-    isLoading,
-    isError,
-    error
-  } = useQuery({
-    queryKey: ['words'],
-    queryFn: fetchWordsFromAirtable,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-  
-  useEffect(() => {
-    if (words.length > 0) {
-      setTotalWordsCount(words.length);
-    }
-  }, [words.length, setTotalWordsCount]);
-  
+  // Filter words based on search query
   const filteredWords = words.filter(word => 
     word.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
     word.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
+  // Featured words for the hero section
+  const featuredWords = words.filter(word => word.featured);
+
+  // Get unique language origins for filtering
+  const uniqueOrigins = Array.from(new Set(words.map(word => word.languageOrigin)));
+
+  useEffect(() => {
+    // Set initial load to false after component mounts
+    const timer = setTimeout(() => {
+      setIsInitialLoad(false);
+    }, 100);
+    
+    // Check if user has saved name
+    const savedName = localStorage.getItem("vocabguru-username");
+    if (savedName) {
+      setUsername(savedName);
+    }
+    
+    // Add event listener for drawer toggle
+    const handleToggleDrawer = () => {
+      setIsDrawerOpen(!isDrawerOpen);
+    };
+    
+    window.addEventListener('toggle-drawer', handleToggleDrawer);
+    
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('toggle-drawer', handleToggleDrawer);
+    };
+  }, [isDrawerOpen]);
+
+  const toggleDrawer = () => {
+    setIsDrawerOpen(!isDrawerOpen);
+  };
+
+  const toggleViewMode = () => {
+    setViewMode(viewMode === "cards" ? "grid" : "cards");
+  };
+
+  // Get words filtered by category
   const getFilteredWordsByCategory = () => {
     if (activeFilter === "all") return filteredWords;
     if (activeFilter === "origin") {
+      // This would typically filter by language origin
       return filteredWords;
     }
     if (activeFilter === "prefix") {
@@ -59,36 +79,116 @@ const Index = () => {
     if (activeFilter === "suffix") {
       return filteredWords.filter(word => word.morphemeBreakdown.suffix);
     }
-    if (activeFilter === "root") {
-      return filteredWords.filter(word => word.morphemeBreakdown.root);
-    }
     return filteredWords;
   };
 
   const displayWords = getFilteredWordsByCategory();
-  
-  const toggleViewMode = () => {
-    setViewMode(prev => prev === "list" ? "cards" : "list");
-  };
+
+  // Word category chips
+  const renderWordChip = (word: string, category: string) => (
+    <div className="inline-flex px-2 py-1 text-xs rounded-full bg-black/80 text-white m-1">
+      {word}
+    </div>
+  );
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="page-container pt-20">
-        <div className="mb-6">
-          <div className="relative mb-4">
-            <Input
-              type="text"
-              placeholder="Search for a word..."
-              className="w-full pr-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <Search className="absolute top-1/2 right-3 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      {/* Navigation Drawer - appears when menu is clicked */}
+      <div 
+        className={`fixed top-0 left-0 h-full w-64 bg-background/95 backdrop-blur-sm z-50 shadow-lg transform transition-transform duration-300 ease-in-out ${
+          isDrawerOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="p-5">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="flex items-center justify-center bg-primary w-8 h-8 rounded-full">
+              <span className="text-primary-foreground font-semibold">V</span>
+            </div>
+            <span className="font-semibold text-lg">VocabGuru</span>
           </div>
           
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <nav className="space-y-1">
+            <a href="/" className="block py-2 px-3 rounded hover:bg-accent transition-colors">
+              Words
+            </a>
+            <a href="#" className="block py-2 px-3 rounded hover:bg-accent transition-colors">
+              Quizzes
+            </a>
+            <a href="#" className="block py-2 px-3 rounded hover:bg-accent transition-colors">
+              DailyWords
+            </a>
+            <a href="#" className="block py-2 px-3 rounded hover:bg-accent transition-colors">
+              ChatConversations
+            </a>
+          </nav>
+          
+          <div className="mt-6 space-y-2">
+            <Button className="w-full justify-start gap-2" variant="outline">
+              <Plus className="h-4 w-4" />
+              Quizzes
+            </Button>
+            <Button className="w-full justify-start gap-2" variant="outline">
+              Speak To Caivern
+            </Button>
+          </div>
+        </div>
+      </div>
+      
+      {/* Main content with overlay when drawer is open */}
+      <div 
+        className={`transition-opacity duration-300 ${isDrawerOpen ? "opacity-50" : "opacity-100"}`}
+        onClick={isDrawerOpen ? toggleDrawer : undefined}
+      >
+        <main className={`page-container ${viewMode === "grid" ? "pt-5 md:pt-6" : "pt-24"}`}>
+          {/* Hero Section with personalized greeting - only shown in cards view */}
+          {viewMode === "cards" && (
+            <section className="mb-12">
+              <div className="glass-card rounded-2xl p-8 md:p-12 text-center space-y-6 animate-scale-in">
+                <h1 className="text-3xl md:text-4xl font-bold">
+                  Welcome back, <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-400">{username}!</span>
+                </h1>
+                <p className="text-lg max-w-2xl mx-auto text-muted-foreground">
+                  Master language with interactive quizzes, etymology breakdowns, and daily word insights.
+                </p>
+                
+                <form className="relative max-w-md mx-auto">
+                  <Input
+                    type="text"
+                    placeholder="Search for a word..."
+                    className="w-full bg-secondary/50 border-none h-12 pl-12 focus-visible:ring-primary"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                </form>
+              </div>
+            </section>
+          )}
+          
+          {/* Mini Header - only shown in grid view */}
+          {viewMode === "grid" && (
+            <div className="mb-6">
+              <p className="text-muted-foreground text-sm text-center">
+                Master language with interactive quizzes, etymology breakdowns, and daily word insights
+              </p>
+              
+              <div className="mt-4 relative">
+                <Input
+                  type="text"
+                  placeholder="Search..."
+                  className="w-full bg-secondary/30 border-none h-10 pl-10 focus-visible:ring-primary"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              </div>
+            </div>
+          )}
+          
+          {/* Filters and Add Word Button */}
+          <section className="flex flex-wrap items-center justify-between gap-3 mb-6">
             <div className="flex flex-wrap gap-2">
               <Button 
                 variant={activeFilter === "all" ? "default" : "outline"} 
@@ -126,148 +226,67 @@ const Index = () => {
             
             <div className="flex gap-2">
               <Button 
-                variant="outline"
-                size="sm"
+                className="gap-2" 
+                variant="secondary"
                 onClick={toggleViewMode}
-                className="gap-2"
               >
-                {viewMode === "list" ? (
+                {viewMode === "cards" ? (
                   <>
-                    <LayoutGrid className="h-4 w-4" />
-                    <span className="hidden sm:inline">Grid View</span>
+                    <Grid3X3 className="h-4 w-4" />
+                    Change View
                   </>
                 ) : (
                   <>
-                    <List className="h-4 w-4" />
-                    <span className="hidden sm:inline">List View</span>
+                    <LayoutGrid className="h-4 w-4" />
+                    Change View
                   </>
                 )}
               </Button>
-              
-              <Button 
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                <Filter className="h-4 w-4" />
-                <span className="hidden sm:inline">Filter</span>
-              </Button>
-              
-              <Button
-                variant="default"
-                size="sm"
-                className="gap-2"
-              >
+              <Button className="gap-2">
                 <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Add Word</span>
+                Add Word
               </Button>
             </div>
-          </div>
-        </div>
-        
-        <Tabs defaultValue="all-words">
-          <TabsList className="mb-4">
-            <TabsTrigger value="all-words">Words</TabsTrigger>
-            <TabsTrigger value="progress">Progress</TabsTrigger>
-          </TabsList>
+          </section>
           
-          <TabsContent value="all-words" className="animate-fade-in">
-            {isLoading ? (
-              <div className="flex justify-center py-12">
-                <div className="animate-pulse text-center">
-                  <p className="text-muted-foreground">Loading vocabulary...</p>
-                </div>
+          {/* All Words or Search Results */}
+          <section>
+            <h2 className="text-2xl font-semibold mb-6">
+              {searchQuery ? "Search Results" : activeFilter !== "all" ? `${activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1)} Filter` : "All Words"}
+            </h2>
+            
+            {displayWords.length === 0 ? (
+              <div className="glass-card rounded-lg p-8 text-center">
+                <p className="text-muted-foreground">No words found matching '{searchQuery}'</p>
               </div>
-            ) : isError ? (
-              <div className="glass-card p-6 text-center">
-                <p className="text-destructive mb-2">Error loading words</p>
-                <p className="text-muted-foreground text-sm">
-                  {(error as Error)?.message || "Please try again later"}
-                </p>
-              </div>
-            ) : displayWords.length === 0 ? (
-              <div className="glass-card p-6 text-center">
-                <p className="text-muted-foreground">
-                  {searchQuery ? `No words found matching '${searchQuery}'` : "No words available"}
-                </p>
-              </div>
-            ) : viewMode === "list" ? (
-              <div className="space-y-4 animate-fade-in">
-                {displayWords.map((word) => (
-                  <WordListItem key={word.id} word={word} />
+            ) : viewMode === "cards" ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {displayWords.map((word, index) => (
+                  <div 
+                    key={word.id}
+                    className="transition-all duration-500"
+                    style={{ 
+                      animationDelay: `${index * 100}ms`,
+                      opacity: isInitialLoad ? 0 : 1,
+                      transform: isInitialLoad ? 'translateY(20px)' : 'translateY(0)'
+                    }}
+                  >
+                    <WordCard word={word} />
+                  </div>
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 animate-fade-in">
-                {displayWords.map((word) => (
-                  <WordCardWithImage key={word.id} word={word} />
-                ))}
-              </div>
+              <WordGrid words={displayWords} />
             )}
-          </TabsContent>
-          
-          <TabsContent value="progress" className="animate-fade-in">
-            <div className="glass-card p-6">
-              <h2 className="text-xl font-semibold mb-4">Your Learning Progress</h2>
-              <LearningProgress />
-            </div>
-          </TabsContent>
-        </Tabs>
-      </main>
+          </section>
+        </main>
+      </div>
       
-      <footer className="border-t border-border mt-12 py-6">
+      <footer className="border-t border-white/10 mt-12 py-6">
         <div className="container-inner text-center text-sm text-muted-foreground">
           <p>© 2024 VocabGuru. All rights reserved.</p>
         </div>
       </footer>
-    </div>
-  );
-};
-
-const WordListItem: React.FC<{ word: Word }> = ({ word }) => {
-  return (
-    <div className="glass-card p-4 hover:shadow-md transition-shadow">
-      <div className="flex justify-between items-start gap-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <Link to={`/word/${word.id}`} className="text-lg font-bold hover:text-primary transition-colors">
-              {word.word}
-            </Link>
-            {word.featured && (
-              <span className="chip bg-primary/10 text-primary text-xs">Featured</span>
-            )}
-          </div>
-          
-          <SimpleWordBreakdown 
-            prefix={word.morphemeBreakdown.prefix?.text}
-            root={word.morphemeBreakdown.root.text}
-            suffix={word.morphemeBreakdown.suffix?.text}
-            className="mb-2"
-          />
-          
-          <Separator className="my-2" />
-          
-          <p className="text-sm mt-1">{word.description}</p>
-          
-          {word.usage.exampleSentence && (
-            <p className="text-sm text-muted-foreground mt-2 italic">
-              "{word.usage.exampleSentence}"
-            </p>
-          )}
-          
-          {word.images && word.images.length > 0 && (
-            <div className="mt-3">
-              <img 
-                src={word.images[0].url} 
-                alt={word.images[0].alt || `Image for ${word.word}`}
-                className="h-16 w-auto rounded-md object-cover"
-              />
-            </div>
-          )}
-        </div>
-        
-        <LearnedButton wordId={word.id} />
-      </div>
     </div>
   );
 };

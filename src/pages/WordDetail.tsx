@@ -1,30 +1,25 @@
-import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
-
-import { fetchWordById } from "@/lib/airtable";
-import { useAppContext } from "@/contexts/AppContext";
-
+import { useEffect, useState } from "react";
+import words from "@/data/words";
 import Header from "@/components/Header";
+import MorphemeBreakdown from "@/components/MorphemeBreakdown";
+import WordSection from "@/components/WordSection";
+import ImageGallery from "@/components/ImageGallery";
+import AIChatInterface from "@/components/AIChatInterface";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import LearnedButton from "@/components/LearnedButton";
-import PronunciationPlayer from "@/components/PronunciationPlayer";
-import SimpleWordBreakdown from "@/components/SimpleWordBreakdown";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const WordDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   
-  const { data: word, isError } = useQuery({
-    queryKey: ['word', id],
-    queryFn: () => fetchWordById(id || ''),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+  const word = words.find(w => w.id === id);
 
   useEffect(() => {
+    // Simulate loading to show nice transitions
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 300);
@@ -32,7 +27,7 @@ const WordDetail = () => {
     return () => clearTimeout(timer);
   }, [id]);
 
-  if (isError || (!isLoading && !word)) {
+  if (!word) {
     return (
       <div className="min-h-screen">
         <Header />
@@ -51,38 +46,24 @@ const WordDetail = () => {
     );
   }
 
-  if (isLoading || !word) {
-    return (
-      <div className="min-h-screen">
-        <Header />
-        <main className="page-container pt-24">
-          <div className="animate-pulse space-y-6">
-            <div className="h-8 w-40 bg-muted rounded"></div>
-            <div className="h-12 w-3/4 bg-muted rounded"></div>
-            <div className="h-64 bg-muted rounded"></div>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  const getThemeColor = (id: string) => {
+  // Create color gradient based on word id for consistent colors
+  const getGradient = (id: string) => {
+    // Simple hash function for the word id
     const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const hue = hash % 360;
-    return `hsl(${hue}, 70%, 55%)`;
+    
+    // Use the hash to generate hue values
+    const hue1 = hash % 360;
+    const hue2 = (hash * 7) % 360;
+    
+    return `linear-gradient(135deg, hsl(${hue1}, 80%, 70%), hsl(${hue2}, 80%, 60%))`;
   };
-
-  const themeColor = getThemeColor(word.id);
-
-  const synonymsAntonyms = word.synonymsAntonyms || { synonyms: [], antonyms: [] };
-  
-  const definitions = word.definitions || [];
 
   return (
     <div className="min-h-screen">
       <Header />
       
-      <main className="page-container pt-20 page-transition">
+      <main className="page-container pt-24 page-transition">
+        {/* Back button */}
         <Button 
           variant="ghost" 
           size="sm" 
@@ -93,202 +74,251 @@ const WordDetail = () => {
           Back to Words
         </Button>
         
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h1 className="text-3xl md:text-4xl font-bold">{word.word}</h1>
-              <PronunciationPlayer word={word.word} />
+        {/* Word Header */}
+        <div 
+          className={`rounded-xl p-6 mb-8 ${isLoading ? 'opacity-0' : 'opacity-100 animate-scale-in'}`}
+          style={{ 
+            background: getGradient(word!.id),
+            transition: 'opacity 0.3s ease-in-out'
+          }}
+        >
+          <div className="flex flex-col md:flex-row md:items-end gap-4">
+            <div className="flex-1">
+              <span className="chip bg-black/30 backdrop-blur-sm text-white mb-2">
+                {word!.partOfSpeech}
+              </span>
+              <h1 className="text-4xl md:text-5xl font-bold text-white mb-1">
+                {word!.word}
+              </h1>
+              {word!.pronunciation && (
+                <p className="text-white/90 text-lg">
+                  {word!.pronunciation}
+                </p>
+              )}
             </div>
             
-            <LearnedButton wordId={word.id} />
+            <div className="chip bg-white/20 backdrop-blur-sm text-white">
+              {word!.languageOrigin}
+            </div>
           </div>
           
-          {word.languageOrigin && (
-            <div className="mt-2">
-              <span className="chip bg-secondary/50 text-secondary-foreground">
-                {word.languageOrigin}
-              </span>
-            </div>
-          )}
+          <p className="text-white/90 mt-4 max-w-3xl">
+            {word!.description}
+          </p>
         </div>
         
-        <section className="mb-8">
-          <h2 className="text-xl font-semibold mb-4" style={{ color: themeColor }}>
-            Word Overview
-          </h2>
-          
-          <div className="glass-card p-5 space-y-4">
-            {definitions.map((def, index) => (
-              <div key={index}>
-                <h3 className="font-medium mb-1">
-                  {def.type === 'primary' ? 'Primary Definition' : 
-                   def.type === 'standard' ? 'Standard Definition' : 
-                   def.type === 'contextual' ? 'Contextual Definition' : 
-                   'Definition'}
-                </h3>
-                <p>{def.text}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* Morpheme Breakdown */}
+        <MorphemeBreakdown breakdown={word!.morphemeBreakdown} />
         
-        {word.images && word.images.length > 0 && (
-          <section className="mb-8">
-            <h2 className="text-xl font-semibold mb-4" style={{ color: themeColor }}>
-              Word Images
-            </h2>
+        {/* Main Word Content */}
+        <div className="mt-8">
+          <Tabs defaultValue="details" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="details">Word Details</TabsTrigger>
+              <TabsTrigger value="ai-assist">AI Assistant</TabsTrigger>
+            </TabsList>
             
-            <div className="glass-card p-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {word.images.map((image) => (
-                  <div key={image.id} className="overflow-hidden rounded-md">
-                    <img 
-                      src={image.url} 
-                      alt={image.alt} 
-                      className="w-full h-auto object-cover hover:scale-105 transition-transform"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-        
-        <section className="mb-8">
-          <h2 className="text-xl font-semibold mb-4" style={{ color: themeColor }}>
-            Morphological Breakdown
-          </h2>
-          
-          <div className="glass-card p-5">
-            <SimpleWordBreakdown 
-              prefix={word.morphemeBreakdown.prefix?.text}
-              root={word.morphemeBreakdown.root.text}
-              suffix={word.morphemeBreakdown.suffix?.text}
-              className="text-base"
-            />
-          </div>
-        </section>
-        
-        <section className="mb-8">
-          <h2 className="text-xl font-semibold mb-4" style={{ color: themeColor }}>
-            Etymology
-          </h2>
-          
-          <div className="glass-card p-5 space-y-4">
-            {word.etymology.origin && (
-              <div>
-                <h3 className="font-medium mb-1">Historical Origins</h3>
-                <p>{word.etymology.origin}</p>
-              </div>
-            )}
-            
-            {word.languageOrigin && (
-              <div>
-                <h3 className="font-medium mb-1">Language of Origin</h3>
-                <p>{word.languageOrigin}</p>
-              </div>
-            )}
-            
-            {word.etymology.evolution && (
-              <div>
-                <h3 className="font-medium mb-1">Word Evolution</h3>
-                <p>{word.etymology.evolution}</p>
-              </div>
-            )}
-            
-            {word.etymology.culturalVariations && (
-              <div>
-                <h3 className="font-medium mb-1">Cultural and Regional Variations</h3>
-                <p>{word.etymology.culturalVariations}</p>
-              </div>
-            )}
-          </div>
-        </section>
-        
-        <section className="mb-8">
-          <h2 className="text-xl font-semibold mb-4" style={{ color: themeColor }}>
-            Usage
-          </h2>
-          
-          <div className="glass-card p-5 space-y-4">
-            {word.usage.sentenceStructure && (
-              <div>
-                <h3 className="font-medium mb-1">Sentence Structure</h3>
-                <p>{word.usage.sentenceStructure}</p>
-              </div>
-            )}
-            
-            {word.usage.commonCollocations.length > 0 && (
-              <div>
-                <h3 className="font-medium mb-1">Common Collocations</h3>
-                <p>{word.usage.commonCollocations.join(", ")}</p>
-              </div>
-            )}
-            
-            {word.usage.exampleSentence && (
-              <div>
-                <h3 className="font-medium mb-1">Example Sentence</h3>
-                <p className="italic">"{word.usage.exampleSentence}"</p>
-              </div>
-            )}
-            
-            {word.usage.contextualUsage && (
-              <div>
-                <h3 className="font-medium mb-1">Contextual Usage</h3>
-                <p>{word.usage.contextualUsage}</p>
-              </div>
-            )}
-            
-            {Object.keys(word.forms).length > 0 && (
-              <div>
-                <h3 className="font-medium mb-1">Tense Variations</h3>
-                <ul className="list-disc pl-5 space-y-1">
-                  {word.forms.noun && <li><span className="font-medium">Noun:</span> {word.forms.noun}</li>}
-                  {word.forms.verb && <li><span className="font-medium">Verb:</span> {word.forms.verb}</li>}
-                  {word.forms.adjective && <li><span className="font-medium">Adjective:</span> {word.forms.adjective}</li>}
-                  {word.forms.adverb && <li><span className="font-medium">Adverb:</span> {word.forms.adverb}</li>}
-                </ul>
-              </div>
-            )}
-          </div>
-        </section>
-        
-        <section className="mb-8">
-          <h2 className="text-xl font-semibold mb-4" style={{ color: themeColor }}>
-            Related Words
-          </h2>
-          
-          <div className="glass-card p-5 space-y-4">
-            {synonymsAntonyms.synonyms.length > 0 && (
-              <div>
-                <h3 className="font-medium mb-1">Synonyms</h3>
-                <div className="flex flex-wrap gap-2">
-                  {synonymsAntonyms.synonyms.map((synonym, index) => (
-                    <span key={index} className="chip bg-secondary/50 text-secondary-foreground">
-                      {synonym}
-                    </span>
-                  ))}
+            <TabsContent value="details">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                <div>
+                  {/* Primary Definition */}
+                  <WordSection title="Primary Definition">
+                    <p>{word!.definitions.find(d => d.type === 'primary')?.text}</p>
+                  </WordSection>
+                  
+                  {/* Standard Definitions */}
+                  {word!.definitions.filter(d => d.type === 'standard').length > 0 && (
+                    <WordSection title="Standard Definitions">
+                      <ul className="space-y-2">
+                        {word!.definitions
+                          .filter(d => d.type === 'standard')
+                          .map((def, index) => (
+                            <li key={index} className="flex gap-2">
+                              <div className="chip bg-primary/20 h-6 w-6 flex items-center justify-center">
+                                <span className="text-xs font-medium">
+                                  {index + 1}
+                                </span>
+                              </div>
+                              <span>{def.text}</span>
+                            </li>
+                          ))}
+                      </ul>
+                    </WordSection>
+                  )}
+                  
+                  {/* Extended Definitions */}
+                  {word!.definitions.filter(d => d.type === 'extended').length > 0 && (
+                    <WordSection title="Extended Definitions">
+                      <ul className="space-y-2">
+                        {word!.definitions
+                          .filter(d => d.type === 'extended')
+                          .map((def, index) => (
+                            <li key={index} className="flex gap-2">
+                              <div className="chip bg-primary/20 h-6 w-6 flex items-center justify-center">
+                                <span className="text-xs font-medium">
+                                  {index + 1}
+                                </span>
+                              </div>
+                              <span>{def.text}</span>
+                            </li>
+                          ))}
+                      </ul>
+                    </WordSection>
+                  )}
+                  
+                  {/* Etymology */}
+                  <WordSection title="Etymology">
+                    <div className="space-y-3">
+                      <div>
+                        <h4 className="text-sm font-medium">Historical Origin</h4>
+                        <p className="text-sm text-muted-foreground">{word!.etymology.origin}</p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-sm font-medium">Word Evolution</h4>
+                        <p className="text-sm text-muted-foreground">{word!.etymology.evolution}</p>
+                      </div>
+                      
+                      {word!.etymology.culturalVariations && (
+                        <div>
+                          <h4 className="text-sm font-medium">Cultural Variations</h4>
+                          <p className="text-sm text-muted-foreground">{word!.etymology.culturalVariations}</p>
+                        </div>
+                      )}
+                    </div>
+                  </WordSection>
+                  
+                  {/* Word Forms */}
+                  <WordSection title="Word Forms">
+                    <div className="grid grid-cols-2 gap-3">
+                      {word!.forms.noun && (
+                        <div className="glass-card rounded-md p-3 bg-secondary/30">
+                          <h4 className="text-xs font-medium text-muted-foreground">Noun</h4>
+                          <p className="font-medium">{word!.forms.noun}</p>
+                        </div>
+                      )}
+                      
+                      {word!.forms.verb && (
+                        <div className="glass-card rounded-md p-3 bg-secondary/30">
+                          <h4 className="text-xs font-medium text-muted-foreground">Verb</h4>
+                          <p className="font-medium">{word!.forms.verb}</p>
+                        </div>
+                      )}
+                      
+                      {word!.forms.adjective && (
+                        <div className="glass-card rounded-md p-3 bg-secondary/30">
+                          <h4 className="text-xs font-medium text-muted-foreground">Adjective</h4>
+                          <p className="font-medium">{word!.forms.adjective}</p>
+                        </div>
+                      )}
+                      
+                      {word!.forms.adverb && (
+                        <div className="glass-card rounded-md p-3 bg-secondary/30">
+                          <h4 className="text-xs font-medium text-muted-foreground">Adverb</h4>
+                          <p className="font-medium">{word!.forms.adverb}</p>
+                        </div>
+                      )}
+                    </div>
+                  </WordSection>
+                </div>
+                
+                <div>
+                  {/* Usage */}
+                  <WordSection title="Common Collocations">
+                    <div className="flex flex-wrap gap-2">
+                      {word!.usage.commonCollocations.map((collocation, index) => (
+                        <span key={index} className="chip bg-secondary text-secondary-foreground">
+                          {collocation}
+                        </span>
+                      ))}
+                    </div>
+                  </WordSection>
+                  
+                  {/* Contextual Usage */}
+                  <WordSection title="Contextual Usage">
+                    <p>{word!.usage.contextualUsage}</p>
+                  </WordSection>
+                  
+                  {/* Sentence Structure */}
+                  {word!.usage.sentenceStructure && (
+                    <WordSection title="Sentence Structure">
+                      <p>{word!.usage.sentenceStructure}</p>
+                    </WordSection>
+                  )}
+                  
+                  {/* Example Sentence */}
+                  <WordSection title="Example Sentence">
+                    <p className="italic">{word!.usage.exampleSentence}</p>
+                  </WordSection>
+                  
+                  {/* Synonyms & Antonyms */}
+                  <WordSection title="Synonyms & Antonyms">
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-sm font-medium mb-2">Synonyms</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {word!.synonymsAntonyms.synonyms.map((synonym, index) => (
+                            <span key={index} className="chip bg-primary/20 text-primary-foreground">
+                              {synonym}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <Separator className="bg-white/5" />
+                      
+                      <div>
+                        <h4 className="text-sm font-medium mb-2">Antonyms</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {word!.synonymsAntonyms.antonyms.map((antonym, index) => (
+                            <span key={index} className="chip bg-secondary text-secondary-foreground">
+                              {antonym}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </WordSection>
+                  
+                  {/* Image Gallery */}
+                  {word!.images.length > 0 && (
+                    <WordSection title="Image Gallery">
+                      <ImageGallery images={word!.images} />
+                    </WordSection>
+                  )}
+                  
+                  {/* Contextual Definitions */}
+                  {word!.definitions.filter(d => d.type === 'contextual').length > 0 && (
+                    <WordSection title="Contextual Definitions">
+                      <ul className="space-y-2">
+                        {word!.definitions
+                          .filter(d => d.type === 'contextual')
+                          .map((def, index) => (
+                            <li key={index}>{def.text}</li>
+                          ))}
+                      </ul>
+                    </WordSection>
+                  )}
                 </div>
               </div>
-            )}
+            </TabsContent>
             
-            {synonymsAntonyms.antonyms.length > 0 && (
-              <div>
-                <h3 className="font-medium mb-1">Antonyms</h3>
-                <div className="flex flex-wrap gap-2">
-                  {synonymsAntonyms.antonyms.map((antonym, index) => (
-                    <span key={index} className="chip bg-secondary/50 text-secondary-foreground">
-                      {antonym}
-                    </span>
-                  ))}
-                </div>
+            <TabsContent value="ai-assist">
+              <div className="mt-6">
+                <WordSection title="AI Language Assistant" className="mb-0">
+                  <p className="mb-4 text-sm text-muted-foreground">
+                    Ask questions about this word's etymology, usage, or morphological structure. 
+                    Try asking "What is the etymology of {word!.word}?" to see a detailed breakdown.
+                  </p>
+                  <AIChatInterface currentWord={word} />
+                </WordSection>
               </div>
-            )}
-          </div>
-        </section>
+            </TabsContent>
+          </Tabs>
+        </div>
       </main>
       
-      <footer className="border-t border-border mt-12 py-6">
+      <footer className="border-t border-white/10 mt-12 py-6">
         <div className="container-inner text-center text-sm text-muted-foreground">
           <p>© 2024 VocabGuru. All rights reserved.</p>
         </div>
