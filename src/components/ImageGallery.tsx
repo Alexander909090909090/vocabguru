@@ -5,9 +5,10 @@ import { cn } from "@/lib/utils";
 
 interface ImageGalleryProps {
   images: WordImage[];
+  word?: string; // Add the word prop as optional
 }
 
-export function ImageGallery({ images }: ImageGalleryProps) {
+export function ImageGallery({ images, word }: ImageGalleryProps) {
   const [selectedImage, setSelectedImage] = useState<WordImage | null>(
     images.length > 0 ? images[0] : null
   );
@@ -37,7 +38,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
         {selectedImage && (
           <img
             src={selectedImage.url}
-            alt={selectedImage.alt}
+            alt={selectedImage.alt || `Image for ${word || 'word'}`}
             className={cn(
               "w-full h-full object-cover transition-all duration-500",
               loadedImages[selectedImage.id] ? "image-loaded" : "image-loading"
@@ -60,7 +61,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
           >
             <img
               src={image.url}
-              alt={image.alt}
+              alt={image.alt || `Thumbnail for ${word || 'word'}`}
               className={cn(
                 "w-full h-full object-cover transition-all duration-500",
                 loadedImages[image.id] ? "image-loaded" : "image-loading"
