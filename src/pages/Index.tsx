@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -16,8 +15,8 @@ import LearningProgress from "@/components/LearningProgress";
 import SimpleWordBreakdown from "@/components/SimpleWordBreakdown";
 import LearnedButton from "@/components/LearnedButton";
 import { Separator } from "@/components/ui/separator";
+import WordCardWithImage from "@/components/WordCardWithImage";
 
-// Define filter categories
 type FilterCategory = "all" | "prefix" | "root" | "suffix" | "origin";
 type ViewMode = "cards" | "list";
 
@@ -27,7 +26,6 @@ const Index = () => {
   const [activeFilter, setActiveFilter] = useState<FilterCategory>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   
-  // Fetch words from Airtable
   const {
     data: words = [],
     isLoading,
@@ -39,24 +37,20 @@ const Index = () => {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
   
-  // Update total words count for progress tracking
   useEffect(() => {
     if (words.length > 0) {
       setTotalWordsCount(words.length);
     }
   }, [words.length, setTotalWordsCount]);
   
-  // Filter words based on search query
   const filteredWords = words.filter(word => 
     word.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
     word.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
-  // Get words filtered by category
   const getFilteredWordsByCategory = () => {
     if (activeFilter === "all") return filteredWords;
     if (activeFilter === "origin") {
-      // Filter by language origin
       return filteredWords;
     }
     if (activeFilter === "prefix") {
@@ -73,7 +67,6 @@ const Index = () => {
 
   const displayWords = getFilteredWordsByCategory();
   
-  // Toggle between list and grid view
   const toggleViewMode = () => {
     setViewMode(prev => prev === "list" ? "cards" : "list");
   };
@@ -83,7 +76,6 @@ const Index = () => {
       <Header />
       
       <main className="page-container pt-20">
-        {/* Search and Filters */}
         <div className="mb-6">
           <div className="relative mb-4">
             <Input
@@ -173,7 +165,6 @@ const Index = () => {
           </div>
         </div>
         
-        {/* Main Content Tabs */}
         <Tabs defaultValue="all-words">
           <TabsList className="mb-4">
             <TabsTrigger value="all-words">Words</TabsTrigger>
@@ -209,7 +200,7 @@ const Index = () => {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 animate-fade-in">
                 {displayWords.map((word) => (
-                  <WordCard key={word.id} word={word} />
+                  <WordCardWithImage key={word.id} word={word} />
                 ))}
               </div>
             )}
@@ -233,7 +224,6 @@ const Index = () => {
   );
 };
 
-// Word List Item Component
 const WordListItem: React.FC<{ word: Word }> = ({ word }) => {
   return (
     <div className="glass-card p-4 hover:shadow-md transition-shadow">
@@ -264,67 +254,19 @@ const WordListItem: React.FC<{ word: Word }> = ({ word }) => {
               "{word.usage.exampleSentence}"
             </p>
           )}
+          
+          {word.images && word.images.length > 0 && (
+            <div className="mt-3">
+              <img 
+                src={word.images[0].url} 
+                alt={word.images[0].alt || `Image for ${word.word}`}
+                className="h-16 w-auto rounded-md object-cover"
+              />
+            </div>
+          )}
         </div>
         
         <LearnedButton wordId={word.id} />
-      </div>
-    </div>
-  );
-};
-
-// Word Card Component
-const WordCard: React.FC<{ word: Word }> = ({ word }) => {
-  // Create color gradient based on word id for consistent colors
-  const getGradient = (id: string) => {
-    // Simple hash function for the word id
-    const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    
-    // Use the hash to generate hue values
-    const hue1 = hash % 360;
-    const hue2 = (hash * 7) % 360;
-    
-    return `linear-gradient(135deg, hsl(${hue1}, 70%, 65%), hsl(${hue2}, 70%, 55%))`;
-  };
-
-  return (
-    <div className="glass-card overflow-hidden rounded-xl hover-card">
-      <div 
-        className="h-24 relative overflow-hidden flex items-center justify-center"
-        style={{ background: getGradient(word.id) }}
-      >
-        <h3 className="text-2xl font-bold text-white">{word.word}</h3>
-        
-        {word.featured && (
-          <div className="absolute top-2 right-2">
-            <span className="chip bg-black/30 backdrop-blur-sm text-white text-xs">
-              Featured
-            </span>
-          </div>
-        )}
-      </div>
-      
-      <div className="p-4">
-        <SimpleWordBreakdown 
-          prefix={word.morphemeBreakdown.prefix?.text}
-          root={word.morphemeBreakdown.root.text}
-          suffix={word.morphemeBreakdown.suffix?.text}
-          className="mb-2"
-        />
-        
-        <p className="text-sm line-clamp-2 mb-3">{word.description}</p>
-        
-        <div className="flex items-center justify-between">
-          <span className="chip bg-secondary text-secondary-foreground text-xs">
-            {word.languageOrigin}
-          </span>
-          
-          <div className="flex gap-2">
-            <LearnedButton wordId={word.id} showText={false} size="sm" />
-            <Link to={`/word/${word.id}`}>
-              <Button variant="default" size="sm">View</Button>
-            </Link>
-          </div>
-        </div>
       </div>
     </div>
   );

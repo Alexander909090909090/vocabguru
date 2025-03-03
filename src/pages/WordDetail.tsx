@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -19,7 +18,6 @@ const WordDetail = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   
-  // Fetch the word data from Airtable
   const { data: word, isError } = useQuery({
     queryKey: ['word', id],
     queryFn: () => fetchWordById(id || ''),
@@ -27,7 +25,6 @@ const WordDetail = () => {
   });
 
   useEffect(() => {
-    // Simulate loading to show nice transitions
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 300);
@@ -54,7 +51,6 @@ const WordDetail = () => {
     );
   }
 
-  // While loading or if word is undefined, show a loading state
   if (isLoading || !word) {
     return (
       <div className="min-h-screen">
@@ -70,23 +66,16 @@ const WordDetail = () => {
     );
   }
 
-  // Create a color theme based on word id for consistent colors
   const getThemeColor = (id: string) => {
-    // Simple hash function for the word id
     const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    
-    // Use the hash to generate a hue value
     const hue = hash % 360;
-    
     return `hsl(${hue}, 70%, 55%)`;
   };
 
   const themeColor = getThemeColor(word.id);
 
-  // Parse synonyms and antonyms
   const synonymsAntonyms = word.synonymsAntonyms || { synonyms: [], antonyms: [] };
   
-  // Get all definitions
   const definitions = word.definitions || [];
 
   return (
@@ -94,7 +83,6 @@ const WordDetail = () => {
       <Header />
       
       <main className="page-container pt-20 page-transition">
-        {/* Back button */}
         <Button 
           variant="ghost" 
           size="sm" 
@@ -105,7 +93,6 @@ const WordDetail = () => {
           Back to Words
         </Button>
         
-        {/* Word Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -125,7 +112,6 @@ const WordDetail = () => {
           )}
         </div>
         
-        {/* Word Overview Section */}
         <section className="mb-8">
           <h2 className="text-xl font-semibold mb-4" style={{ color: themeColor }}>
             Word Overview
@@ -146,7 +132,28 @@ const WordDetail = () => {
           </div>
         </section>
         
-        {/* Morphological Breakdown Section */}
+        {word.images && word.images.length > 0 && (
+          <section className="mb-8">
+            <h2 className="text-xl font-semibold mb-4" style={{ color: themeColor }}>
+              Word Images
+            </h2>
+            
+            <div className="glass-card p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {word.images.map((image) => (
+                  <div key={image.id} className="overflow-hidden rounded-md">
+                    <img 
+                      src={image.url} 
+                      alt={image.alt} 
+                      className="w-full h-auto object-cover hover:scale-105 transition-transform"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+        
         <section className="mb-8">
           <h2 className="text-xl font-semibold mb-4" style={{ color: themeColor }}>
             Morphological Breakdown
@@ -162,7 +169,6 @@ const WordDetail = () => {
           </div>
         </section>
         
-        {/* Etymology Section */}
         <section className="mb-8">
           <h2 className="text-xl font-semibold mb-4" style={{ color: themeColor }}>
             Etymology
@@ -199,7 +205,6 @@ const WordDetail = () => {
           </div>
         </section>
         
-        {/* Usage Section */}
         <section className="mb-8">
           <h2 className="text-xl font-semibold mb-4" style={{ color: themeColor }}>
             Usage
@@ -248,7 +253,6 @@ const WordDetail = () => {
           </div>
         </section>
         
-        {/* Related Words Section */}
         <section className="mb-8">
           <h2 className="text-xl font-semibold mb-4" style={{ color: themeColor }}>
             Related Words
