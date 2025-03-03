@@ -64,15 +64,7 @@ export const fetchWordsFromAirtable = async (): Promise<Word[]> => {
   
   try {
     // Try to fetch from Airtable - using 'Words' as the table name
-    const records = await base('Words').select({
-      // Add a view parameter if your Airtable base has specific views
-      view: 'Grid view'
-    }).all();
-    
-    if (!records || records.length === 0) {
-      console.log('No records found in Airtable');
-      return [];
-    }
+    const records = await base('Words').select().all();
     
     return records.map((record: any) => {
       const fields = record.fields;
@@ -101,13 +93,7 @@ export const fetchWordsFromAirtable = async (): Promise<Word[]> => {
       
       // Process image attachments if they exist
       let images = [];
-      if (fields.Attachments && Array.isArray(fields.Attachments)) {
-        images = fields.Attachments.map((attachment: any, index: number) => ({
-          id: `${record.id}-img-${index}`,
-          url: attachment.url,
-          alt: `Image ${index+1} for ${fields.word || 'word'}`
-        }));
-      } else if (fields.images) {
+      if (fields.images) {
         // If images are stored as a JSON string
         if (typeof fields.images === 'string') {
           try {
@@ -120,6 +106,14 @@ export const fetchWordsFromAirtable = async (): Promise<Word[]> => {
         // If images are stored as an array of objects
         else if (Array.isArray(fields.images)) {
           images = fields.images;
+        }
+        // If images are Airtable attachments
+        else if (fields.Attachments && Array.isArray(fields.Attachments)) {
+          images = fields.Attachments.map((attachment: any, index: number) => ({
+            id: `${record.id}-img-${index}`,
+            url: attachment.url,
+            alt: `Image ${index+1} for ${fields.word || 'word'}`
+          }));
         }
       }
       
@@ -135,7 +129,7 @@ export const fetchWordsFromAirtable = async (): Promise<Word[]> => {
         etymology: {
           origin: fields.etymologyOrigin || '',
           evolution: fields.etymologyEvolution || '',
-          culturalVariations: fields.culturalVariations || ''
+          culturalVariations: fields.culturalVariations
         },
         definitions: [
           {
@@ -152,15 +146,15 @@ export const fetchWordsFromAirtable = async (): Promise<Word[]> => {
           }] : [])
         ].filter(def => def.text), // Only include definitions with text
         forms: {
-          noun: fields.formNoun || '',
-          verb: fields.formVerb || '',
-          adjective: fields.formAdjective || '',
-          adverb: fields.formAdverb || ''
+          noun: fields.formNoun,
+          verb: fields.formVerb,
+          adjective: fields.formAdjective,
+          adverb: fields.formAdverb
         },
         usage: {
           commonCollocations: ensureArray(fields.commonCollocations),
           contextualUsage: fields.contextualUsage || '',
-          sentenceStructure: fields.sentenceStructure || '',
+          sentenceStructure: fields.sentenceStructure,
           exampleSentence: fields.exampleSentence || ''
         },
         synonymsAntonyms: {
@@ -193,32 +187,12 @@ export const disconnectAirtable = () => {
 // Function to test the Airtable connection
 export const testAirtableConnection = async (personalAccessToken: string, baseId: string): Promise<boolean> => {
   try {
-    Airtable.configure({ apiKey: personalAccessToken });
-    const testBase = Airtable.base(baseId);
-    
-    // Try to fetch a single record from the Words table to verify connection
-    const records = await testBase('Words').select({ maxRecords: 1 }).firstPage();
-    console.log("Successfully connected to Airtable and found records:", records.length > 0);
-    return records.length > 0;
+    const testBase = new Airtable({ apiKey: personalAccessToken }).base(baseId);
+    // Try to fetch a single record from the Words table
+    await testBase('Words').select({ maxRecords: 1 }).firstPage();
+    return true;
   } catch (error) {
     console.error('Error testing Airtable connection:', error);
     return false;
   }
-};
-
-// Function to add the Airtable schema info for users
-export const getAirtableSchema = () => {
-  return {
-    tableName: 'Words',
-    requiredFields: ['word', 'description', 'partOfSpeech'],
-    recommendedFields: [
-      'word', 'pronunciation', 'description', 'languageOrigin', 'partOfSpeech', 
-      'root', 'rootMeaning', 'prefix', 'prefixMeaning', 'suffix', 'suffixMeaning',
-      'etymologyOrigin', 'etymologyEvolution', 'culturalVariations',
-      'primaryDefinition', 'primaryDefinitionType', 'secondaryDefinition', 'secondaryDefinitionType',
-      'contextualDefinition', 'formNoun', 'formVerb', 'formAdjective', 'formAdverb',
-      'commonCollocations', 'contextualUsage', 'sentenceStructure', 'exampleSentence',
-      'synonyms', 'antonyms', 'featured'
-    ]
-  };
 };

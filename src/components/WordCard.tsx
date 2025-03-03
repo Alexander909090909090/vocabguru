@@ -1,108 +1,85 @@
 
-import { Link } from "react-router-dom";
 import { Word } from "@/data/words";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ChevronRight, BookOpen } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
 interface WordCardProps {
   word: Word;
-  viewMode?: 'grid' | 'list';
+  priority?: boolean;
 }
 
-export default function WordCard({ word, viewMode = 'grid' }: WordCardProps) {
-  // Get the first image or use placeholder
-  const firstImage = word.images && word.images.length > 0 
-    ? word.images[0].url 
-    : '/placeholder.svg';
+export function WordCard({ word, priority = false }: WordCardProps) {
+  const [isImageLoaded, setIsImageLoaded] = useState(priority);
   
-  // Get the first definition
-  const primaryDefinition = word.definitions && word.definitions.length > 0
-    ? word.definitions[0].text
-    : 'No definition available';
+  // Create a gradient background based on the word id to ensure consistent colors per word
+  const getGradient = (id: string) => {
+    // Simple hash function for the word id
+    const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    
+    // Use the hash to generate hue values
+    const hue1 = hash % 360;
+    const hue2 = (hash * 7) % 360;
+    
+    return `linear-gradient(135deg, hsl(${hue1}, 80%, 60%), hsl(${hue2}, 80%, 50%))`;
+  };
+
+  // For the thumbnail image
+  const thumbnailImage = word.images?.[0];
   
-  if (viewMode === 'list') {
-    return (
-      <Card className="overflow-hidden hover:shadow-md transition-shadow">
-        <div className="flex items-center p-4">
-          <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0 mr-4">
-            <img 
-              src={firstImage} 
-              alt={`Image for ${word.word}`} 
-              className="w-full h-full object-cover"
-            />
-          </div>
-          
-          <div className="flex-grow">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="font-semibold text-lg">{word.word}</h3>
-                <div className="flex gap-2 mt-1">
-                  <Badge variant="outline" className="text-xs">
-                    {word.partOfSpeech}
-                  </Badge>
-                  {word.languageOrigin && (
-                    <Badge variant="secondary" className="text-xs">
-                      {word.languageOrigin}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-              
-              <Button variant="ghost" size="sm" className="ml-auto" asChild>
-                <Link to={`/word/${word.id}`}>
-                  <ChevronRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-            
-            <p className="text-muted-foreground text-sm line-clamp-1 mt-1">
-              {word.description}
-            </p>
-          </div>
-        </div>
-      </Card>
-    );
-  }
-  
+  useEffect(() => {
+    if (!priority && thumbnailImage) {
+      const img = new Image();
+      img.src = thumbnailImage.url;
+      img.onload = () => setIsImageLoaded(true);
+    }
+  }, [thumbnailImage, priority]);
+
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow h-full flex flex-col">
-      <div className="aspect-video w-full overflow-hidden bg-secondary">
-        <img 
-          src={firstImage} 
-          alt={`Image for ${word.word}`} 
-          className="w-full h-full object-cover"
-        />
-      </div>
-      
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
-          <CardTitle>{word.word}</CardTitle>
-          <Badge>{word.partOfSpeech}</Badge>
+    <Link 
+      to={`/word/${word.id}`}
+      className="block"
+    >
+      <div className="glass-card overflow-hidden rounded-xl hover-card">
+        <div 
+          className="h-40 relative overflow-hidden"
+          style={{ background: getGradient(word.id) }}
+        >
+          {thumbnailImage && (
+            <img
+              src={thumbnailImage.url}
+              alt={thumbnailImage.alt}
+              className={cn(
+                "w-full h-full object-cover object-center transition-all duration-500",
+                isImageLoaded ? "image-loaded" : "image-loading"
+              )}
+              loading={priority ? "eager" : "lazy"}
+            />
+          )}
+          {word.featured && (
+            <div className="absolute top-3 right-3">
+              <span className="chip bg-primary/90 text-white backdrop-blur-sm">
+                Featured
+              </span>
+            </div>
+          )}
         </div>
         
-        <div className="flex items-center gap-1 mt-1">
-          <Badge variant="outline" className="text-xs">
-            {word.languageOrigin}
-          </Badge>
+        <div className="p-4">
+          <h3 className="text-xl font-medium">{word.word}</h3>
+          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+            {word.description}
+          </p>
+          
+          <div className="mt-3 flex gap-2">
+            <span className="chip bg-secondary text-secondary-foreground">
+              {word.languageOrigin}
+            </span>
+          </div>
         </div>
-      </CardHeader>
-      
-      <CardContent className="pb-2 flex-grow">
-        <p className="text-muted-foreground text-sm line-clamp-2">
-          {word.description}
-        </p>
-      </CardContent>
-      
-      <CardFooter className="pt-0">
-        <Button asChild className="w-full">
-          <Link to={`/word/${word.id}`} className="flex items-center justify-center gap-1">
-            <BookOpen className="h-4 w-4" />
-            Explore Word
-          </Link>
-        </Button>
-      </CardFooter>
-    </Card>
+      </div>
+    </Link>
   );
 }
+
+export default WordCard;

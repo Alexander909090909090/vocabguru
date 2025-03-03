@@ -10,7 +10,6 @@ import { toast } from "sonner";
 import DailyWord from "@/components/DailyWord";
 import WordQuiz from "@/components/WordQuiz";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Grid2X2, List, Database, RefreshCw } from "lucide-react";
 
 export default function Index() {
   const [words, setWords] = useState<Word[]>([]);
@@ -18,7 +17,6 @@ export default function Index() {
   const [showConnectForm, setShowConnectForm] = useState(false);
   const [dataSource, setDataSource] = useState<'airtable' | 'default'>('default');
   const [activeTab, setActiveTab] = useState("all");
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
 
   const fetchWords = async () => {
     setLoading(true);
@@ -54,19 +52,7 @@ export default function Index() {
 
   useEffect(() => {
     fetchWords();
-    
-    // Load view mode preference
-    const savedViewMode = localStorage.getItem('viewMode');
-    if (savedViewMode === 'list' || savedViewMode === 'grid') {
-      setViewMode(savedViewMode);
-    }
   }, []);
-
-  const toggleViewMode = () => {
-    const newMode = viewMode === 'grid' ? 'list' : 'grid';
-    setViewMode(newMode);
-    localStorage.setItem('viewMode', newMode);
-  };
 
   const handleConnected = () => {
     setShowConnectForm(false);
@@ -91,17 +77,14 @@ export default function Index() {
                 Connected to Airtable
               </div>
               <Button variant="outline" onClick={fetchWords}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
+                Refresh Words
               </Button>
               <Button variant="secondary" onClick={() => setShowConnectForm(true)}>
-                <Database className="h-4 w-4 mr-2" />
-                Manage
+                Manage Connection
               </Button>
             </>
           ) : (
             <Button onClick={() => setShowConnectForm(true)}>
-              <Database className="h-4 w-4 mr-2" />
               Connect to Airtable
             </Button>
           )}
@@ -123,41 +106,23 @@ export default function Index() {
       )}
 
       <Tabs defaultValue="all" className="mb-8" onValueChange={setActiveTab}>
-        <div className="flex justify-between items-center mb-4">
-          <TabsList className="grid grid-cols-3 w-full md:w-[400px]">
-            <TabsTrigger value="all">All Words</TabsTrigger>
-            <TabsTrigger value="daily">Daily Word</TabsTrigger>
-            <TabsTrigger value="quiz">Quiz</TabsTrigger>
-          </TabsList>
-          
-          {activeTab === 'all' && (
-            <Button variant="outline" size="sm" onClick={toggleViewMode}>
-              {viewMode === 'grid' ? (
-                <>
-                  <List className="h-4 w-4 mr-2" />
-                  List View
-                </>
-              ) : (
-                <>
-                  <Grid2X2 className="h-4 w-4 mr-2" />
-                  Grid View
-                </>
-              )}
-            </Button>
-          )}
-        </div>
+        <TabsList className="grid grid-cols-3 w-full md:w-[400px]">
+          <TabsTrigger value="all">All Words</TabsTrigger>
+          <TabsTrigger value="daily">Daily Word</TabsTrigger>
+          <TabsTrigger value="quiz">Quiz</TabsTrigger>
+        </TabsList>
         
         <TabsContent value="all" className="mt-6">
           {loading ? (
-            <div className={`grid ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'} gap-6`}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className={`${viewMode === 'grid' ? 'h-64' : 'h-24'} rounded-xl bg-gray-200 animate-pulse`}></div>
+                <div key={i} className="h-64 rounded-xl bg-gray-200 animate-pulse"></div>
               ))}
             </div>
           ) : (
-            <div className={`grid ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'} gap-6`}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {words.map((word) => (
-                <WordCard key={word.id} word={word} viewMode={viewMode} />
+                <WordCard key={word.id} word={word} />
               ))}
             </div>
           )}
