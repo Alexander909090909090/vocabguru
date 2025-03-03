@@ -19,8 +19,6 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/word/:id" element={<WordDetail />} />
-          <Route path="/daily" element={<Index />} /> {/* Redirects to tab */}
-          <Route path="/quiz" element={<Index />} /> {/* Redirects to tab */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
