@@ -1,7 +1,11 @@
 
 import { useEffect, useState } from "react";
 import WordCard from "@/components/WordCard";
+import WordList from "@/components/WordList";
+import ViewToggle from "@/components/ViewToggle";
+import MobileNav from "@/components/MobileNav";
 import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import AirtableConnectForm from "@/components/AirtableConnectForm";
 import { fetchWordsFromAirtable, isAirtableConnected, disconnectAirtable } from "@/services/airtableService";
 import { Word } from "@/data/words";
@@ -17,6 +21,9 @@ export default function Index() {
   const [showConnectForm, setShowConnectForm] = useState(false);
   const [dataSource, setDataSource] = useState<'airtable' | 'default'>('default');
   const [activeTab, setActiveTab] = useState("all");
+  const [viewMode, setViewMode] = useState<"grid" | "list">(
+    localStorage.getItem("viewMode") as "grid" | "list" || "grid"
+  );
 
   const fetchWords = async () => {
     setLoading(true);
@@ -54,19 +61,31 @@ export default function Index() {
     fetchWords();
   }, []);
 
+  useEffect(() => {
+    // Save view mode preference
+    localStorage.setItem("viewMode", viewMode);
+  }, [viewMode]);
+
   const handleConnected = () => {
     setShowConnectForm(false);
     fetchWords();
   };
 
+  const handleViewChange = (newView: "grid" | "list") => {
+    setViewMode(newView);
+  };
+
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-4xl font-bold mb-2">VocabGuru</h1>
-          <p className="text-muted-foreground max-w-xl">
-            Explore words with AI-powered morphological breakdowns to understand their origins and meanings more deeply.
-          </p>
+        <div className="flex items-center gap-4">
+          <MobileNav />
+          <div>
+            <h1 className="text-4xl font-bold mb-2">VocabGuru</h1>
+            <p className="text-muted-foreground max-w-xl">
+              Master language with interactive quizzes, etymology breakdowns, and daily word insights
+            </p>
+          </div>
         </div>
         
         <div className="flex items-center gap-2">
@@ -113,6 +132,28 @@ export default function Index() {
         </TabsList>
         
         <TabsContent value="all" className="mt-6">
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex space-x-2">
+              <Button variant="outline" className="px-3">
+                Prefix
+              </Button>
+              <Button variant="outline" className="px-3">
+                Filter by
+              </Button>
+              <Button variant="outline" className="px-3">
+                Filter by
+              </Button>
+            </div>
+            
+            <div className="flex space-x-2">
+              <Button variant="default" className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                <span>Add Word</span>
+              </Button>
+              <ViewToggle view={viewMode} onChange={handleViewChange} />
+            </div>
+          </div>
+          
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
@@ -120,11 +161,15 @@ export default function Index() {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {words.map((word) => (
-                <WordCard key={word.id} word={word} />
-              ))}
-            </div>
+            viewMode === "grid" ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {words.map((word) => (
+                  <WordCard key={word.id} word={word} />
+                ))}
+              </div>
+            ) : (
+              <WordList words={words} />
+            )
           )}
         </TabsContent>
         

@@ -40,7 +40,7 @@ export function WordCard({ word, priority = false }: WordCardProps) {
       to={`/word/${word.id}`}
       className="block"
     >
-      <div className="glass-card overflow-hidden rounded-xl hover-card">
+      <div className="overflow-hidden rounded-xl hover:shadow-md transition-all duration-200 border bg-card">
         <div 
           className="h-40 relative overflow-hidden"
           style={{ background: getGradient(word.id) }}
@@ -51,30 +51,41 @@ export function WordCard({ word, priority = false }: WordCardProps) {
               alt={thumbnailImage.alt}
               className={cn(
                 "w-full h-full object-cover object-center transition-all duration-500",
-                isImageLoaded ? "image-loaded" : "image-loading"
+                isImageLoaded ? "opacity-100" : "opacity-0"
               )}
               loading={priority ? "eager" : "lazy"}
             />
           )}
-          {word.featured && (
-            <div className="absolute top-3 right-3">
-              <span className="chip bg-primary/90 text-white backdrop-blur-sm">
-                Featured
-              </span>
-            </div>
-          )}
+          <div className="absolute top-3 left-3">
+            <span className="px-2 py-1 text-xs rounded-full bg-black/70 text-white">
+              {word.id}
+            </span>
+          </div>
         </div>
         
         <div className="p-4">
           <h3 className="text-xl font-medium">{word.word}</h3>
-          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-            {word.description}
-          </p>
           
-          <div className="mt-3 flex gap-2">
-            <span className="chip bg-secondary text-secondary-foreground">
-              {word.languageOrigin}
-            </span>
+          <div className="mt-2">
+            <div className="text-xs text-muted-foreground">Primary Definition</div>
+            <p className="text-sm mt-1 line-clamp-2">
+              {word.definitions[0]?.text || ""}
+            </p>
+          </div>
+          
+          {word.definitions.find(d => d.type === 'contextual') && (
+            <div className="mt-3">
+              <div className="text-xs text-muted-foreground">Contextual Definition</div>
+              <p className="text-sm mt-1 line-clamp-2">
+                {word.definitions.find(d => d.type === 'contextual')?.text || ""}
+              </p>
+            </div>
+          )}
+          
+          <div className="mt-4">
+            <button className="w-full py-2 text-sm rounded-md bg-primary text-primary-foreground">
+              Open
+            </button>
           </div>
         </div>
       </div>

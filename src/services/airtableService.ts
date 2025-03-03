@@ -63,8 +63,8 @@ export const fetchWordsFromAirtable = async (): Promise<Word[]> => {
   }
   
   try {
-    // Try to fetch from Airtable - using 'Words' as the table name
-    const records = await base('Words').select().all();
+    // Try to fetch from Airtable - using 'Word_Analysis' as the table name based on the new schema
+    const records = await base('Word_Analysis').select().all();
     
     return records.map((record: any) => {
       const fields = record.fields;
@@ -72,95 +72,96 @@ export const fetchWordsFromAirtable = async (): Promise<Word[]> => {
       // Build the morpheme breakdown object
       const morphemeBreakdown: any = {
         root: { 
-          text: fields.root || '', 
-          meaning: fields.rootMeaning || '' 
+          text: fields.Root_Word || '', 
+          meaning: '' // Root word meaning not explicitly in schema
         }
       };
       
-      if (fields.prefix) {
+      if (fields.Prefix) {
         morphemeBreakdown.prefix = {
-          text: fields.prefix,
-          meaning: fields.prefixMeaning || ''
+          text: fields.Prefix,
+          meaning: '' // Prefix meaning not explicitly in schema
         };
       }
       
-      if (fields.suffix) {
+      if (fields.Suffix) {
         morphemeBreakdown.suffix = {
-          text: fields.suffix,
-          meaning: fields.suffixMeaning || ''
+          text: fields.Suffix,
+          meaning: '' // Suffix meaning not explicitly in schema
         };
       }
       
       // Process image attachments if they exist
       let images = [];
-      if (fields.images) {
-        // If images are stored as a JSON string
-        if (typeof fields.images === 'string') {
-          try {
-            images = JSON.parse(fields.images);
-          } catch (e) {
-            console.error('Failed to parse images JSON:', e);
-            images = [];
-          }
-        } 
-        // If images are stored as an array of objects
-        else if (Array.isArray(fields.images)) {
-          images = fields.images;
-        }
-        // If images are Airtable attachments
-        else if (fields.Attachments && Array.isArray(fields.Attachments)) {
-          images = fields.Attachments.map((attachment: any, index: number) => ({
+      if (fields.Image) {
+        // If images are stored as attachments
+        if (Array.isArray(fields.Image)) {
+          images = fields.Image.map((attachment: any, index: number) => ({
             id: `${record.id}-img-${index}`,
             url: attachment.url,
-            alt: `Image ${index+1} for ${fields.word || 'word'}`
+            alt: `Image ${index+1} for ${fields.Given_Word || 'word'}`
           }));
         }
       }
       
-      // Map Airtable fields to our Word interface
+      // Parse synonyms/antonyms
+      const synonymsAntonyms = { synonyms: [], antonyms: [] };
+      if (fields.Synonyms_Antonyms) {
+        try {
+          // Try to parse as JSON
+          const parsed = typeof fields.Synonyms_Antonyms === 'string' 
+            ? JSON.parse(fields.Synonyms_Antonyms)
+            : fields.Synonyms_Antonyms;
+            
+          if (parsed.synonyms) synonymsAntonyms.synonyms = ensureArray(parsed.synonyms);
+          if (parsed.antonyms) synonymsAntonyms.antonyms = ensureArray(parsed.antonyms);
+        } catch (e) {
+          // If it's not JSON, treat as comma-separated list (assuming synonyms only)
+          synonymsAntonyms.synonyms = ensureArray(fields.Synonyms_Antonyms);
+        }
+      }
+      
+      // Map Airtable fields to our Word interface based on the new schema
       return {
         id: record.id,
-        word: fields.word || '',
-        pronunciation: fields.pronunciation || '',
-        description: fields.description || '',
-        languageOrigin: fields.languageOrigin || 'Unknown',
-        partOfSpeech: fields.partOfSpeech || '',
-        featured: !!fields.featured,
+        word: fields.Given_Word || '',
+        pronunciation: '',  // Not in schema
+        description: fields.Primary_Definition || '',
+        languageOrigin: fields.Language_of_Origin || 'Unknown',
+        partOfSpeech: '',  // Not explicitly in schema
+        featured: !!fields.Daily_Words,
         etymology: {
-          origin: fields.etymologyOrigin || '',
-          evolution: fields.etymologyEvolution || '',
-          culturalVariations: fields.culturalVariations
+          origin: fields.Historical_Origins || '',
+          evolution: fields.Word_Evolution || '',
+          culturalVariations: fields.Cultural_and_Regional_Variations || ''
         },
         definitions: [
           {
-            type: fields.primaryDefinitionType || 'primary',
-            text: fields.primaryDefinition || ''
+            type: 'primary',
+            text: fields.Primary_Definition || ''
           },
-          ...(fields.secondaryDefinition ? [{
-            type: fields.secondaryDefinitionType || 'standard',
-            text: fields.secondaryDefinition
+          ...(fields.Standard_Definition ? [{
+            type: 'standard',
+            text: fields.Standard_Definition
           }] : []),
-          ...(fields.contextualDefinition ? [{
+          ...(fields.Contextual_Definitions ? [{
             type: 'contextual',
-            text: fields.contextualDefinition
+            text: fields.Contextual_Definitions
           }] : [])
         ].filter(def => def.text), // Only include definitions with text
         forms: {
-          noun: fields.formNoun,
-          verb: fields.formVerb,
-          adjective: fields.formAdjective,
-          adverb: fields.formAdverb
+          noun: fields.Tense_Variation ? fields.Tense_Variation.noun : '',
+          verb: fields.Tense_Variation ? fields.Tense_Variation.verb : '',
+          adjective: fields.Tense_Variation ? fields.Tense_Variation.adjective : '',
+          adverb: fields.Tense_Variation ? fields.Tense_Variation.adverb : ''
         },
         usage: {
-          commonCollocations: ensureArray(fields.commonCollocations),
-          contextualUsage: fields.contextualUsage || '',
-          sentenceStructure: fields.sentenceStructure,
-          exampleSentence: fields.exampleSentence || ''
+          commonCollocations: ensureArray(fields.Common_Collocations),
+          contextualUsage: fields.Contextual_Usage || '',
+          sentenceStructure: fields.Sentence_Structure || '',
+          exampleSentence: fields.Example_Sentences || ''
         },
-        synonymsAntonyms: {
-          synonyms: ensureArray(fields.synonyms),
-          antonyms: ensureArray(fields.antonyms)
-        },
+        synonymsAntonyms,
         morphemeBreakdown,
         images
       };
@@ -189,7 +190,7 @@ export const testAirtableConnection = async (personalAccessToken: string, baseId
   try {
     const testBase = new Airtable({ apiKey: personalAccessToken }).base(baseId);
     // Try to fetch a single record from the Words table
-    await testBase('Words').select({ maxRecords: 1 }).firstPage();
+    await testBase('Word_Analysis').select({ maxRecords: 1 }).firstPage();
     return true;
   } catch (error) {
     console.error('Error testing Airtable connection:', error);
