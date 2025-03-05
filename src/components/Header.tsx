@@ -5,22 +5,64 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
-import words from "@/data/words";
+import { useWords } from "@/context/WordsContext";
+import { searchDictionaryWord } from "@/lib/dictionaryApi";
+import { toast } from "@/components/ui/use-toast";
 
 export function Header() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const navigate = useNavigate();
+  const { getWord, addWord } = useWords();
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    const foundWord = words.find(
-      word => word.word.toLowerCase() === searchQuery.toLowerCase()
-    );
     
-    if (foundWord) {
-      navigate(`/word/${foundWord.id}`);
+    if (!searchQuery.trim()) {
+      return;
+    }
+    
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    
+    // First check if the word already exists in our collection
+    const existingWord = getWord(normalizedQuery);
+    
+    if (existingWord) {
+      navigate(`/word/${existingWord.id}`);
       setSearchQuery("");
+      return;
+    }
+    
+    // If not found locally, search in the dictionary API
+    setIsSearching(true);
+    
+    try {
+      const word = await searchDictionaryWord(normalizedQuery);
+      
+      if (word) {
+        // Add word to context
+        addWord(word);
+        
+        // Navigate to the word detail page
+        navigate(`/word/${word.id}`);
+        setSearchQuery("");
+      } else {
+        toast({
+          title: "Word not found",
+          description: "Try another word or check your spelling",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error searching word:", error);
+      toast({
+        title: "Error",
+        description: "Failed to search for word",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -60,12 +102,18 @@ export function Header() {
           <form onSubmit={handleSearch} className="relative hidden md:block">
             <Input
               type="text"
-              placeholder="Search words..."
+              placeholder="Search any word..."
               className="w-64 bg-secondary border-none focus-visible:ring-primary pl-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              disabled={isSearching}
             />
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            {isSearching && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4">
+                <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
+              </div>
+            )}
           </form>
           
           <nav className="hidden md:flex items-center gap-4">

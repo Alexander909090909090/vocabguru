@@ -8,13 +8,16 @@ import { Button } from "@/components/ui/button";
 import WordGrid from "@/components/WordGrid";
 import { useWords } from "@/context/WordsContext";
 import DictionarySearch from "@/components/DictionarySearch";
+import { searchDictionaryWord } from "@/lib/dictionaryApi";
+import { toast } from "@/components/ui/use-toast";
+import { useNavigate } from "react-router-dom";
 
 // Define filter categories
 type FilterCategory = "all" | "prefix" | "root" | "suffix" | "origin" | "dictionary";
 type ViewMode = "cards" | "grid";
 
 const Index = () => {
-  const { words } = useWords();
+  const { words, addWord, getWord, dictionaryWords } = useWords();
   const [searchQuery, setSearchQuery] = useState("");
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterCategory>("all");
@@ -22,6 +25,8 @@ const Index = () => {
   const [showDictionarySearch, setShowDictionarySearch] = useState(false);
   const [username, setUsername] = useState("Scholar");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
+  const [isSearching, setIsSearching] = useState(false);
+  const navigate = useNavigate();
   
   // Filter words based on search query
   const filteredWords = words.filter(word => 
@@ -71,6 +76,58 @@ const Index = () => {
   const toggleDictionarySearch = () => {
     setShowDictionarySearch(!showDictionarySearch);
   };
+  
+  // Enhanced search function that checks local words first, then tries the dictionary API
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!searchQuery.trim()) {
+      toast({
+        title: "Please enter a word",
+        description: "Type a word to search",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Check if word already exists
+    const normalizedWord = searchQuery.trim().toLowerCase();
+    const existingWord = getWord(normalizedWord);
+    
+    if (existingWord) {
+      // Word exists, navigate directly to it
+      navigate(`/word/${existingWord.id}`);
+      setSearchQuery("");
+      return;
+    }
+    
+    // If not found locally, search in the dictionary API
+    setIsSearching(true);
+    
+    try {
+      const word = await searchDictionaryWord(normalizedWord);
+      
+      if (word) {
+        // Add word to context
+        addWord(word);
+        
+        // Navigate to the word detail page
+        navigate(`/word/${word.id}`);
+        
+        // Reset search
+        setSearchQuery("");
+      }
+    } catch (error) {
+      console.error("Error searching word:", error);
+      toast({
+        title: "Error",
+        description: "Failed to search for word",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   // Get words filtered by category
   const getFilteredWordsByCategory = () => {
@@ -85,9 +142,10 @@ const Index = () => {
     if (activeFilter === "suffix") {
       return filteredWords.filter(word => word.morphemeBreakdown.suffix);
     }
-    // New filter for dictionary words (identified by missing featured property)
+    // Filter for dictionary words (identified by being in the dictionaryWords array)
     if (activeFilter === "dictionary") {
-      return filteredWords.filter(word => !Object.prototype.hasOwnProperty.call(word, 'featured'));
+      const dictionaryIds = dictionaryWords.map(w => w.id);
+      return filteredWords.filter(word => dictionaryIds.includes(word.id));
     }
     return filteredWords;
   };
@@ -169,15 +227,21 @@ const Index = () => {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-4">
-                    <form className="relative max-w-md mx-auto w-full">
+                    <form className="relative max-w-md mx-auto w-full" onSubmit={handleSearch}>
                       <Input
                         type="text"
-                        placeholder="Search existing words..."
+                        placeholder="Search any word..."
                         className="w-full bg-secondary/50 border-none h-12 pl-12 focus-visible:ring-primary"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
+                        disabled={isSearching}
                       />
                       <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      {isSearching && (
+                        <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                          <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
+                        </div>
+                      )}
                     </form>
                     <Button 
                       variant="outline" 
@@ -185,7 +249,7 @@ const Index = () => {
                       className="gap-2"
                     >
                       <Search className="h-4 w-4" />
-                      Search Dictionary
+                      Advanced Dictionary Search
                     </Button>
                   </div>
                 )}
