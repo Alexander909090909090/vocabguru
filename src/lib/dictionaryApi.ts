@@ -1,4 +1,3 @@
-
 import { toast } from "@/components/ui/use-toast";
 import { Word, MorphemeBreakdown, WordDefinition } from "@/data/words";
 
@@ -31,12 +30,14 @@ export const searchDictionaryWord = async (word: string): Promise<Word | null> =
     
     if (!response.ok) {
       if (response.status === 404) {
+        // For 404s, try to create a basic word entry with minimal information
+        const basicWord = createBasicWordEntry(word);
         toast({
-          title: "Word not found",
-          description: `No dictionary entry found for "${word}"`,
-          variant: "destructive",
+          title: "Limited information available",
+          description: `Creating a basic entry for "${word}". Some details may be missing.`,
+          variant: "default",
         });
-        return null;
+        return basicWord;
       }
       throw new Error(`API Error: ${response.status}`);
     }
@@ -58,6 +59,46 @@ export const searchDictionaryWord = async (word: string): Promise<Word | null> =
     });
     return null;
   }
+};
+
+// Create a basic word entry when the API doesn't find the word
+const createBasicWordEntry = (word: string): Word => {
+  return {
+    id: word.toLowerCase(),
+    word: word,
+    pronunciation: undefined,
+    description: "No official definition available for this word.",
+    languageOrigin: "Unknown",
+    partOfSpeech: "unknown",
+    morphemeBreakdown: attemptMorphemeBreakdown(word),
+    etymology: {
+      origin: "Etymology information not available",
+      evolution: "No information on word evolution available",
+    },
+    definitions: [
+      {
+        type: "primary",
+        text: "No official definition available for this word."
+      }
+    ],
+    forms: {},
+    usage: {
+      commonCollocations: [],
+      contextualUsage: "Contextual usage information not available",
+      exampleSentence: "Example sentence not available",
+    },
+    synonymsAntonyms: {
+      synonyms: [],
+      antonyms: [],
+    },
+    images: [
+      {
+        id: `${word.toLowerCase()}-1`,
+        url: `https://source.unsplash.com/featured/?${encodeURIComponent(word)}`,
+        alt: `Image representing ${word}`,
+      }
+    ],
+  };
 };
 
 export const mapDictionaryResponseToWord = (dictWord: DictionaryApiWord): Word => {

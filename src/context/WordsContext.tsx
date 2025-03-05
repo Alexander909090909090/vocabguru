@@ -7,6 +7,7 @@ interface WordsContextType {
   addWord: (word: Word) => void;
   getWord: (id: string) => Word | undefined;
   allWords: Word[];
+  dictionaryWords: Word[];
 }
 
 const WordsContext = createContext<WordsContextType | undefined>(undefined);
@@ -45,6 +46,11 @@ export function WordsProvider({ children }: { children: ReactNode }) {
     
     if (!exists) {
       setDictionaryWords(prev => [word, ...prev]);
+      
+      // Confirm word was added
+      console.log(`Added word: ${word.word} to dictionary collection`);
+    } else {
+      console.log(`Word ${word.word} already exists in the collection`);
     }
   };
   
@@ -57,7 +63,8 @@ export function WordsProvider({ children }: { children: ReactNode }) {
       words: allWords,
       addWord,
       getWord,
-      allWords
+      allWords,
+      dictionaryWords
     }}>
       {children}
     </WordsContext.Provider>

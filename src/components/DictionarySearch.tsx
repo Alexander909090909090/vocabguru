@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { searchDictionaryWord } from "@/lib/dictionaryApi";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
+import { useWords } from "@/context/WordsContext";
 
 interface DictionarySearchProps {
   onWordAdded?: () => void;
@@ -15,6 +16,7 @@ export function DictionarySearch({ onWordAdded }: DictionarySearchProps) {
   const [searchWord, setSearchWord] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const navigate = useNavigate();
+  const { addWord, getWord } = useWords();
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,12 +30,26 @@ export function DictionarySearch({ onWordAdded }: DictionarySearchProps) {
       return;
     }
     
+    // Check if word already exists
+    const normalizedWord = searchWord.trim().toLowerCase();
+    const existingWord = getWord(normalizedWord);
+    
+    if (existingWord) {
+      // Word exists, navigate directly to it
+      navigate(`/word/${existingWord.id}`);
+      setSearchWord("");
+      return;
+    }
+    
     setIsSearching(true);
     
     try {
-      const word = await searchDictionaryWord(searchWord.trim());
+      const word = await searchDictionaryWord(normalizedWord);
       
       if (word) {
+        // Add word to context
+        addWord(word);
+        
         // Navigate to the word detail page
         navigate(`/word/${word.id}`);
         
@@ -54,7 +70,7 @@ export function DictionarySearch({ onWordAdded }: DictionarySearchProps) {
     <form onSubmit={handleSearch} className="relative">
       <Input
         type="text"
-        placeholder="Search dictionary..."
+        placeholder="Search any word in the dictionary..."
         className="w-full bg-secondary/50 border-none h-12 pl-12 focus-visible:ring-primary"
         value={searchWord}
         onChange={(e) => setSearchWord(e.target.value)}
