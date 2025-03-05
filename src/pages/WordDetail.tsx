@@ -1,22 +1,25 @@
+
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import words from "@/data/words";
 import Header from "@/components/Header";
 import MorphemeBreakdown from "@/components/MorphemeBreakdown";
 import WordSection from "@/components/WordSection";
 import ImageGallery from "@/components/ImageGallery";
 import AIChatInterface from "@/components/AIChatInterface";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useWords } from "@/context/WordsContext"; 
+import { toast } from "@/components/ui/use-toast";
 
 const WordDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
+  const { getWord } = useWords();
   
-  const word = words.find(w => w.id === id);
+  const word = getWord(id || "");
 
   useEffect(() => {
     // Simulate loading to show nice transitions
@@ -57,6 +60,26 @@ const WordDetail = () => {
     
     return `linear-gradient(135deg, hsl(${hue1}, 80%, 70%), hsl(${hue2}, 80%, 60%))`;
   };
+  
+  // Function to speak the word using the Web Speech API
+  const speakWord = () => {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(word.word);
+      utterance.lang = 'en-US';
+      speechSynthesis.speak(utterance);
+      
+      toast({
+        title: "Speaking",
+        description: `Pronouncing: ${word.word}`,
+      });
+    } else {
+      toast({
+        title: "Speech Not Supported",
+        description: "Your browser doesn't support speech synthesis",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen">
@@ -78,37 +101,47 @@ const WordDetail = () => {
         <div 
           className={`rounded-xl p-6 mb-8 ${isLoading ? 'opacity-0' : 'opacity-100 animate-scale-in'}`}
           style={{ 
-            background: getGradient(word!.id),
+            background: getGradient(word.id),
             transition: 'opacity 0.3s ease-in-out'
           }}
         >
           <div className="flex flex-col md:flex-row md:items-end gap-4">
             <div className="flex-1">
               <span className="chip bg-black/30 backdrop-blur-sm text-white mb-2">
-                {word!.partOfSpeech}
+                {word.partOfSpeech}
               </span>
-              <h1 className="text-4xl md:text-5xl font-bold text-white mb-1">
-                {word!.word}
-              </h1>
-              {word!.pronunciation && (
+              <div className="flex items-center gap-2">
+                <h1 className="text-4xl md:text-5xl font-bold text-white mb-1">
+                  {word.word}
+                </h1>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-white/80 hover:text-white hover:bg-white/10"
+                  onClick={speakWord}
+                >
+                  <Volume2 className="h-5 w-5" />
+                </Button>
+              </div>
+              {word.pronunciation && (
                 <p className="text-white/90 text-lg">
-                  {word!.pronunciation}
+                  {word.pronunciation}
                 </p>
               )}
             </div>
             
             <div className="chip bg-white/20 backdrop-blur-sm text-white">
-              {word!.languageOrigin}
+              {word.languageOrigin}
             </div>
           </div>
           
           <p className="text-white/90 mt-4 max-w-3xl">
-            {word!.description}
+            {word.description}
           </p>
         </div>
         
         {/* Morpheme Breakdown */}
-        <MorphemeBreakdown breakdown={word!.morphemeBreakdown} />
+        <MorphemeBreakdown breakdown={word.morphemeBreakdown} />
         
         {/* Main Word Content */}
         <div className="mt-8">
@@ -308,7 +341,7 @@ const WordDetail = () => {
                 <WordSection title="AI Language Assistant" className="mb-0">
                   <p className="mb-4 text-sm text-muted-foreground">
                     Ask questions about this word's etymology, usage, or morphological structure. 
-                    Try asking "What is the etymology of {word!.word}?" to see a detailed breakdown.
+                    Try asking "What is the etymology of {word.word}?" to see a detailed breakdown.
                   </p>
                   <AIChatInterface currentWord={word} />
                 </WordSection>

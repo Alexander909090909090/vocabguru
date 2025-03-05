@@ -1,23 +1,25 @@
 
 import { useEffect, useState } from "react";
-import words from "@/data/words";
 import WordCard from "@/components/WordCard";
 import Header from "@/components/Header";
 import { Input } from "@/components/ui/input";
 import { Search, Plus, LayoutGrid, Grid3X3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import WordSection from "@/components/WordSection";
 import WordGrid from "@/components/WordGrid";
+import { useWords } from "@/context/WordsContext";
+import DictionarySearch from "@/components/DictionarySearch";
 
 // Define filter categories
-type FilterCategory = "all" | "prefix" | "root" | "suffix" | "origin";
+type FilterCategory = "all" | "prefix" | "root" | "suffix" | "origin" | "dictionary";
 type ViewMode = "cards" | "grid";
 
 const Index = () => {
+  const { words } = useWords();
   const [searchQuery, setSearchQuery] = useState("");
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterCategory>("all");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [showDictionarySearch, setShowDictionarySearch] = useState(false);
   const [username, setUsername] = useState("Scholar");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
   
@@ -65,6 +67,10 @@ const Index = () => {
   const toggleViewMode = () => {
     setViewMode(viewMode === "cards" ? "grid" : "cards");
   };
+  
+  const toggleDictionarySearch = () => {
+    setShowDictionarySearch(!showDictionarySearch);
+  };
 
   // Get words filtered by category
   const getFilteredWordsByCategory = () => {
@@ -79,17 +85,14 @@ const Index = () => {
     if (activeFilter === "suffix") {
       return filteredWords.filter(word => word.morphemeBreakdown.suffix);
     }
+    // New filter for dictionary words (identified by missing featured property)
+    if (activeFilter === "dictionary") {
+      return filteredWords.filter(word => !Object.prototype.hasOwnProperty.call(word, 'featured'));
+    }
     return filteredWords;
   };
 
   const displayWords = getFilteredWordsByCategory();
-
-  // Word category chips
-  const renderWordChip = (word: string, category: string) => (
-    <div className="inline-flex px-2 py-1 text-xs rounded-full bg-black/80 text-white m-1">
-      {word}
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -144,7 +147,7 @@ const Index = () => {
         <main className={`page-container ${viewMode === "grid" ? "pt-5 md:pt-6" : "pt-24"}`}>
           {/* Hero Section with personalized greeting - only shown in cards view */}
           {viewMode === "cards" && (
-            <section className="mb-12">
+            <section className="mb-8">
               <div className="glass-card rounded-2xl p-8 md:p-12 text-center space-y-6 animate-scale-in">
                 <h1 className="text-3xl md:text-4xl font-bold">
                   Welcome back, <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-400">{username}!</span>
@@ -153,16 +156,39 @@ const Index = () => {
                   Master language with interactive quizzes, etymology breakdowns, and daily word insights.
                 </p>
                 
-                <form className="relative max-w-md mx-auto">
-                  <Input
-                    type="text"
-                    placeholder="Search for a word..."
-                    className="w-full bg-secondary/50 border-none h-12 pl-12 focus-visible:ring-primary"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                </form>
+                {showDictionarySearch ? (
+                  <div className="max-w-md mx-auto">
+                    <DictionarySearch />
+                    <Button 
+                      variant="link" 
+                      className="mt-2 text-sm"
+                      onClick={toggleDictionarySearch}
+                    >
+                      Cancel Dictionary Search
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-4">
+                    <form className="relative max-w-md mx-auto w-full">
+                      <Input
+                        type="text"
+                        placeholder="Search existing words..."
+                        className="w-full bg-secondary/50 border-none h-12 pl-12 focus-visible:ring-primary"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    </form>
+                    <Button 
+                      variant="outline" 
+                      onClick={toggleDictionarySearch}
+                      className="gap-2"
+                    >
+                      <Search className="h-4 w-4" />
+                      Search Dictionary
+                    </Button>
+                  </div>
+                )}
               </div>
             </section>
           )}
@@ -183,6 +209,31 @@ const Index = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              </div>
+              
+              <div className="mt-4">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={toggleDictionarySearch}
+                  className="w-full gap-2"
+                >
+                  <Search className="h-4 w-4" />
+                  Search Dictionary
+                </Button>
+                
+                {showDictionarySearch && (
+                  <div className="mt-4">
+                    <DictionarySearch />
+                    <Button 
+                      variant="link" 
+                      className="mt-2 text-sm"
+                      onClick={toggleDictionarySearch}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -222,6 +273,14 @@ const Index = () => {
               >
                 Origin
               </Button>
+              <Button 
+                variant={activeFilter === "dictionary" ? "default" : "outline"} 
+                size="sm"
+                onClick={() => setActiveFilter("dictionary")}
+                className="rounded-full"
+              >
+                Dictionary
+              </Button>
             </div>
             
             <div className="flex gap-2">
@@ -242,7 +301,10 @@ const Index = () => {
                   </>
                 )}
               </Button>
-              <Button className="gap-2">
+              <Button 
+                className="gap-2"
+                onClick={toggleDictionarySearch}
+              >
                 <Plus className="h-4 w-4" />
                 Add Word
               </Button>
