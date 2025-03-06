@@ -2,20 +2,22 @@
 import { useState, useRef, useEffect } from "react";
 import Header from "@/components/Header";
 import { Message } from "@/types/chat";
-import { MessageSquare, Book, ArrowLeft } from "lucide-react";
+import { MessageSquare, Book, ArrowLeft, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import MessageList from "@/components/Chat/MessageList";
 import MessageInput from "@/components/Chat/MessageInput";
 import { generateResponseText, formatTimestamp } from "@/utils/chatUtils";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { useWords } from "@/context/WordsContext";
 
 const Calvern = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
       sender: "ai",
-      text: "Hello! I'm Calvern, your linguistics expert. I can help with etymologies, morpheme breakdowns, and answer any language questions. How can I assist you today?",
+      text: "Hello! I'm Calvern, your linguistics expert. I can help with word etymologies, morpheme breakdowns, and answer any language questions. Try asking for a \"comprehensive breakdown\" of a specific word for a detailed analysis. How can I assist you today?",
       timestamp: new Date()
     }
   ]);
@@ -23,6 +25,7 @@ const Calvern = () => {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { words } = useWords();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -48,16 +51,41 @@ const Calvern = () => {
     setInputValue("");
     setIsLoading(true);
     
+    // Try to identify if the user is asking about a specific word in our dictionary
+    const wordQuery = inputValue.toLowerCase().match(/\b\w+\b/g);
+    let targetWord = undefined;
+    
+    if (wordQuery) {
+      // Find the longest matching word in our database (to prioritize more specific matches)
+      let longestMatch = "";
+      
+      for (const word of words) {
+        const wordLower = word.word.toLowerCase();
+        if (wordQuery.includes(wordLower) && wordLower.length > longestMatch.length) {
+          targetWord = word;
+          longestMatch = wordLower;
+        }
+      }
+    }
+    
     // Generate AI response with simulated delay for realistic feel
     setTimeout(() => {
-      // Use the existing generateResponseText function with a more scholarly tone
-      let responseText = generateResponseText(userMessage.text);
+      // Use the enhanced generateResponseText function
+      let responseText = generateResponseText(userMessage.text, targetWord);
       
-      // Add more linguistic depth to responses
-      if (userMessage.text.toLowerCase().includes("etymology")) {
-        responseText += "\n\nEtymology is fascinating because it reveals the historical journey of words across languages and cultures.";
-      } else if (userMessage.text.toLowerCase().includes("morpheme")) {
-        responseText += "\n\nMorphemes are the smallest meaningful units in language. Understanding them helps decode unfamiliar words.";
+      // Add linguistics insights for queries without specific word matches
+      if (!targetWord) {
+        const generalLinguisticInsights = [
+          "\n\nDid you know? The English language has borrowed words from over 350 different languages throughout its history.",
+          "\n\nInteresting fact: About 80% of the entries in any English dictionary are borrowed from other languages, primarily Latin, French, and Greek.",
+          "\n\nLinguistics insight: Most English words can be traced back to Indo-European roots that are over 5,000 years old.",
+          "\n\nLanguage fact: The average educated English speaker knows about 20,000-35,000 words, but actively uses only about 5,000 in daily speech."
+        ];
+        
+        // Only add insights to general responses, not to comprehensive breakdowns
+        if (!responseText.includes("## Comprehensive Breakdown") && Math.random() > 0.5) {
+          responseText += generalLinguisticInsights[Math.floor(Math.random() * generalLinguisticInsights.length)];
+        }
       }
       
       const aiMessage: Message = {
@@ -122,10 +150,13 @@ const Calvern = () => {
         <div className="glass-card rounded-xl p-6 mb-8 bg-gradient-to-br from-indigo-600/20 to-purple-600/20">
           <div className="flex items-center gap-3 mb-4">
             <div className="flex items-center justify-center bg-primary/80 w-10 h-10 rounded-full">
-              <MessageSquare className="h-5 w-5 text-primary-foreground" />
+              <Sparkles className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Speak to Calvern</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold">Speak to Calvern</h1>
+                <Badge variant="outline" className="bg-primary/20 text-primary">AI Powered</Badge>
+              </div>
               <p className="text-muted-foreground">Your AI linguistics expert</p>
             </div>
           </div>
@@ -136,9 +167,15 @@ const Calvern = () => {
             and help you understand language at a deeper level.
           </p>
           
-          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary/50 p-2 rounded-lg">
-            <Book className="h-4 w-4 text-primary" />
-            <span>Example questions: "What is the etymology of democracy?", "Break down the morphemes in photosynthesis"</span>
+          <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 bg-secondary/50 p-2 rounded-lg">
+              <Book className="h-4 w-4 text-primary" />
+              <span>Try asking: "What is the etymology of superfluous?"</span>
+            </div>
+            <div className="flex items-center gap-2 bg-secondary/50 p-2 rounded-lg">
+              <MessageSquare className="h-4 w-4 text-primary" />
+              <span>Or say: "Give me a comprehensive breakdown of ephemeral"</span>
+            </div>
           </div>
         </div>
         

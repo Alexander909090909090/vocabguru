@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Word } from "@/data/words";
 import { Message } from "@/types/chat";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import MessageList from "./Chat/MessageList";
 import MessageInput from "./Chat/MessageInput";
@@ -17,7 +17,7 @@ export function AIChatInterface({ currentWord }: AIChatInterfaceProps) {
     {
       id: "welcome",
       sender: "ai",
-      text: "Hello! How can I assist you today? If you have any questions or need help with vocabulary, language insights, or linguistic analysis, feel free to ask!",
+      text: `Hello! I can provide insights about ${currentWord ? `"${currentWord.word}"` : "vocabulary"} and language. Try asking for a "comprehensive breakdown" for a detailed analysis, or ask specific questions about etymology, meaning, or usage.`,
       timestamp: new Date()
     }
   ]);
@@ -49,7 +49,7 @@ export function AIChatInterface({ currentWord }: AIChatInterfaceProps) {
     setInputValue("");
     setIsLoading(true);
     
-    // Simulate AI response
+    // Simulate AI response with enhanced capabilities
     setTimeout(() => {
       const responseText = generateResponseText(userMessage.text, currentWord);
       
@@ -62,7 +62,7 @@ export function AIChatInterface({ currentWord }: AIChatInterfaceProps) {
       
       setMessages(prev => [...prev, aiMessage]);
       setIsLoading(false);
-    }, 1500);
+    }, 1200);
   };
 
   const handleFeedback = (messageId: string, type: 'like' | 'dislike') => {
@@ -97,7 +97,7 @@ export function AIChatInterface({ currentWord }: AIChatInterfaceProps) {
   return (
     <div className="flex flex-col h-[500px] border border-white/10 rounded-lg overflow-hidden bg-background">
       <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
-        <MessageSquare className="h-5 w-5 text-primary" />
+        <Sparkles className="h-4 w-4 text-primary" />
         <h3 className="font-medium">VocabGuru Assistant</h3>
       </div>
       
