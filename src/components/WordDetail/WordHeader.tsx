@@ -3,6 +3,7 @@ import { Word } from "@/data/words";
 import { Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 interface WordHeaderProps {
   word: Word;
@@ -41,9 +42,9 @@ const WordHeader = ({ word, getGradient, isLoading }: WordHeaderProps) => {
     >
       <div className="flex flex-col md:flex-row md:items-end gap-4">
         <div className="flex-1">
-          <span className="chip bg-black/30 backdrop-blur-sm text-white mb-2">
+          <Badge variant="outline" className="bg-black/30 backdrop-blur-sm text-white mb-2 border-none">
             {word.partOfSpeech}
-          </span>
+          </Badge>
           <div className="flex items-center gap-2">
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-1">
               {word.word}
@@ -64,9 +65,9 @@ const WordHeader = ({ word, getGradient, isLoading }: WordHeaderProps) => {
           )}
         </div>
         
-        <div className="chip bg-white/20 backdrop-blur-sm text-white">
-          {word.languageOrigin}
-        </div>
+        <Badge variant="outline" className="bg-white/20 backdrop-blur-sm text-white border-none">
+          {word.languageOrigin || "Unknown Origin"}
+        </Badge>
       </div>
       
       <p className="text-white/90 mt-4 max-w-3xl">

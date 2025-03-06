@@ -63,9 +63,28 @@ export function DictionarySearch({ onWordAdded, useMerriamWebster = false }: Dic
           onWordAdded();
         }
         
+        toast({
+          title: "Word found!",
+          description: `"${word.word}" has been added to your vocabulary.`,
+        });
+        
         // Reset search
         setSearchWord("");
+      } else {
+        // Handle case when no word is returned
+        toast({
+          title: "Word not found",
+          description: "Sorry, we couldn't find that word in our dictionary.",
+          variant: "destructive",
+        });
       }
+    } catch (error) {
+      console.error("Search error:", error);
+      toast({
+        title: "Search failed",
+        description: "An error occurred while searching. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsSearching(false);
     }

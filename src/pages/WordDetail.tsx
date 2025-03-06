@@ -11,6 +11,7 @@ import WordHeader from "@/components/WordDetail/WordHeader";
 import WordNotFound from "@/components/WordDetail/WordNotFound";
 import WordMainContent from "@/components/WordDetail/WordMainContent";
 import AIAssistantTab from "@/components/WordDetail/AIAssistantTab";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const WordDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,7 +19,8 @@ const WordDetail = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { getWord } = useWords();
   
-  const word = getWord(id || "");
+  // Get word data from context
+  const word = id ? getWord(id) : undefined;
 
   useEffect(() => {
     // Simulate loading to show nice transitions
@@ -29,7 +31,8 @@ const WordDetail = () => {
     return () => clearTimeout(timer);
   }, [id]);
 
-  if (!word) {
+  // Handle word not found
+  if (!isLoading && !word) {
     return <WordNotFound />;
   }
 
@@ -61,33 +64,58 @@ const WordDetail = () => {
           Back to Words
         </Button>
         
-        {/* Word Header */}
-        <WordHeader 
-          word={word} 
-          getGradient={getGradient} 
-          isLoading={isLoading} 
-        />
-        
-        {/* Morpheme Breakdown */}
-        <MorphemeBreakdown breakdown={word.morphemeBreakdown} />
-        
-        {/* Main Word Content */}
-        <div className="mt-8">
-          <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="details">Word Details</TabsTrigger>
-              <TabsTrigger value="ai-assist">AI Assistant</TabsTrigger>
-            </TabsList>
+        {isLoading ? (
+          <>
+            {/* Loading skeleton for word header */}
+            <div className="rounded-xl p-6 mb-8 bg-secondary/50 animate-pulse">
+              <div className="h-8 w-32 bg-white/20 rounded mb-4"></div>
+              <div className="h-12 w-64 bg-white/20 rounded mb-2"></div>
+              <div className="h-6 w-48 bg-white/20 rounded mb-6"></div>
+              <div className="h-4 w-full bg-white/20 rounded"></div>
+            </div>
             
-            <TabsContent value="details">
-              <WordMainContent word={word} />
-            </TabsContent>
+            {/* Loading skeleton for morpheme breakdown */}
+            <div className="mb-8">
+              <Skeleton className="h-40 w-full" />
+            </div>
             
-            <TabsContent value="ai-assist">
-              <AIAssistantTab word={word} />
-            </TabsContent>
-          </Tabs>
-        </div>
+            {/* Loading skeleton for tabs */}
+            <div className="mb-8">
+              <Skeleton className="h-10 w-full mb-4" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          </>
+        ) : word ? (
+          <>
+            {/* Word Header */}
+            <WordHeader 
+              word={word} 
+              getGradient={getGradient} 
+              isLoading={isLoading} 
+            />
+            
+            {/* Morpheme Breakdown */}
+            <MorphemeBreakdown breakdown={word.morphemeBreakdown} />
+            
+            {/* Main Word Content */}
+            <div className="mt-8">
+              <Tabs defaultValue="details" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="details">Word Details</TabsTrigger>
+                  <TabsTrigger value="ai-assist">AI Assistant</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="details">
+                  <WordMainContent word={word} />
+                </TabsContent>
+                
+                <TabsContent value="ai-assist">
+                  <AIAssistantTab word={word} />
+                </TabsContent>
+              </Tabs>
+            </div>
+          </>
+        ) : null}
       </main>
       
       <footer className="border-t border-white/10 mt-12 py-6">

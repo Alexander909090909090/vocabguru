@@ -1,4 +1,3 @@
-
 import { toast } from "@/components/ui/use-toast";
 import { Word, MorphemeBreakdown, WordDefinition } from "@/data/words";
 
@@ -46,6 +45,11 @@ export const searchDictionaryWord = async (word: string): Promise<Word | null> =
     const data = await response.json() as DictionaryApiWord[];
     
     if (!data || data.length === 0) {
+      toast({
+        title: "Word not found",
+        description: `No information found for "${word}".`,
+        variant: "destructive",
+      });
       return null;
     }
     
@@ -158,10 +162,37 @@ export const mapDictionaryResponseToWord = (dictWord: DictionaryApiWord): Word =
   
   // Extract phonetics
   const pronunciation = dictWord.phonetic || 
-    (dictWord.phonetics.length > 0 ? dictWord.phonetics[0].text : undefined);
+    (dictWord.phonetics.length > 0 && dictWord.phonetics[0].text ? dictWord.phonetics[0].text : undefined);
   
   // Try to determine morpheme breakdown
   const morphemeBreakdown: MorphemeBreakdown = attemptMorphemeBreakdown(dictWord.word);
+  
+  // Try to extract common collocations from examples
+  const collocations: string[] = [];
+  dictWord.meanings.forEach(meaning => {
+    meaning.definitions.forEach(def => {
+      if (def.example) {
+        // Extract potential collocations from examples
+        const words = def.example.split(/\s+/);
+        const wordIndex = words.findIndex(w => 
+          w.toLowerCase().includes(dictWord.word.toLowerCase())
+        );
+        
+        if (wordIndex >= 0) {
+          // Get words before and after the target word
+          if (wordIndex > 0) {
+            collocations.push(`${words[wordIndex-1]} ${dictWord.word}`);
+          }
+          if (wordIndex < words.length - 1) {
+            collocations.push(`${dictWord.word} ${words[wordIndex+1]}`);
+          }
+        }
+      }
+    });
+  });
+  
+  // Get unique collocations
+  const uniqueCollocations = [...new Set(collocations)].slice(0, 5);
   
   return {
     id: dictWord.word.toLowerCase(),
@@ -178,11 +209,17 @@ export const mapDictionaryResponseToWord = (dictWord: DictionaryApiWord): Word =
     },
     definitions,
     forms: {
-      // Dictionary API doesn't provide word forms directly
+      // Try to derive forms based on meanings
+      noun: dictWord.meanings.some(m => m.partOfSpeech === "noun") ? dictWord.word : undefined,
+      verb: dictWord.meanings.some(m => m.partOfSpeech === "verb") ? dictWord.word : undefined,
+      adjective: dictWord.meanings.some(m => m.partOfSpeech === "adjective") ? dictWord.word : undefined,
+      adverb: dictWord.meanings.some(m => m.partOfSpeech === "adverb") ? dictWord.word : undefined,
     },
     usage: {
-      commonCollocations: [],
-      contextualUsage: "Contextual usage not available from this API",
+      commonCollocations: uniqueCollocations,
+      contextualUsage: definitions.length > 1 ? 
+        `${dictWord.word} is frequently used in contexts relating to ${definitions[1].text.split(' ').slice(0, 5).join(' ')}...` : 
+        "Contextual usage information not available from this API",
       exampleSentence: exampleSentence || "Example not available",
     },
     synonymsAntonyms: {

@@ -1,8 +1,9 @@
 
-import { ThumbsUp, ThumbsDown } from "lucide-react";
+import { ThumbsUp, ThumbsDown, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Message } from "@/types/chat";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 interface MessageItemProps {
   message: Message;
@@ -27,20 +28,27 @@ const MessageItem = ({ message, handleFeedback, formatTimestamp }: MessageItemPr
         {/* Dictionary information if available */}
         {message.dictionary && (
           <div className="mt-2 pt-2 border-t border-white/10">
-            <div className="text-xs text-muted-foreground">
-              Dictionary: {message.dictionary.source === "merriam-webster" ? "Merriam-Webster" : "Free Dictionary"}
+            <div className="flex items-center gap-2 mb-2">
+              <BookOpen className="h-4 w-4" />
+              <Badge variant="outline" className="text-xs">
+                {message.dictionary.source === "merriam-webster" ? "Merriam-Webster" : "Free Dictionary"}
+              </Badge>
             </div>
+            
             {message.dictionary.word && (
               <div className="font-semibold mt-1">{message.dictionary.word}</div>
             )}
+            
             {message.dictionary.partOfSpeech && (
               <div className="text-sm italic">{message.dictionary.partOfSpeech}</div>
             )}
+            
             {message.dictionary.definition && (
               <div className="mt-1">{message.dictionary.definition}</div>
             )}
+            
             {message.dictionary.etymology && (
-              <div className="mt-1 text-sm text-muted-foreground">
+              <div className="mt-2 text-sm text-muted-foreground">
                 <span className="font-medium">Etymology:</span> {message.dictionary.etymology}
               </div>
             )}
