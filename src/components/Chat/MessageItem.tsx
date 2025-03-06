@@ -23,6 +23,29 @@ const MessageItem = ({ message, handleFeedback, formatTimestamp }: MessageItemPr
           : "bg-card/90 backdrop-blur-sm border border-white/10"
       }`}>
         <div className="whitespace-pre-line">{message.text}</div>
+        
+        {/* Dictionary information if available */}
+        {message.dictionary && (
+          <div className="mt-2 pt-2 border-t border-white/10">
+            <div className="text-xs text-muted-foreground">
+              Dictionary: {message.dictionary.source === "merriam-webster" ? "Merriam-Webster" : "Free Dictionary"}
+            </div>
+            {message.dictionary.word && (
+              <div className="font-semibold mt-1">{message.dictionary.word}</div>
+            )}
+            {message.dictionary.partOfSpeech && (
+              <div className="text-sm italic">{message.dictionary.partOfSpeech}</div>
+            )}
+            {message.dictionary.definition && (
+              <div className="mt-1">{message.dictionary.definition}</div>
+            )}
+            {message.dictionary.etymology && (
+              <div className="mt-1 text-sm text-muted-foreground">
+                <span className="font-medium">Etymology:</span> {message.dictionary.etymology}
+              </div>
+            )}
+          </div>
+        )}
       </div>
       
       {message.sender === "ai" && message.id !== "welcome" && (

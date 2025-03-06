@@ -7,12 +7,14 @@ import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { useWords } from "@/context/WordsContext";
 import { searchDictionaryWord } from "@/lib/dictionaryApi";
+import { searchMerriamWebsterWord } from "@/lib/merriamWebsterApi";
 import { toast } from "@/components/ui/use-toast";
 
 export function Header() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [useMerriamWebster, setUseMerriamWebster] = useState(false);
   const navigate = useNavigate();
   const { getWord, addWord } = useWords();
 
@@ -38,7 +40,10 @@ export function Header() {
     setIsSearching(true);
     
     try {
-      const word = await searchDictionaryWord(normalizedQuery);
+      // Use Merriam-Webster API if specified, otherwise use the default dictionary API
+      const word = useMerriamWebster 
+        ? await searchMerriamWebsterWord(normalizedQuery)
+        : await searchDictionaryWord(normalizedQuery);
       
       if (word) {
         // Add word to context
@@ -72,6 +77,14 @@ export function Header() {
     window.dispatchEvent(event);
   };
 
+  const toggleDictionarySource = () => {
+    setUseMerriamWebster(!useMerriamWebster);
+    toast({
+      title: `Dictionary Source: ${!useMerriamWebster ? "Merriam-Webster" : "Free Dictionary"}`,
+      description: `Now using ${!useMerriamWebster ? "Merriam-Webster" : "Free Dictionary"} API for word lookups`,
+    });
+  };
+
   return (
     <header className="w-full py-4 border-b border-white/10 backdrop-blur-sm fixed top-0 z-50 bg-background/80">
       <div className="container-inner flex items-center justify-between">
@@ -102,7 +115,7 @@ export function Header() {
           <form onSubmit={handleSearch} className="relative hidden md:block">
             <Input
               type="text"
-              placeholder="Search any word..."
+              placeholder={`Search any word${useMerriamWebster ? " (MW)" : ""}...`}
               className="w-64 bg-secondary border-none focus-visible:ring-primary pl-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -122,10 +135,8 @@ export function Header() {
                 Words
               </Link>
             </Button>
-            <Button size="sm" variant="ghost" asChild>
-              <Link to="#" className="hover:text-primary transition-colors">
-                Quizzes
-              </Link>
+            <Button size="sm" variant="ghost" onClick={toggleDictionarySource}>
+              {useMerriamWebster ? "Use Free Dictionary" : "Use Merriam-Webster"}
             </Button>
             <Button size="sm" variant="ghost" asChild>
               <Link to="#" className="hover:text-primary transition-colors">
