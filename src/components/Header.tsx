@@ -139,8 +139,8 @@ export function Header() {
               {useMerriamWebster ? "Use Free Dictionary" : "Use Merriam-Webster"}
             </Button>
             <Button size="sm" variant="ghost" asChild>
-              <Link to="#" className="hover:text-primary transition-colors">
-                Daily
+              <Link to="/calvern" className="hover:text-primary transition-colors">
+                Speak to Calvern
               </Link>
             </Button>
           </nav>

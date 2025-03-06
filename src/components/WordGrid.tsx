@@ -1,6 +1,7 @@
 
 import { Word } from "@/data/words";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 interface WordGridProps {
   words: Word[];
@@ -51,9 +52,11 @@ export function WordGrid({ words }: WordGridProps) {
                 </div>
               </div>
               
-              <Button className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700">
-                Open
-              </Button>
+              <Link to={`/word/${word.id}`}>
+                <Button className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700">
+                  Open
+                </Button>
+              </Link>
             </div>
           </div>
         </div>

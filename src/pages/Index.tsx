@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import WordCard from "@/components/WordCard";
 import Header from "@/components/Header";
@@ -11,8 +10,8 @@ import DictionarySearch from "@/components/DictionarySearch";
 import { searchDictionaryWord } from "@/lib/dictionaryApi";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
-// Define filter categories
 type FilterCategory = "all" | "prefix" | "root" | "suffix" | "origin" | "dictionary";
 type ViewMode = "cards" | "grid";
 
@@ -28,31 +27,25 @@ const Index = () => {
   const [isSearching, setIsSearching] = useState(false);
   const navigate = useNavigate();
   
-  // Filter words based on search query
   const filteredWords = words.filter(word => 
     word.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
     word.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
-  // Featured words for the hero section
   const featuredWords = words.filter(word => word.featured);
 
-  // Get unique language origins for filtering
   const uniqueOrigins = Array.from(new Set(words.map(word => word.languageOrigin)));
 
   useEffect(() => {
-    // Set initial load to false after component mounts
     const timer = setTimeout(() => {
       setIsInitialLoad(false);
     }, 100);
     
-    // Check if user has saved name
     const savedName = localStorage.getItem("vocabguru-username");
     if (savedName) {
       setUsername(savedName);
     }
     
-    // Add event listener for drawer toggle
     const handleToggleDrawer = () => {
       setIsDrawerOpen(!isDrawerOpen);
     };
@@ -77,7 +70,6 @@ const Index = () => {
     setShowDictionarySearch(!showDictionarySearch);
   };
   
-  // Enhanced search function that checks local words first, then tries the dictionary API
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -90,31 +82,23 @@ const Index = () => {
       return;
     }
     
-    // Check if word already exists
     const normalizedWord = searchQuery.trim().toLowerCase();
     const existingWord = getWord(normalizedWord);
     
     if (existingWord) {
-      // Word exists, navigate directly to it
       navigate(`/word/${existingWord.id}`);
       setSearchQuery("");
       return;
     }
     
-    // If not found locally, search in the dictionary API
     setIsSearching(true);
     
     try {
       const word = await searchDictionaryWord(normalizedWord);
       
       if (word) {
-        // Add word to context
         addWord(word);
-        
-        // Navigate to the word detail page
         navigate(`/word/${word.id}`);
-        
-        // Reset search
         setSearchQuery("");
       }
     } catch (error) {
@@ -129,11 +113,9 @@ const Index = () => {
     }
   };
 
-  // Get words filtered by category
   const getFilteredWordsByCategory = () => {
     if (activeFilter === "all") return filteredWords;
     if (activeFilter === "origin") {
-      // This would typically filter by language origin
       return filteredWords;
     }
     if (activeFilter === "prefix") {
@@ -142,7 +124,6 @@ const Index = () => {
     if (activeFilter === "suffix") {
       return filteredWords.filter(word => word.morphemeBreakdown.suffix);
     }
-    // Filter for dictionary words (identified by being in the dictionaryWords array)
     if (activeFilter === "dictionary") {
       const dictionaryIds = dictionaryWords.map(w => w.id);
       return filteredWords.filter(word => dictionaryIds.includes(word.id));
@@ -156,7 +137,6 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header />
       
-      {/* Navigation Drawer - appears when menu is clicked */}
       <div 
         className={`fixed top-0 left-0 h-full w-64 bg-background/95 backdrop-blur-sm z-50 shadow-lg transform transition-transform duration-300 ease-in-out ${
           isDrawerOpen ? "translate-x-0" : "-translate-x-full"
@@ -171,39 +151,39 @@ const Index = () => {
           </div>
           
           <nav className="space-y-1">
-            <a href="/" className="block py-2 px-3 rounded hover:bg-accent transition-colors">
+            <Link to="/" className="block py-2 px-3 rounded hover:bg-accent transition-colors">
               Words
-            </a>
-            <a href="#" className="block py-2 px-3 rounded hover:bg-accent transition-colors">
-              Quizzes
-            </a>
-            <a href="#" className="block py-2 px-3 rounded hover:bg-accent transition-colors">
-              DailyWords
-            </a>
-            <a href="#" className="block py-2 px-3 rounded hover:bg-accent transition-colors">
-              ChatConversations
-            </a>
+            </Link>
+            <Link to="/calvern" className="block py-2 px-3 rounded hover:bg-accent transition-colors">
+              Speak to Calvern
+            </Link>
           </nav>
           
           <div className="mt-6 space-y-2">
-            <Button className="w-full justify-start gap-2" variant="outline">
-              <Plus className="h-4 w-4" />
-              Quizzes
+            <Button 
+              className="w-full justify-start gap-2" 
+              variant="outline"
+              onClick={toggleDictionarySearch}
+            >
+              <Search className="h-4 w-4" />
+              Dictionary Search
             </Button>
-            <Button className="w-full justify-start gap-2" variant="outline">
-              Speak To Caivern
+            <Button 
+              className="w-full justify-start gap-2" 
+              variant="outline"
+              onClick={() => navigate("/calvern")}
+            >
+              Speak To Calvern
             </Button>
           </div>
         </div>
       </div>
       
-      {/* Main content with overlay when drawer is open */}
       <div 
         className={`transition-opacity duration-300 ${isDrawerOpen ? "opacity-50" : "opacity-100"}`}
         onClick={isDrawerOpen ? toggleDrawer : undefined}
       >
         <main className={`page-container ${viewMode === "grid" ? "pt-5 md:pt-6" : "pt-24"}`}>
-          {/* Hero Section with personalized greeting - only shown in cards view */}
           {viewMode === "cards" && (
             <section className="mb-8">
               <div className="glass-card rounded-2xl p-8 md:p-12 text-center space-y-6 animate-scale-in">
@@ -257,7 +237,6 @@ const Index = () => {
             </section>
           )}
           
-          {/* Mini Header - only shown in grid view */}
           {viewMode === "grid" && (
             <div className="mb-6">
               <p className="text-muted-foreground text-sm text-center">
@@ -302,7 +281,6 @@ const Index = () => {
             </div>
           )}
           
-          {/* Filters and Add Word Button */}
           <section className="flex flex-wrap items-center justify-between gap-3 mb-6">
             <div className="flex flex-wrap gap-2">
               <Button 
@@ -375,7 +353,6 @@ const Index = () => {
             </div>
           </section>
           
-          {/* All Words or Search Results */}
           <section>
             <h2 className="text-2xl font-semibold mb-6">
               {searchQuery ? "Search Results" : activeFilter !== "all" ? `${activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1)} Filter` : "All Words"}
