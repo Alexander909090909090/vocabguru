@@ -1,66 +1,142 @@
+
+import { Search, Menu } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu } from "lucide-react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useNavigate } from "react-router-dom";
 import { useWords } from "@/context/WordsContext";
+import { searchDictionaryWord } from "@/lib/dictionaryApi";
+import { toast } from "@/components/ui/use-toast";
 
-const navigation = [
-  { name: "Home", href: "/" },
-  { name: "Calvern", href: "/calvern" },
-];
+export function Header() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const navigate = useNavigate();
+  const { getWord, addWord } = useWords();
 
-const Header = () => {
-  const { allWords, dictionaryWords } = useWords();
-  const totalWords = allWords.length;
-  const dictionaryCount = dictionaryWords.length;
-  
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!searchQuery.trim()) {
+      return;
+    }
+    
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    
+    // First check if the word already exists in our collection
+    const existingWord = getWord(normalizedQuery);
+    
+    if (existingWord) {
+      navigate(`/word/${existingWord.id}`);
+      setSearchQuery("");
+      return;
+    }
+    
+    // If not found locally, search in the dictionary API
+    setIsSearching(true);
+    
+    try {
+      const word = await searchDictionaryWord(normalizedQuery);
+      
+      if (word) {
+        // Add word to context
+        addWord(word);
+        
+        // Navigate to the word detail page
+        navigate(`/word/${word.id}`);
+        setSearchQuery("");
+      } else {
+        toast({
+          title: "Word not found",
+          description: "Try another word or check your spelling",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error searching word:", error);
+      toast({
+        title: "Error",
+        description: "Failed to search for word",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const toggleDrawer = () => {
+    // This will be connected to the drawer in the Index component
+    const event = new CustomEvent('toggle-drawer');
+    window.dispatchEvent(event);
+  };
+
   return (
-    <header className="sticky top-0 bg-background/90 backdrop-blur-md z-50 border-b border-white/10">
-      <div className="container-inner py-4 flex items-center justify-between">
-        <Link to="/" className="font-bold text-lg">
-          VocabGuru
-        </Link>
-        
-        <nav className="hidden md:flex items-center gap-4">
-          {navigation.map((item) => (
-            <Link key={item.name} to={item.href} className="text-sm hover:text-primary transition-colors">
-              {item.name}
-            </Link>
-          ))}
-        </nav>
-        
-        <div className="hidden md:flex items-center gap-4 text-sm text-muted-foreground">
-          <span>{totalWords} words</span>
-          {dictionaryCount > 0 && <span>+ {dictionaryCount} in your dictionary</span>}
-        </div>
-
-        <Sheet>
-          <SheetTrigger className="md:hidden">
-            <Menu className="h-6 w-6" />
-          </SheetTrigger>
-          <SheetContent side="left" className="sm:w-64">
-            <div className="flex flex-col h-full">
-              <Link to="/" className="font-bold text-lg mb-6">
-                VocabGuru
-              </Link>
-              
-              <nav className="flex flex-col gap-4 mb-6">
-                {navigation.map((item) => (
-                  <Link key={item.name} to={item.href} className="text-sm hover:text-primary transition-colors">
-                    {item.name}
-                  </Link>
-                ))}
-              </nav>
-              
-              <div className="mt-auto text-sm text-muted-foreground">
-                <span>{totalWords} words</span>
-                {dictionaryCount > 0 && <span>+ {dictionaryCount} in your dictionary</span>}
-              </div>
+    <header className="w-full py-4 border-b border-white/10 backdrop-blur-sm fixed top-0 z-50 bg-background/80">
+      <div className="container-inner flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={toggleDrawer}
+            className="md:hidden"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          
+          <Link 
+            to="/" 
+            className="flex items-center gap-2 group"
+          >
+            <div className="flex items-center justify-center bg-primary w-8 h-8 rounded-full">
+              <span className="text-primary-foreground font-semibold">V</span>
             </div>
-          </SheetContent>
-        </Sheet>
+            <span className="font-semibold text-lg group-hover:text-primary transition-colors">
+              VocabGuru
+            </span>
+          </Link>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <form onSubmit={handleSearch} className="relative hidden md:block">
+            <Input
+              type="text"
+              placeholder="Search any word..."
+              className="w-64 bg-secondary border-none focus-visible:ring-primary pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              disabled={isSearching}
+            />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            {isSearching && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4">
+                <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
+              </div>
+            )}
+          </form>
+          
+          <nav className="hidden md:flex items-center gap-4">
+            <Button size="sm" variant="ghost" asChild>
+              <Link to="/" className="hover:text-primary transition-colors">
+                Words
+              </Link>
+            </Button>
+            <Button size="sm" variant="ghost" asChild>
+              <Link to="#" className="hover:text-primary transition-colors">
+                Quizzes
+              </Link>
+            </Button>
+            <Button size="sm" variant="ghost" asChild>
+              <Link to="#" className="hover:text-primary transition-colors">
+                Daily
+              </Link>
+            </Button>
+          </nav>
+        </div>
       </div>
     </header>
   );
-};
+}
 
 export default Header;
