@@ -1,14 +1,15 @@
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useWords } from '@/context/WordsContext';
-import { ArrowUpFromLine, ArrowDownToLine, X, Check, AlertCircle } from 'lucide-react';
+import { ArrowUpFromLine, ArrowDownToLine, X, Check, AlertCircle, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/use-toast';
 import { Word } from '@/data/words';
+import { v4 as uuidv4 } from 'uuid';
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -27,27 +28,112 @@ const wordToCSV = (word: Word): string => {
   return csvRow;
 };
 
-// Helper to convert CSV row to Word object
-const csvToWord = (row: string, headers: string[]): Partial<Word> | null => {
-  const values = row.split(',');
+// Smart CSV header detection - maps any columns to our data structure
+const detectHeaders = (headerRow: string): Record<string, string> => {
+  const headers = headerRow.split(',').map(h => h.trim().toLowerCase());
+  const headerMap: Record<string, string> = {};
   
-  // Skip rows with incorrect format
-  if (values.length < headers.length) {
-    return null;
-  }
-  
-  // Create a partial Word object
-  const wordData: Record<string, any> = {};
-  
+  // Map common variations to our expected fields
   headers.forEach((header, index) => {
-    if (header && values[index]) {
-      wordData[header] = values[index];
+    // Word mapping
+    if (header === 'word' || header === 'term' || header === 'vocabulary' || header === 'expression') {
+      headerMap['word'] = index.toString();
+    }
+    // Definition/Description mapping
+    else if (header === 'definition' || header === 'description' || header === 'meaning' || header === 'explanation') {
+      headerMap['description'] = index.toString();
+    }
+    // Pronunciation mapping
+    else if (header === 'pronunciation' || header === 'phonetics' || header === 'sound') {
+      headerMap['pronunciation'] = index.toString();
+    }
+    // Language origin mapping
+    else if (header === 'origin' || header === 'language' || header === 'languageorigin' || header === 'language_origin' || header === 'etymology') {
+      headerMap['languageOrigin'] = index.toString();
+    }
+    // Part of speech mapping
+    else if (header === 'partofspeech' || header === 'part_of_speech' || header === 'pos' || header === 'wordtype' || header === 'word_type') {
+      headerMap['partOfSpeech'] = index.toString();
+    }
+    // ID mapping
+    else if (header === 'id' || header === 'identifier' || header === 'key') {
+      headerMap['id'] = index.toString();
     }
   });
   
-  // Validate minimum required fields
-  if (!wordData.id || !wordData.word || !wordData.description) {
+  return headerMap;
+};
+
+// Enhanced CSV to Word conversion that works with any CSV format
+const csvToWord = (row: string, headerMap: Record<string, string>): Partial<Word> | null => {
+  const values = row.split(',').map(v => v.trim());
+  
+  // Skip empty rows
+  if (values.join('').trim() === '') {
     return null;
+  }
+  
+  // Create a word object with mapped fields
+  const wordData: Record<string, any> = {};
+  
+  // Generate a unique ID if not provided
+  if (!headerMap['id'] || !values[parseInt(headerMap['id'])]) {
+    wordData.id = uuidv4();
+  } else {
+    wordData.id = values[parseInt(headerMap['id'])];
+  }
+  
+  // Extract word (required)
+  if (headerMap['word'] && values[parseInt(headerMap['word'])]) {
+    wordData.word = values[parseInt(headerMap['word'])];
+  } else {
+    // Try to find any column that might contain a word
+    for (let i = 0; i < values.length; i++) {
+      if (values[i] && values[i].length > 0 && values[i].length < 30 && /^[a-zA-Z\s-]+$/.test(values[i])) {
+        wordData.word = values[i];
+        break;
+      }
+    }
+    
+    // If still no word found, we can't proceed
+    if (!wordData.word) {
+      return null;
+    }
+  }
+  
+  // Extract description (required)
+  if (headerMap['description'] && values[parseInt(headerMap['description'])]) {
+    wordData.description = values[parseInt(headerMap['description'])];
+  } else {
+    // Try to find any column that might contain a description
+    for (let i = 0; i < values.length; i++) {
+      if (values[i] && values[i].length > 30) {
+        wordData.description = values[i];
+        break;
+      }
+    }
+    
+    // If still no description found, create a placeholder
+    if (!wordData.description) {
+      wordData.description = `Definition for ${wordData.word}`;
+    }
+  }
+  
+  // Extract optional fields if available
+  if (headerMap['pronunciation'] && values[parseInt(headerMap['pronunciation'])]) {
+    wordData.pronunciation = values[parseInt(headerMap['pronunciation'])];
+  }
+  
+  if (headerMap['languageOrigin'] && values[parseInt(headerMap['languageOrigin'])]) {
+    wordData.languageOrigin = values[parseInt(headerMap['languageOrigin'])];
+  } else {
+    wordData.languageOrigin = "Unknown";
+  }
+  
+  if (headerMap['partOfSpeech'] && values[parseInt(headerMap['partOfSpeech'])]) {
+    wordData.partOfSpeech = values[parseInt(headerMap['partOfSpeech'])];
+  } else {
+    wordData.partOfSpeech = "noun";
   }
   
   // Create default values for required nested objects
@@ -89,6 +175,38 @@ const IntegrationsPage: React.FC = () => {
   const [importStats, setImportStats] = useState({ total: 0, success: 0, failed: 0 });
   const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  }, []);
+  
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.type === "text/csv" || file.name.endsWith('.csv')) {
+        setCsvFile(file);
+        setImportProgress(0);
+        setImportStats({ total: 0, success: 0, failed: 0 });
+      } else {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload a CSV file",
+          variant: "destructive"
+        });
+      }
+    }
+  }, []);
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -115,12 +233,22 @@ const IntegrationsPage: React.FC = () => {
       const text = await csvFile.text();
       const rows = text.split('\n');
       
-      if (rows.length < 2) {
-        throw new Error("CSV file must contain a header row and at least one data row");
+      if (rows.length < 1) {
+        throw new Error("CSV file appears to be empty");
       }
       
-      // Extract headers from first row
-      const headers = rows[0].split(',');
+      // Detect headers intelligently from first row
+      const headerMap = detectHeaders(rows[0]);
+      
+      // Check if we could map at least the word column
+      if (!headerMap['word']) {
+        toast({
+          title: "CSV format not recognized",
+          description: "Could not identify a column containing words. Import will continue but may not be accurate.",
+          variant: "warning"
+        });
+      }
+      
       const totalRows = rows.length - 1; // Excluding header
       
       let successCount = 0;
@@ -129,9 +257,9 @@ const IntegrationsPage: React.FC = () => {
       // Process each row (skip header)
       for (let i = 1; i < rows.length; i++) {
         if (rows[i].trim()) {
-          const wordData = csvToWord(rows[i], headers);
+          const wordData = csvToWord(rows[i], headerMap);
           
-          if (wordData && wordData.id && wordData.word && wordData.description) {
+          if (wordData && wordData.id && wordData.word) {
             try {
               // Create a complete Word object with required fields
               const completeWord = wordData as Word;
@@ -235,64 +363,77 @@ const IntegrationsPage: React.FC = () => {
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
             <h2 className="text-xl font-medium mb-4">Import Words from CSV</h2>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Upload a CSV file with vocabulary words. The file must include columns for id, word, and description at minimum.
+              Upload any CSV file with vocabulary words. Our system will automatically detect the format and convert it to the application's structure.
             </p>
             
-            <div className="flex flex-col space-y-4">
+            <div 
+              className={`border-2 ${dragActive ? 'border-primary' : 'border-dashed border-gray-300'} rounded-lg p-8 transition-colors duration-200 flex flex-col items-center justify-center`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            >
+              <Upload size={40} className="text-gray-400 mb-4" />
+              <p className="text-center mb-4">Drag and drop your CSV file here, or click to browse</p>
+              
               <Input 
                 type="file"
                 accept=".csv"
                 onChange={handleFileChange}
-                className="border-dashed border-2"
+                className="border-none"
                 disabled={isImporting}
+                fileUploadLabel="Any CSV format is supported - we'll figure it out!"
               />
-              
-              {csvFile && (
-                <div className="text-sm text-gray-500">
-                  Selected file: {csvFile.name} ({Math.round(csvFile.size / 1024)} KB)
-                </div>
-              )}
-              
-              {importProgress > 0 && (
-                <div className="space-y-2">
-                  <Progress value={importProgress} className="h-2" />
-                  <div className="flex justify-between text-sm">
-                    <span>{importProgress}% complete</span>
-                    <span>
-                      {importStats.success} successful / {importStats.failed} failed
-                    </span>
-                  </div>
-                </div>
-              )}
-              
-              <Button
-                onClick={handleImport}
-                disabled={!csvFile || isImporting}
-                className="w-full sm:w-auto flex items-center justify-center gap-2"
-              >
-                {isImporting ? (
-                  <>Processing...</>
-                ) : (
-                  <>
-                    <ArrowUpFromLine size={16} />
-                    Import Words
-                  </>
-                )}
-              </Button>
             </div>
+            
+            {csvFile && (
+              <div className="text-sm mt-4 p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
+                <p className="font-medium">Selected file: {csvFile.name}</p>
+                <p className="text-gray-500">Size: {Math.round(csvFile.size / 1024)} KB</p>
+              </div>
+            )}
+            
+            {importProgress > 0 && (
+              <div className="space-y-2 mt-4">
+                <Progress value={importProgress} className="h-2" />
+                <div className="flex justify-between text-sm">
+                  <span>{importProgress}% complete</span>
+                  <span>
+                    {importStats.success} successful / {importStats.failed} failed
+                  </span>
+                </div>
+              </div>
+            )}
+            
+            <Button
+              onClick={handleImport}
+              disabled={!csvFile || isImporting}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 mt-4"
+            >
+              {isImporting ? (
+                <>Processing...</>
+              ) : (
+                <>
+                  <ArrowUpFromLine size={16} />
+                  Import Words
+                </>
+              )}
+            </Button>
           </div>
           
           <div className="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg border border-gray-200 dark:border-gray-800">
-            <h3 className="text-lg font-medium mb-3">CSV Format Instructions</h3>
+            <h3 className="text-lg font-medium mb-3">Automatic Format Detection</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-              Your CSV file should have the following structure:
+              Our system will automatically detect common CSV formats and map them to the appropriate fields:
             </p>
             
-            <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded text-sm font-mono overflow-x-auto">
-              id,word,pronunciation,description,languageOrigin,partOfSpeech<br/>
-              example1,Example,/ɪɡˈzæmpəl/,A representative or illustration of a specific thing,Latin,noun<br/>
-              example2,Sample,/ˈsæmpəl/,A small part intended to show what the whole is like,Greek,noun
-            </div>
+            <ul className="list-disc ml-5 text-sm text-gray-600 dark:text-gray-400 space-y-1">
+              <li>Word/Term/Vocabulary columns will be mapped to word name</li>
+              <li>Definition/Description/Meaning columns will be mapped to word description</li>
+              <li>Origin/Language/Etymology columns will be mapped to language origin</li>
+              <li>POS/Part of Speech/Word Type columns will be mapped to part of speech</li>
+              <li>Missing data will be filled with sensible defaults</li>
+            </ul>
           </div>
         </TabsContent>
         
