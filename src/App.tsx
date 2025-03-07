@@ -1,34 +1,33 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import WordDetail from "./pages/WordDetail";
-import NotFound from "./pages/NotFound";
-import Calvern from "./pages/Calvern";
-import { WordsProvider } from "./context/WordsContext";
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Toaster } from './components/ui/toaster';
+import { WordsProvider } from './context/WordsContext';
+import { QuizProvider } from './context/QuizContext';
+import Index from './pages/Index';
+import WordDetail from './pages/WordDetail';
+import Calvern from './pages/Calvern';
+import Quiz from './pages/Quiz';
+import NotFound from './pages/NotFound';
 
-const queryClient = new QueryClient();
+import "./App.css";
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <WordsProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+function App() {
+  return (
+    <WordsProvider>
+      <QuizProvider>
+        <Router>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/word/:id" element={<WordDetail />} />
             <Route path="/calvern" element={<Calvern />} />
+            <Route path="/quiz" element={<Quiz />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
-      </WordsProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+          <Toaster />
+        </Router>
+      </QuizProvider>
+    </WordsProvider>
+  );
+}
 
 export default App;

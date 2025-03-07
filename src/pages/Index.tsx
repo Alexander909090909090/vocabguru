@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import WordCard from "@/components/WordCard";
 import Header from "@/components/Header";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, LayoutGrid, Grid3X3 } from "lucide-react";
+import { Search, Plus, LayoutGrid, Grid3X3, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import WordGrid from "@/components/WordGrid";
 import { useWords } from "@/context/WordsContext";
@@ -153,6 +153,9 @@ const Index = () => {
           <nav className="space-y-1">
             <Link to="/" className="block py-2 px-3 rounded hover:bg-accent transition-colors">
               Words
+            </Link>
+            <Link to="/quiz" className="block py-2 px-3 rounded hover:bg-accent transition-colors">
+              Vocabulary Quiz
             </Link>
             <Link to="/calvern" className="block py-2 px-3 rounded hover:bg-accent transition-colors">
               Speak to Calvern
@@ -349,6 +352,14 @@ const Index = () => {
               >
                 <Plus className="h-4 w-4" />
                 Add Word
+              </Button>
+              <Button 
+                className="gap-2"
+                variant="quiz"
+                onClick={() => navigate("/quiz")}
+              >
+                <Trophy className="h-4 w-4" />
+                Quiz
               </Button>
             </div>
           </section>
