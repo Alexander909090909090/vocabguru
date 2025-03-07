@@ -8,8 +8,8 @@ interface MorphemeBreakdownProps {
 export function MorphemeBreakdown({ breakdown }: MorphemeBreakdownProps) {
   return (
     <div className="mt-6">
-      <h4 className="section-title mb-4">Morpheme Breakdown</h4>
-      <div className="glass-card rounded-lg p-5 bg-card/90 backdrop-blur-sm">
+      <h4 className="text-lg font-medium mb-4">Morpheme Breakdown</h4>
+      <div className="glass-card rounded-lg p-5 bg-card/90 backdrop-blur-sm border border-white/10">
         <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-6">
           {breakdown.prefix && (
             <div className="flex flex-col items-center">
