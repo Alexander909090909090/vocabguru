@@ -23,9 +23,6 @@ const WordDetail = () => {
   const word = id ? getWord(id) : undefined;
 
   useEffect(() => {
-    // Reset loading state when id changes
-    setIsLoading(true);
-    
     // Simulate loading to show nice transitions
     const timer = setTimeout(() => {
       setIsLoading(false);
@@ -52,10 +49,10 @@ const WordDetail = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <Header />
       
-      <main className="container max-w-6xl mx-auto px-4 sm:px-6 pt-24 pb-16 page-transition">
+      <main className="page-container pt-24 page-transition">
         {/* Back button */}
         <Button 
           variant="ghost" 
@@ -108,11 +105,11 @@ const WordDetail = () => {
                   <TabsTrigger value="ai-assist">AI Assistant</TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="details" className="mt-6">
+                <TabsContent value="details">
                   <WordMainContent word={word} />
                 </TabsContent>
                 
-                <TabsContent value="ai-assist" className="mt-6">
+                <TabsContent value="ai-assist">
                   <AIAssistantTab word={word} />
                 </TabsContent>
               </Tabs>
@@ -122,7 +119,7 @@ const WordDetail = () => {
       </main>
       
       <footer className="border-t border-white/10 mt-12 py-6">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
+        <div className="container-inner text-center text-sm text-muted-foreground">
           <p>© 2024 VocabGuru. All rights reserved.</p>
         </div>
       </footer>

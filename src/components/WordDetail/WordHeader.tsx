@@ -34,13 +34,13 @@ const WordHeader = ({ word, getGradient, isLoading }: WordHeaderProps) => {
 
   return (
     <div 
-      className={`rounded-xl p-6 mb-8 relative overflow-hidden ${isLoading ? 'opacity-0' : 'opacity-100 animate-scale-in'}`}
+      className={`rounded-xl p-6 mb-8 ${isLoading ? 'opacity-0' : 'opacity-100 animate-scale-in'}`}
       style={{ 
         background: getGradient(word.id),
         transition: 'opacity 0.3s ease-in-out'
       }}
     >
-      <div className="flex flex-col md:flex-row md:items-end gap-4 relative z-10">
+      <div className="flex flex-col md:flex-row md:items-end gap-4">
         <div className="flex-1">
           <Badge variant="outline" className="bg-black/30 backdrop-blur-sm text-white mb-2 border-none">
             {word.partOfSpeech}
@@ -71,12 +71,9 @@ const WordHeader = ({ word, getGradient, isLoading }: WordHeaderProps) => {
         </Badge>
       </div>
       
-      <p className="text-white/90 mt-4 max-w-3xl relative z-10">
+      <p className="text-white/90 mt-4 max-w-3xl">
         {word.description}
       </p>
-      
-      {/* Overlay effect */}
-      <div className="absolute inset-0 bg-gradient-to-r from-black/10 to-transparent z-0"></div>
     </div>
   );
 };
