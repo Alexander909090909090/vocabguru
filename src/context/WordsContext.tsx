@@ -68,23 +68,47 @@ export function WordsProvider({ children }: { children: ReactNode }) {
   const allWords = [...originalWords, ...dictionaryWords];
   
   const addWord = (word: Word) => {
-    // Validation for word quality
-    if (isNonsenseWord(word.word)) {
-      toast({
-        title: "Invalid word",
-        description: "This doesn't appear to be a valid word and won't be added to your collection.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Check if word is incomplete (from import)
+    const isComplete = word && 
+                      word.id && 
+                      word.word && 
+                      word.description &&
+                      word.morphemeBreakdown && 
+                      word.etymology && 
+                      word.definitions && 
+                      word.usage && 
+                      word.synonymsAntonyms;
     
-    if (!hasMinimumWordDetails(word.description)) {
-      toast({
-        title: "Insufficient data",
-        description: "This word doesn't have enough detailed information to add to your collection.",
-        variant: "destructive",
-      });
-      return;
+    // For imported words, we're more lenient but still check basic validity
+    if (!isComplete) {
+      // Ensure minimum required fields
+      if (!word.id || !word.word || !word.description) {
+        toast({
+          title: "Invalid word data",
+          description: "Word is missing required fields (id, word, or description).",
+          variant: "destructive",
+        });
+        return;
+      }
+    } else {
+      // For user-added words (not bulk imports), we do full validation
+      if (isNonsenseWord(word.word)) {
+        toast({
+          title: "Invalid word",
+          description: "This doesn't appear to be a valid word and won't be added to your collection.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!hasMinimumWordDetails(word.description)) {
+        toast({
+          title: "Insufficient data",
+          description: "This word doesn't have enough detailed information to add to your collection.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     
     // Check if word already exists (either in original or dictionary words)

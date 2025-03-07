@@ -7,6 +7,7 @@ import Index from './pages/Index';
 import WordDetail from './pages/WordDetail';
 import Calvern from './pages/Calvern';
 import Quiz from './pages/Quiz';
+import Integrations from './pages/Integrations';
 import NotFound from './pages/NotFound';
 import { AnimatePresence } from 'framer-motion';
 
@@ -23,6 +24,7 @@ const AnimatedRoutes = () => {
         <Route path="/word/:id" element={<WordDetail />} />
         <Route path="/calvern" element={<Calvern />} />
         <Route path="/quiz" element={<Quiz />} />
+        <Route path="/integrations" element={<Integrations />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AnimatePresence>
