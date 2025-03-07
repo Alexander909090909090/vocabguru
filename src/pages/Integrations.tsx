@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useWords } from '@/context/WordsContext';
@@ -17,46 +16,30 @@ const pageVariants = {
   exit: { opacity: 0, y: -20 }
 };
 
-// Helper function to convert Word object to CSV row
 const wordToCSV = (word: Word): string => {
-  // Create header row if it's the first item
   const header = "id,word,pronunciation,description,languageOrigin,partOfSpeech";
   
-  // Basic properties
   const csvRow = `${word.id},${word.word},${word.pronunciation || ''},${word.description.replace(/,/g, ';')},${word.languageOrigin},${word.partOfSpeech}`;
   
   return csvRow;
 };
 
-// Smart CSV header detection - maps any columns to our data structure
 const detectHeaders = (headerRow: string): Record<string, string> => {
   const headers = headerRow.split(',').map(h => h.trim().toLowerCase());
   const headerMap: Record<string, string> = {};
   
-  // Map common variations to our expected fields
   headers.forEach((header, index) => {
-    // Word mapping
     if (header === 'word' || header === 'term' || header === 'vocabulary' || header === 'expression') {
       headerMap['word'] = index.toString();
-    }
-    // Definition/Description mapping
-    else if (header === 'definition' || header === 'description' || header === 'meaning' || header === 'explanation') {
+    } else if (header === 'definition' || header === 'description' || header === 'meaning' || header === 'explanation') {
       headerMap['description'] = index.toString();
-    }
-    // Pronunciation mapping
-    else if (header === 'pronunciation' || header === 'phonetics' || header === 'sound') {
+    } else if (header === 'pronunciation' || header === 'phonetics' || header === 'sound') {
       headerMap['pronunciation'] = index.toString();
-    }
-    // Language origin mapping
-    else if (header === 'origin' || header === 'language' || header === 'languageorigin' || header === 'language_origin' || header === 'etymology') {
+    } else if (header === 'origin' || header === 'language' || header === 'languageorigin' || header === 'language_origin' || header === 'etymology') {
       headerMap['languageOrigin'] = index.toString();
-    }
-    // Part of speech mapping
-    else if (header === 'partofspeech' || header === 'part_of_speech' || header === 'pos' || header === 'wordtype' || header === 'word_type') {
+    } else if (header === 'partofspeech' || header === 'part_of_speech' || header === 'pos' || header === 'wordtype' || header === 'word_type') {
       headerMap['partOfSpeech'] = index.toString();
-    }
-    // ID mapping
-    else if (header === 'id' || header === 'identifier' || header === 'key') {
+    } else if (header === 'id' || header === 'identifier' || header === 'key') {
       headerMap['id'] = index.toString();
     }
   });
@@ -64,30 +47,24 @@ const detectHeaders = (headerRow: string): Record<string, string> => {
   return headerMap;
 };
 
-// Enhanced CSV to Word conversion that works with any CSV format
 const csvToWord = (row: string, headerMap: Record<string, string>): Partial<Word> | null => {
   const values = row.split(',').map(v => v.trim());
   
-  // Skip empty rows
   if (values.join('').trim() === '') {
     return null;
   }
   
-  // Create a word object with mapped fields
   const wordData: Record<string, any> = {};
   
-  // Generate a unique ID if not provided
   if (!headerMap['id'] || !values[parseInt(headerMap['id'])]) {
     wordData.id = uuidv4();
   } else {
     wordData.id = values[parseInt(headerMap['id'])];
   }
   
-  // Extract word (required)
   if (headerMap['word'] && values[parseInt(headerMap['word'])]) {
     wordData.word = values[parseInt(headerMap['word'])];
   } else {
-    // Try to find any column that might contain a word
     for (let i = 0; i < values.length; i++) {
       if (values[i] && values[i].length > 0 && values[i].length < 30 && /^[a-zA-Z\s-]+$/.test(values[i])) {
         wordData.word = values[i];
@@ -95,17 +72,14 @@ const csvToWord = (row: string, headerMap: Record<string, string>): Partial<Word
       }
     }
     
-    // If still no word found, we can't proceed
     if (!wordData.word) {
       return null;
     }
   }
   
-  // Extract description (required)
   if (headerMap['description'] && values[parseInt(headerMap['description'])]) {
     wordData.description = values[parseInt(headerMap['description'])];
   } else {
-    // Try to find any column that might contain a description
     for (let i = 0; i < values.length; i++) {
       if (values[i] && values[i].length > 30) {
         wordData.description = values[i];
@@ -113,13 +87,11 @@ const csvToWord = (row: string, headerMap: Record<string, string>): Partial<Word
       }
     }
     
-    // If still no description found, create a placeholder
     if (!wordData.description) {
       wordData.description = `Definition for ${wordData.word}`;
     }
   }
   
-  // Extract optional fields if available
   if (headerMap['pronunciation'] && values[parseInt(headerMap['pronunciation'])]) {
     wordData.pronunciation = values[parseInt(headerMap['pronunciation'])];
   }
@@ -136,7 +108,6 @@ const csvToWord = (row: string, headerMap: Record<string, string>): Partial<Word
     wordData.partOfSpeech = "noun";
   }
   
-  // Create default values for required nested objects
   const partialWord: Partial<Word> = {
     ...wordData,
     morphemeBreakdown: {
@@ -211,7 +182,6 @@ const IntegrationsPage: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setCsvFile(e.target.files[0]);
-      // Reset stats
       setImportProgress(0);
       setImportStats({ total: 0, success: 0, failed: 0 });
     }
@@ -237,31 +207,27 @@ const IntegrationsPage: React.FC = () => {
         throw new Error("CSV file appears to be empty");
       }
       
-      // Detect headers intelligently from first row
       const headerMap = detectHeaders(rows[0]);
       
-      // Check if we could map at least the word column
       if (!headerMap['word']) {
         toast({
           title: "CSV format not recognized",
           description: "Could not identify a column containing words. Import will continue but may not be accurate.",
-          variant: "warning"
+          variant: "default"
         });
       }
       
-      const totalRows = rows.length - 1; // Excluding header
+      const totalRows = rows.length - 1;
       
       let successCount = 0;
       let failedCount = 0;
       
-      // Process each row (skip header)
       for (let i = 1; i < rows.length; i++) {
         if (rows[i].trim()) {
           const wordData = csvToWord(rows[i], headerMap);
           
           if (wordData && wordData.id && wordData.word) {
             try {
-              // Create a complete Word object with required fields
               const completeWord = wordData as Word;
               addWord(completeWord);
               successCount++;
@@ -274,7 +240,6 @@ const IntegrationsPage: React.FC = () => {
           }
         }
         
-        // Update progress
         const progress = Math.floor(((i) / totalRows) * 100);
         setImportProgress(progress);
         setImportStats({
@@ -305,15 +270,12 @@ const IntegrationsPage: React.FC = () => {
     setIsExporting(true);
     
     try {
-      // Create CSV content
       let csvContent = "id,word,pronunciation,description,languageOrigin,partOfSpeech\n";
       
-      // Add each word as a row
       words.forEach(word => {
         csvContent += wordToCSV(word) + "\n";
       });
       
-      // Create blob and download link
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -322,7 +284,6 @@ const IntegrationsPage: React.FC = () => {
       link.setAttribute('download', 'vocabguru-words.csv');
       document.body.appendChild(link);
       
-      // Trigger download
       link.click();
       document.body.removeChild(link);
       
