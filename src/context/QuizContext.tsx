@@ -310,9 +310,9 @@ export function QuizProvider({ children }: { children: ReactNode }) {
             const breakdown = word.morphemeBreakdown;
             const components = [];
             
-            if (breakdown.prefix) components.push({ type: "prefix", value: breakdown.prefix });
-            if (breakdown.root) components.push({ type: "root", value: breakdown.root });
-            if (breakdown.suffix) components.push({ type: "suffix", value: breakdown.suffix });
+            if (breakdown.prefix) components.push({ type: "prefix", value: breakdown.prefix.text });
+            if (breakdown.root) components.push({ type: "root", value: breakdown.root.text });
+            if (breakdown.suffix) components.push({ type: "suffix", value: breakdown.suffix.text });
             
             if (components.length > 0) {
               const randomComponent = components[Math.floor(Math.random() * components.length)];
@@ -324,10 +324,16 @@ export function QuizProvider({ children }: { children: ReactNode }) {
                 options: [
                   randomComponent.value,
                   ...otherWords
-                    .filter(w => w.morphemeBreakdown && w.morphemeBreakdown[randomComponent.type as keyof typeof w.morphemeBreakdown])
+                    .filter(w => 
+                      w.morphemeBreakdown && 
+                      w.morphemeBreakdown[randomComponent.type as keyof typeof w.morphemeBreakdown]
+                    )
                     .sort(() => 0.5 - Math.random())
                     .slice(0, 3)
-                    .map(w => w.morphemeBreakdown[randomComponent.type as keyof typeof w.morphemeBreakdown] as string)
+                    .map(w => {
+                      const component = w.morphemeBreakdown[randomComponent.type as keyof typeof w.morphemeBreakdown];
+                      return component ? (typeof component === 'string' ? component : component.text) : '';
+                    })
                 ].filter(Boolean).sort(() => 0.5 - Math.random()),
                 correctAnswer: randomComponent.value,
                 explanation: `The ${randomComponent.type} in "${word.word}" is "${randomComponent.value}".`,
