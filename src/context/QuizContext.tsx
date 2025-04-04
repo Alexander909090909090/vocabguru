@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useWords } from "./WordsContext";
 import { toast } from "@/components/ui/use-toast";
@@ -7,7 +6,7 @@ import { toast } from "@/components/ui/use-toast";
 export type QuizDifficulty = "easy" | "medium" | "hard";
 
 // Question types
-export type QuestionType = "multiple" | "trueFalse" | "matching" | "fillBlank";
+export type QuestionType = "multiple" | "trueFalse" | "matching" | "fillBlank" | "wordBuilder" | "synonymAntonym" | "etymology" | "contextual" | "transformation";
 
 // Achievement types
 export type Achievement = {
@@ -32,7 +31,11 @@ export interface QuizQuestion {
   points: number;
   category: string;
   timeLimit?: number; // in seconds
+  hint?: string; // Added hint field
 }
+
+// Quiz type for different styles of quizzes
+export type QuizType = "standard" | "wordBuilder" | "synonymAntonym" | "etymology" | "contextual" | "transformation";
 
 // User stats
 export interface UserStats {
@@ -40,10 +43,18 @@ export interface UserStats {
   totalCorrect: number;
   totalIncorrect: number;
   streakDays: number;
+  currentStreak: number; // Added for streak tracking
   lastQuizDate: string | null;
   pointsEarned: number;
   level: number;
   achievements: Achievement[];
+  highScores: {
+    [quizType: string]: {
+      easy: number;
+      medium: number;
+      hard: number;
+    };
+  };
 }
 
 // Quiz context type
@@ -55,15 +66,21 @@ interface QuizContextType {
   isQuizActive: boolean;
   remainingTime: number | null;
   difficulty: QuizDifficulty;
+  quizType: QuizType;
+  timedMode: boolean;
+  hintsRemaining: number;
+  currentStreak: number;
   
   // Actions
-  startQuiz: (difficulty: QuizDifficulty, categoryFilter?: string) => void;
+  startQuiz: (difficulty: QuizDifficulty, quizType: QuizType, categoryFilter?: string, timedMode?: boolean) => void;
   answerQuestion: (answer: string | string[]) => void;
   nextQuestion: () => void;
   previousQuestion: () => void;
   submitQuiz: () => void;
   resetQuiz: () => void;
-  checkAchievements: () => void;
+  checkAchievements: () => boolean;
+  useHint: () => string | undefined;
+  toggleTimedMode: () => void;
 }
 
 // Default user stats
@@ -72,6 +89,7 @@ const defaultUserStats: UserStats = {
   totalCorrect: 0,
   totalIncorrect: 0,
   streakDays: 0,
+  currentStreak: 0,
   lastQuizDate: null,
   pointsEarned: 0,
   level: 1,
@@ -116,8 +134,32 @@ const defaultUserStats: UserStats = {
       unlocked: false,
       progress: 0,
       total: 20
+    },
+    {
+      id: "streak_5",
+      title: "Streak Master",
+      description: "Answer 5 questions correctly in a row",
+      icon: "zap",
+      unlocked: false,
+      progress: 0,
+      total: 5
+    },
+    {
+      id: "time_wizard",
+      title: "Time Wizard",
+      description: "Complete a timed quiz with 90% accuracy",
+      icon: "clock",
+      unlocked: false
     }
-  ]
+  ],
+  highScores: {
+    standard: { easy: 0, medium: 0, hard: 0 },
+    wordBuilder: { easy: 0, medium: 0, hard: 0 },
+    synonymAntonym: { easy: 0, medium: 0, hard: 0 },
+    etymology: { easy: 0, medium: 0, hard: 0 },
+    contextual: { easy: 0, medium: 0, hard: 0 },
+    transformation: { easy: 0, medium: 0, hard: 0 }
+  }
 };
 
 // Create the context
@@ -132,11 +174,29 @@ export function QuizProvider({ children }: { children: ReactNode }) {
   const [isQuizActive, setIsQuizActive] = useState(false);
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
   const [difficulty, setDifficulty] = useState<QuizDifficulty>("medium");
+  const [quizType, setQuizType] = useState<QuizType>("standard");
+  const [timedMode, setTimedMode] = useState(false);
+  const [hintsRemaining, setHintsRemaining] = useState(3);
+  const [currentStreak, setCurrentStreak] = useState(0);
   
   // Load user stats from localStorage
   const [userStats, setUserStats] = useState<UserStats>(() => {
     const savedStats = localStorage.getItem("vocabguru-quiz-stats");
-    return savedStats ? JSON.parse(savedStats) : defaultUserStats;
+    if (!savedStats) return defaultUserStats;
+    
+    try {
+      const parsedStats = JSON.parse(savedStats);
+      // Ensure we have the new fields for backward compatibility
+      return {
+        ...defaultUserStats,
+        ...parsedStats,
+        highScores: parsedStats.highScores || defaultUserStats.highScores,
+        currentStreak: parsedStats.currentStreak || 0
+      };
+    } catch (e) {
+      console.error("Error parsing quiz stats:", e);
+      return defaultUserStats;
+    }
   });
   
   // Save stats to localStorage whenever they change
@@ -182,8 +242,15 @@ export function QuizProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let timer: number | undefined;
     
-    if (isQuizActive && currentQuiz && currentQuiz[currentQuestionIndex].timeLimit) {
-      const timeLimit = currentQuiz[currentQuestionIndex].timeLimit || 30;
+    if (isQuizActive && currentQuiz) {
+      const question = currentQuiz[currentQuestionIndex];
+      let timeLimit = question.timeLimit || 30;
+      
+      // If timed mode is enabled, reduce the time available
+      if (timedMode) {
+        timeLimit = Math.max(10, timeLimit - 5);
+      }
+      
       setRemainingTime(timeLimit);
       
       timer = window.setInterval(() => {
@@ -202,7 +269,7 @@ export function QuizProvider({ children }: { children: ReactNode }) {
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [isQuizActive, currentQuestionIndex, currentQuiz]);
+  }, [isQuizActive, currentQuestionIndex, currentQuiz, timedMode]);
   
   // Helper to update user stats
   const updateUserStats = (newStats: UserStats) => {
@@ -215,8 +282,8 @@ export function QuizProvider({ children }: { children: ReactNode }) {
     return Math.floor(points / 100) + 1;
   };
   
-  // Generate questions from words
-  const generateQuestions = (difficulty: QuizDifficulty, categoryFilter?: string): QuizQuestion[] => {
+  // Generate questions from words based on quiz type
+  const generateQuestions = (difficulty: QuizDifficulty, quizType: QuizType, categoryFilter?: string): QuizQuestion[] => {
     // Filter words if category is specified
     let wordsPool = words;
     if (categoryFilter) {
@@ -244,158 +311,409 @@ export function QuizProvider({ children }: { children: ReactNode }) {
     const questionCount = difficulty === "easy" ? 5 : difficulty === "medium" ? 8 : 10;
     const selectedWords = shuffled.slice(0, Math.min(questionCount, wordsPool.length));
     
-    // Generate different question types
+    // Generate different questions based on quiz type
     const questions: QuizQuestion[] = [];
     
-    selectedWords.forEach((word, index) => {
-      // Determine question type based on index to ensure variety
-      const questionType: QuestionType = 
-        index % 4 === 0 ? "trueFalse" : 
-        index % 4 === 1 ? "multiple" : 
-        index % 4 === 2 ? "matching" : "fillBlank";
-      
-      // Get incorrect options from other words
-      const otherWords = words.filter(w => w.id !== word.id);
-      const incorrectOptions = otherWords
-        .sort(() => 0.5 - Math.random())
-        .slice(0, 3)
-        .map(w => w.word);
-      
-      let question: QuizQuestion;
-      
-      switch (questionType) {
-        case "multiple":
-          question = {
-            id: `q-${word.id}-${index}`,
-            type: "multiple",
-            question: `What is the definition of "${word.word}"?`,
-            options: [word.description, ...incorrectOptions.map(w => {
-              const matchingWord = words.find(word => word.word === w);
-              return matchingWord?.description || "Unknown definition";
-            })].sort(() => 0.5 - Math.random()),
-            correctAnswer: word.description,
-            explanation: `${word.word} - ${word.description}. ${word.languageOrigin ? `It originated from ${word.languageOrigin}.` : ""}`,
-            difficulty,
-            points: difficulty === "easy" ? 10 : difficulty === "medium" ? 15 : 20,
-            category: "definition",
-            timeLimit: difficulty === "easy" ? 30 : difficulty === "medium" ? 25 : 20
-          };
-          break;
+    switch (quizType) {
+      case "standard":
+        // Standard quiz with multiple question types
+        selectedWords.forEach((word, index) => {
+          // Determine question type based on index to ensure variety
+          const questionType: QuestionType = 
+            index % 4 === 0 ? "trueFalse" : 
+            index % 4 === 1 ? "multiple" : 
+            index % 4 === 2 ? "matching" : "fillBlank";
           
-        case "trueFalse":
-          // Randomly decide if we'll show a true or false statement
-          const isTrue = Math.random() > 0.5;
-          const randomIncorrectWord = incorrectOptions[0];
-          const incorrectWordObj = words.find(w => w.word === randomIncorrectWord);
+          // Get incorrect options from other words
+          const otherWords = words.filter(w => w.id !== word.id);
+          const incorrectOptions = otherWords
+            .sort(() => 0.5 - Math.random())
+            .slice(0, 3)
+            .map(w => w.word);
           
-          question = {
-            id: `q-${word.id}-${index}`,
-            type: "trueFalse",
-            question: isTrue 
-              ? `True or False: The word "${word.word}" means "${word.description}".`
-              : `True or False: The word "${word.word}" means "${incorrectWordObj?.description || 'something else'}".`,
-            options: ["True", "False"],
-            correctAnswer: isTrue ? "True" : "False",
-            explanation: `The correct definition of ${word.word} is: ${word.description}`,
-            difficulty,
-            points: difficulty === "easy" ? 5 : difficulty === "medium" ? 10 : 15,
-            category: "definition",
-            timeLimit: difficulty === "easy" ? 15 : difficulty === "medium" ? 12 : 10
-          };
-          break;
+          let question: QuizQuestion;
           
-        case "matching":
-          // Create a matching question for morpheme breakdown
-          if (word.morphemeBreakdown && Object.keys(word.morphemeBreakdown).length > 0) {
-            const breakdown = word.morphemeBreakdown;
-            const components = [];
-            
-            if (breakdown.prefix) components.push({ type: "prefix", value: breakdown.prefix.text });
-            if (breakdown.root) components.push({ type: "root", value: breakdown.root.text });
-            if (breakdown.suffix) components.push({ type: "suffix", value: breakdown.suffix.text });
-            
-            if (components.length > 0) {
-              const randomComponent = components[Math.floor(Math.random() * components.length)];
-              
+          switch (questionType) {
+            case "multiple":
               question = {
                 id: `q-${word.id}-${index}`,
                 type: "multiple",
-                question: `What is the ${randomComponent.type} in the word "${word.word}"?`,
-                options: [
-                  randomComponent.value,
-                  ...otherWords
-                    .filter(w => 
-                      w.morphemeBreakdown && 
-                      w.morphemeBreakdown[randomComponent.type as keyof typeof w.morphemeBreakdown]
-                    )
-                    .sort(() => 0.5 - Math.random())
-                    .slice(0, 3)
-                    .map(w => {
-                      const component = w.morphemeBreakdown[randomComponent.type as keyof typeof w.morphemeBreakdown];
-                      return component ? (typeof component === 'string' ? component : component.text) : '';
-                    })
-                ].filter(Boolean).sort(() => 0.5 - Math.random()),
-                correctAnswer: randomComponent.value,
-                explanation: `The ${randomComponent.type} in "${word.word}" is "${randomComponent.value}".`,
+                question: `What is the definition of "${word.word}"?`,
+                options: [word.description, ...incorrectOptions.map(w => {
+                  const matchingWord = words.find(word => word.word === w);
+                  return matchingWord?.description || "Unknown definition";
+                })].sort(() => 0.5 - Math.random()),
+                correctAnswer: word.description,
+                explanation: `${word.word} - ${word.description}. ${word.languageOrigin ? `It originated from ${word.languageOrigin}.` : ""}`,
                 difficulty,
-                points: difficulty === "easy" ? 15 : difficulty === "medium" ? 20 : 25,
-                category: "morpheme",
-                timeLimit: difficulty === "easy" ? 25 : difficulty === "medium" ? 20 : 15
+                points: difficulty === "easy" ? 10 : difficulty === "medium" ? 15 : 20,
+                category: "definition",
+                timeLimit: difficulty === "easy" ? 30 : difficulty === "medium" ? 25 : 20,
+                hint: `This word relates to ${word.partOfSpeech === 'noun' ? 'a thing' : word.partOfSpeech === 'verb' ? 'an action' : 'a quality'}`
               };
               break;
-            }
+              
+            case "trueFalse":
+              // Randomly decide if we'll show a true or false statement
+              const isTrue = Math.random() > 0.5;
+              const randomIncorrectWord = incorrectOptions[0];
+              const incorrectWordObj = words.find(w => w.word === randomIncorrectWord);
+              
+              question = {
+                id: `q-${word.id}-${index}`,
+                type: "trueFalse",
+                question: isTrue 
+                  ? `True or False: The word "${word.word}" means "${word.description}".`
+                  : `True or False: The word "${word.word}" means "${incorrectWordObj?.description || 'something else'}".`,
+                options: ["True", "False"],
+                correctAnswer: isTrue ? "True" : "False",
+                explanation: `The correct definition of ${word.word} is: ${word.description}`,
+                difficulty,
+                points: difficulty === "easy" ? 5 : difficulty === "medium" ? 10 : 15,
+                category: "definition",
+                timeLimit: difficulty === "easy" ? 15 : difficulty === "medium" ? 12 : 10,
+                hint: isTrue ? "Think about if this definition sounds right for this word." : "Consider whether this definition matches what you know about this word."
+              };
+              break;
+              
+            case "matching":
+              // Create a matching question for morpheme breakdown
+              if (word.morphemeBreakdown && Object.keys(word.morphemeBreakdown).length > 0) {
+                const breakdown = word.morphemeBreakdown;
+                const components = [];
+                
+                if (breakdown.prefix) components.push({ type: "prefix", value: breakdown.prefix.text });
+                if (breakdown.root) components.push({ type: "root", value: breakdown.root.text });
+                if (breakdown.suffix) components.push({ type: "suffix", value: breakdown.suffix.text });
+                
+                if (components.length > 0) {
+                  const randomComponent = components[Math.floor(Math.random() * components.length)];
+                  
+                  question = {
+                    id: `q-${word.id}-${index}`,
+                    type: "matching",
+                    question: `What is the ${randomComponent.type} in the word "${word.word}"?`,
+                    options: [
+                      randomComponent.value,
+                      ...otherWords
+                        .filter(w => 
+                          w.morphemeBreakdown && 
+                          w.morphemeBreakdown[randomComponent.type as keyof typeof w.morphemeBreakdown]
+                        )
+                        .sort(() => 0.5 - Math.random())
+                        .slice(0, 3)
+                        .map(w => {
+                          const component = w.morphemeBreakdown[randomComponent.type as keyof typeof w.morphemeBreakdown];
+                          return component ? (typeof component === 'string' ? component : component.text) : '';
+                        })
+                    ].filter(Boolean).sort(() => 0.5 - Math.random()),
+                    correctAnswer: randomComponent.value,
+                    explanation: `The ${randomComponent.type} in "${word.word}" is "${randomComponent.value}".`,
+                    difficulty,
+                    points: difficulty === "easy" ? 15 : difficulty === "medium" ? 20 : 25,
+                    category: "morpheme",
+                    timeLimit: difficulty === "easy" ? 25 : difficulty === "medium" ? 20 : 15,
+                    hint: `This ${randomComponent.type} often means "${randomComponent.type === 'prefix' ? 'before' : randomComponent.type === 'suffix' ? 'after' : 'core meaning'}"`
+                  };
+                  break;
+                }
+              }
+              
+              // Fallback to origin question if no morpheme breakdown
+              question = {
+                id: `q-${word.id}-${index}`,
+                type: "matching",
+                question: `What is the language origin of the word "${word.word}"?`,
+                options: [
+                  word.languageOrigin || "Unknown",
+                  ...["Latin", "Greek", "French", "Germanic", "Old English", "Sanskrit", "Arabic", "Spanish", "Italian", "Japanese"]
+                    .filter(origin => origin !== word.languageOrigin)
+                    .sort(() => 0.5 - Math.random())
+                    .slice(0, 3)
+                ].filter(Boolean).sort(() => 0.5 - Math.random()),
+                correctAnswer: word.languageOrigin || "Unknown",
+                explanation: `The word "${word.word}" originated from ${word.languageOrigin || "an unknown origin"}.`,
+                difficulty,
+                points: difficulty === "easy" ? 10 : difficulty === "medium" ? 15 : 20,
+                category: "origin",
+                timeLimit: difficulty === "easy" ? 20 : difficulty === "medium" ? 18 : 15,
+                hint: `This word has characteristics typical of ${word.languageOrigin || "various"} language patterns.`
+              };
+              break;
+              
+            case "fillBlank":
+              // Create a fill-in-the-blank using the word in context
+              const sentence = `The ${word.partOfSpeech === 'adjective' ? word.word : 'use of the word "' + word.word + '"'} is essential to understanding this concept.`;
+              const blankSentence = sentence.replace(word.word, "_____");
+              
+              question = {
+                id: `q-${word.id}-${index}`,
+                type: "fillBlank",
+                question: `Fill in the blank: ${blankSentence}`,
+                options: [word.word, ...incorrectOptions].sort(() => 0.5 - Math.random()),
+                correctAnswer: word.word,
+                explanation: `The correct word is "${word.word}": ${sentence}`,
+                difficulty,
+                points: difficulty === "easy" ? 8 : difficulty === "medium" ? 12 : 18,
+                category: "usage",
+                timeLimit: difficulty === "easy" ? 20 : difficulty === "medium" ? 18 : 15,
+                hint: `This word is a ${word.partOfSpeech}.`
+              };
+              break;
+              
+            default:
+              question = {
+                id: `q-${word.id}-${index}`,
+                type: "multiple",
+                question: `What is the definition of "${word.word}"?`,
+                options: [word.description, ...incorrectOptions.map(w => {
+                  const matchingWord = words.find(word => word.word === w);
+                  return matchingWord?.description || "Unknown definition";
+                })].sort(() => 0.5 - Math.random()),
+                correctAnswer: word.description,
+                explanation: `${word.word} - ${word.description}`,
+                difficulty,
+                points: difficulty === "easy" ? 10 : difficulty === "medium" ? 15 : 20,
+                category: "definition",
+                timeLimit: difficulty === "easy" ? 30 : difficulty === "medium" ? 25 : 20,
+                hint: `Think about what this word means in everyday usage.`
+              };
           }
           
-          // Fallback to origin question if no morpheme breakdown
-          question = {
-            id: `q-${word.id}-${index}`,
-            type: "multiple",
-            question: `What is the language origin of the word "${word.word}"?`,
-            options: [
-              word.languageOrigin || "Unknown",
-              ...["Latin", "Greek", "French", "Germanic", "Old English", "Sanskrit", "Arabic", "Spanish", "Italian", "Japanese"]
-                .filter(origin => origin !== word.languageOrigin)
+          questions.push(question);
+        });
+        break;
+        
+      case "wordBuilder":
+        // Quiz focused on building words from prefixes, roots, and suffixes
+        selectedWords.forEach((word, index) => {
+          if (word.morphemeBreakdown) {
+            const { prefix, root, suffix } = word.morphemeBreakdown;
+            
+            // Only use words with at least one morpheme component
+            if (prefix || root || suffix) {
+              const parts = [];
+              if (prefix) parts.push(prefix.text);
+              if (root) parts.push(root.text);
+              if (suffix) parts.push(suffix.text);
+              
+              const options = [...parts];
+              // Add some incorrect options
+              const morphemeParts = words
+                .filter(w => w.id !== word.id && w.morphemeBreakdown)
+                .flatMap(w => {
+                  const parts = [];
+                  if (w.morphemeBreakdown?.prefix) parts.push(w.morphemeBreakdown.prefix.text);
+                  if (w.morphemeBreakdown?.root) parts.push(w.morphemeBreakdown.root.text);
+                  if (w.morphemeBreakdown?.suffix) parts.push(w.morphemeBreakdown.suffix.text);
+                  return parts;
+                })
+                .filter(Boolean)
                 .sort(() => 0.5 - Math.random())
-                .slice(0, 3)
-            ].filter(Boolean).sort(() => 0.5 - Math.random()),
-            correctAnswer: word.languageOrigin || "Unknown",
-            explanation: `The word "${word.word}" originated from ${word.languageOrigin || "an unknown origin"}.`,
-            difficulty,
-            points: difficulty === "easy" ? 10 : difficulty === "medium" ? 15 : 20,
-            category: "origin",
-            timeLimit: difficulty === "easy" ? 20 : difficulty === "medium" ? 18 : 15
-          };
-          break;
-          
-        case "fillBlank":
-          // Create a fill-in-the-blank using the word in context
-          const sentence = `The ${word.partOfSpeech === 'adjective' ? word.word : 'use of the word "' + word.word + '"'} is essential to understanding this concept.`;
-          const blankSentence = sentence.replace(word.word, "_____");
-          
-          question = {
-            id: `q-${word.id}-${index}`,
-            type: "multiple",
-            question: `Fill in the blank: ${blankSentence}`,
-            options: [word.word, ...incorrectOptions].sort(() => 0.5 - Math.random()),
-            correctAnswer: word.word,
-            explanation: `The correct word is "${word.word}": ${sentence}`,
-            difficulty,
-            points: difficulty === "easy" ? 8 : difficulty === "medium" ? 12 : 18,
-            category: "usage",
-            timeLimit: difficulty === "easy" ? 20 : difficulty === "medium" ? 18 : 15
-          };
-          break;
-      }
-      
-      questions.push(question);
-    });
+                .slice(0, 3);
+              
+              options.push(...morphemeParts);
+              
+              const question: QuizQuestion = {
+                id: `q-${word.id}-${index}`,
+                type: "wordBuilder",
+                question: `Build the word "${word.word}" by selecting the correct morphemes`,
+                options: options.sort(() => 0.5 - Math.random()),
+                correctAnswer: parts,
+                explanation: `The word "${word.word}" is built from: ${parts.join(" + ")}`,
+                difficulty,
+                points: difficulty === "easy" ? 15 : difficulty === "medium" ? 20 : 30,
+                category: "morpheme",
+                timeLimit: difficulty === "easy" ? 40 : difficulty === "medium" ? 35 : 30,
+                hint: `This word has ${parts.length} component parts.`
+              };
+              
+              questions.push(question);
+            }
+          }
+        });
+        break;
+        
+      case "synonymAntonym":
+        // Quiz focused on synonym and antonym matching
+        selectedWords.forEach((word, index) => {
+          if (word.synonymsAntonyms) {
+            const { synonyms, antonyms } = word.synonymsAntonyms;
+            
+            // Only create questions for words with synonyms or antonyms
+            if ((synonyms && synonyms.length > 0) || (antonyms && antonyms.length > 0)) {
+              const isSynonymQuestion = Math.random() > 0.5 && synonyms && synonyms.length > 0;
+              const wordList = isSynonymQuestion ? synonyms : antonyms;
+              
+              // Only proceed if we have synonyms/antonyms to work with
+              if (wordList && wordList.length > 0) {
+                const correctAnswer = wordList[0];
+                
+                // Get incorrect options from other words
+                const otherWords = words
+                  .filter(w => w.id !== word.id)
+                  .sort(() => 0.5 - Math.random())
+                  .slice(0, 3)
+                  .map(w => w.word);
+                
+                const question: QuizQuestion = {
+                  id: `q-${word.id}-${index}`,
+                  type: "synonymAntonym",
+                  question: `What is a ${isSynonymQuestion ? 'synonym' : 'antonym'} for "${word.word}"?`,
+                  options: [correctAnswer, ...otherWords].sort(() => 0.5 - Math.random()),
+                  correctAnswer: correctAnswer,
+                  explanation: `"${correctAnswer}" is a ${isSynonymQuestion ? 'synonym' : 'antonym'} for "${word.word}"`,
+                  difficulty,
+                  points: difficulty === "easy" ? 10 : difficulty === "medium" ? 15 : 25,
+                  category: isSynonymQuestion ? "synonym" : "antonym",
+                  timeLimit: difficulty === "easy" ? 20 : difficulty === "medium" ? 18 : 15,
+                  hint: `Think of a word that means ${isSynonymQuestion ? 'the same as' : 'the opposite of'} "${word.word}".`
+                };
+                
+                questions.push(question);
+              }
+            }
+          }
+        });
+        break;
+        
+      case "etymology":
+        // Quiz focused on word origins and etymology
+        selectedWords.forEach((word, index) => {
+          if (word.languageOrigin || word.etymology) {
+            // Create a question about word origin
+            const originOptions = ["Latin", "Greek", "French", "Germanic", "Old English", "Sanskrit", "Arabic", "Spanish", "Italian", "Japanese"];
+            const correctOrigin = word.languageOrigin || "Unknown";
+            
+            // Filter out the correct answer to avoid duplicates
+            const incorrectOrigins = originOptions
+              .filter(origin => origin !== correctOrigin)
+              .sort(() => 0.5 - Math.random())
+              .slice(0, 3);
+            
+            const question: QuizQuestion = {
+              id: `q-${word.id}-${index}`,
+              type: "etymology",
+              question: `What is the language origin of the word "${word.word}"?`,
+              options: [correctOrigin, ...incorrectOrigins].sort(() => 0.5 - Math.random()),
+              correctAnswer: correctOrigin,
+              explanation: `The word "${word.word}" comes from ${word.languageOrigin || "an unknown origin"}. ${word.etymology || ""}`,
+              difficulty,
+              points: difficulty === "easy" ? 12 : difficulty === "medium" ? 18 : 25,
+              category: "origin",
+              timeLimit: difficulty === "easy" ? 25 : difficulty === "medium" ? 20 : 18,
+              hint: `This word has characteristics common in ${correctOrigin === "Unknown" ? "various languages" : correctOrigin} vocabulary.`
+            };
+            
+            questions.push(question);
+          }
+        });
+        break;
+        
+      case "contextual":
+        // Quiz focused on using words in context
+        selectedWords.forEach((word, index) => {
+          if (word.usage && word.usage.examples && word.usage.examples.length > 0) {
+            const example = word.usage.examples[0];
+            // Create a sentence with the target word removed
+            const blankSentence = example.replace(new RegExp(`\\b${word.word}\\b`, 'i'), "_____");
+            
+            // Get incorrect options from other words
+            const otherWords = words
+              .filter(w => w.id !== word.id && w.partOfSpeech === word.partOfSpeech)
+              .sort(() => 0.5 - Math.random())
+              .slice(0, 3)
+              .map(w => w.word);
+            
+            const question: QuizQuestion = {
+              id: `q-${word.id}-${index}`,
+              type: "contextual",
+              question: `Fill in the blank with the most appropriate word: ${blankSentence}`,
+              options: [word.word, ...otherWords].sort(() => 0.5 - Math.random()),
+              correctAnswer: word.word,
+              explanation: `"${word.word}" fits best in this context: "${example}"`,
+              difficulty,
+              points: difficulty === "easy" ? 10 : difficulty === "medium" ? 15 : 20,
+              category: "usage",
+              timeLimit: difficulty === "easy" ? 30 : difficulty === "medium" ? 25 : 20,
+              hint: `Look for a ${word.partOfSpeech} that makes sense in this context.`
+            };
+            
+            questions.push(question);
+          }
+        });
+        break;
+        
+      case "transformation":
+        // Quiz focused on word transformations (e.g., verb to noun, singular to plural)
+        selectedWords.forEach((word, index) => {
+          // Only use suitable words that can be transformed
+          if (word.partOfSpeech === "verb" || word.partOfSpeech === "noun" || word.partOfSpeech === "adjective") {
+            let transformedWord = "";
+            let transformationType = "";
+            
+            // Generate transformation based on part of speech
+            if (word.partOfSpeech === "verb") {
+              // Verb to noun (e.g., "run" to "runner")
+              transformedWord = word.word + "er";
+              transformationType = "verb to noun";
+            } else if (word.partOfSpeech === "noun") {
+              // Singular to plural (basic rule: add "s")
+              transformedWord = word.word + "s";
+              transformationType = "singular to plural";
+            } else if (word.partOfSpeech === "adjective") {
+              // Adjective to adverb (e.g., "quick" to "quickly")
+              transformedWord = word.word + "ly";
+              transformationType = "adjective to adverb";
+            }
+            
+            // Create incorrect options
+            const incorrectOptions = [
+              word.word + "ing",
+              word.word + "ed",
+              word.word + "ment"
+            ];
+            
+            const question: QuizQuestion = {
+              id: `q-${word.id}-${index}`,
+              type: "transformation",
+              question: `Transform the ${word.partOfSpeech} "${word.word}" to a ${transformationType}:`,
+              options: [transformedWord, ...incorrectOptions].sort(() => 0.5 - Math.random()),
+              correctAnswer: transformedWord,
+              explanation: `The ${transformationType} of "${word.word}" is "${transformedWord}"`,
+              difficulty,
+              points: difficulty === "easy" ? 8 : difficulty === "medium" ? 12 : 20,
+              category: "transformation",
+              timeLimit: difficulty === "easy" ? 20 : difficulty === "medium" ? 18 : 15,
+              hint: `Think about how ${word.partOfSpeech}s typically change when transformed to ${transformationType.split(" to ")[1]}s.`
+            };
+            
+            questions.push(question);
+          }
+        });
+        break;
+    }
     
-    return questions;
+    // If we don't have enough questions, fallback to standard quiz
+    if (questions.length < 3 && quizType !== "standard") {
+      toast({
+        title: "Not enough data for this quiz type",
+        description: "Falling back to standard quiz format",
+      });
+      return generateQuestions(difficulty, "standard", categoryFilter);
+    }
+    
+    return questions.slice(0, questionCount);
   };
   
   // Start a new quiz
-  const startQuiz = (difficulty: QuizDifficulty = "medium", categoryFilter?: string) => {
-    const questions = generateQuestions(difficulty, categoryFilter);
+  const startQuiz = (difficulty: QuizDifficulty = "medium", quizType: QuizType = "standard", categoryFilter?: string, timedMode: boolean = false) => {
+    setQuizType(quizType);
+    setTimedMode(timedMode);
+    setHintsRemaining(3);
+    setCurrentStreak(0);
+    
+    const questions = generateQuestions(difficulty, quizType, categoryFilter);
     if (questions.length === 0) return;
     
     setDifficulty(difficulty);
@@ -419,6 +737,63 @@ export function QuizProvider({ children }: { children: ReactNode }) {
     const newAnswers = [...userAnswers];
     newAnswers[currentQuestionIndex] = answer;
     setUserAnswers(newAnswers);
+    
+    // Check if the answer is correct
+    const currentQuestion = currentQuiz[currentQuestionIndex];
+    const isCorrect = Array.isArray(currentQuestion.correctAnswer) 
+      ? Array.isArray(answer) && currentQuestion.correctAnswer.every(a => answer.includes(a))
+      : answer === currentQuestion.correctAnswer;
+    
+    // Update streak counter
+    if (isCorrect) {
+      setCurrentStreak(prev => prev + 1);
+      
+      // Check for streak achievement
+      if (currentStreak + 1 >= 5) {
+        const streakAchievement = userStats.achievements.find(a => a.id === "streak_5");
+        if (streakAchievement && !streakAchievement.unlocked) {
+          const updatedAchievements = userStats.achievements.map(a => 
+            a.id === "streak_5" ? { ...a, unlocked: true } : a
+          );
+          
+          updateUserStats({
+            ...userStats,
+            achievements: updatedAchievements
+          });
+          
+          toast({
+            title: "Achievement Unlocked!",
+            description: `${streakAchievement.title}: ${streakAchievement.description}`,
+            variant: "default"
+          });
+        }
+      }
+    } else {
+      setCurrentStreak(0);
+    }
+  };
+  
+  // Use a hint for the current question
+  const useHint = () => {
+    if (!currentQuiz || hintsRemaining <= 0) return;
+    
+    const currentQuestion = currentQuiz[currentQuestionIndex];
+    if (currentQuestion.hint) {
+      setHintsRemaining(prev => prev - 1);
+      toast({
+        title: "Hint",
+        description: currentQuestion.hint,
+        variant: "default"
+      });
+      return currentQuestion.hint;
+    }
+    
+    return;
+  };
+  
+  // Toggle timed mode
+  const toggleTimedMode = () => {
+    setTimedMode(prev => !prev);
   };
   
   // Move to the next question
@@ -457,6 +832,11 @@ export function QuizProvider({ children }: { children: ReactNode }) {
         correctCount++;
         totalPoints += question.points;
         
+        // Apply bonus for timed mode
+        if (timedMode) {
+          totalPoints += Math.round(question.points * 0.25); // 25% bonus for timed mode
+        }
+        
         // Track etymology questions for achievement
         if (question.category === "origin") {
           etymologyCorrect++;
@@ -473,10 +853,25 @@ export function QuizProvider({ children }: { children: ReactNode }) {
       totalCorrect: userStats.totalCorrect + correctCount,
       totalIncorrect: userStats.totalIncorrect + incorrectCount,
       pointsEarned: userStats.pointsEarned + totalPoints,
+      currentStreak: currentStreak
     };
     
+    // Update high scores
+    const scorePercentage = (correctCount / currentQuiz.length) * 100;
+    const currentHighScore = newStats.highScores[quizType]?.[difficulty] || 0;
+    
+    if (scorePercentage > currentHighScore) {
+      newStats.highScores = {
+        ...newStats.highScores,
+        [quizType]: {
+          ...newStats.highScores[quizType],
+          [difficulty]: scorePercentage
+        }
+      };
+    }
+    
     // Update level based on points
-    newStats.level = calculateLevel(newStats.pointsEarned);
+    newStats.level = Math.floor(newStats.pointsEarned / 100) + 1;
     
     // Update achievements progress
     const updatedAchievements = [...newStats.achievements];
@@ -501,6 +896,19 @@ export function QuizProvider({ children }: { children: ReactNode }) {
         description: `${perfectScoreAchievement.title}: ${perfectScoreAchievement.description}`,
         variant: "default"
       });
+    }
+    
+    // Time wizard achievement (timed mode with 90% accuracy)
+    if (timedMode && (correctCount / currentQuiz.length) >= 0.9) {
+      const timeWizardAchievement = updatedAchievements.find(a => a.id === "time_wizard");
+      if (timeWizardAchievement && !timeWizardAchievement.unlocked) {
+        timeWizardAchievement.unlocked = true;
+        toast({
+          title: "Achievement Unlocked!",
+          description: `${timeWizardAchievement.title}: ${timeWizardAchievement.description}`,
+          variant: "default"
+        });
+      }
     }
     
     // Etymology expert achievement
@@ -606,13 +1014,19 @@ export function QuizProvider({ children }: { children: ReactNode }) {
         isQuizActive,
         remainingTime,
         difficulty,
+        quizType,
+        timedMode,
+        hintsRemaining,
+        currentStreak,
         startQuiz,
         answerQuestion,
         nextQuestion,
         previousQuestion,
         submitQuiz,
         resetQuiz,
-        checkAchievements
+        checkAchievements,
+        useHint,
+        toggleTimedMode
       }}
     >
       {children}
