@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuiz, QuizDifficulty, QuizType } from "@/context/QuizContext";
 import { Button } from "@/components/ui/button";
@@ -79,7 +78,6 @@ const QuizComponent = () => {
   } | null>(null);
   const [isTimedMode, setIsTimedMode] = useState(false);
   
-  // Set selected answer from user answers
   useEffect(() => {
     if (isQuizActive && currentQuiz && userAnswers[currentQuestionIndex]) {
       const answer = userAnswers[currentQuestionIndex];
@@ -112,21 +110,17 @@ const QuizComponent = () => {
     
     if (!currentQuestion) return;
     
-    // For wordBuilder questions, handle multiple selections
     if (currentQuestion.type === "wordBuilder") {
-      // If already selected, remove it
       if (selectedAnswers.includes(answer)) {
         const newAnswers = selectedAnswers.filter(a => a !== answer);
         setSelectedAnswers(newAnswers);
         answerQuestion(newAnswers);
       } else {
-        // Add it to selected answers
         const newAnswers = [...selectedAnswers, answer];
         setSelectedAnswers(newAnswers);
         answerQuestion(newAnswers);
       }
     } else {
-      // For single answer questions
       setSelectedAnswer(answer);
       answerQuestion(answer);
     }
@@ -139,7 +133,6 @@ const QuizComponent = () => {
   const handleSubmitQuiz = () => {
     if (!currentQuiz) return;
     
-    // Calculate results
     let correctCount = 0;
     let totalPoints = 0;
     
@@ -153,24 +146,20 @@ const QuizComponent = () => {
         correctCount++;
         totalPoints += question.points;
         
-        // Apply bonus for timed mode
         if (timedMode) {
           totalPoints += Math.round(question.points * 0.25);
         }
       }
     });
     
-    // Save results data for display
     setResultsData({
       correctCount,
       totalCount: currentQuiz.length,
       pointsEarned: totalPoints
     });
     
-    // Show results
     setShowResults(true);
     
-    // Submit to context
     submitQuiz();
   };
   
@@ -208,7 +197,6 @@ const QuizComponent = () => {
   };
   
   const renderStartScreen = () => {
-    // Define quiz type cards
     const quizTypes: { id: QuizType; title: string; description: string; icon: React.ReactNode; gradient: string }[] = [
       { 
         id: "standard", 
@@ -291,7 +279,6 @@ const QuizComponent = () => {
           </div>
         </div>
         
-        {/* Quiz Types */}
         <div className="space-y-4">
           <h3 className="font-semibold text-white mb-2">Select Quiz Type</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -450,13 +437,11 @@ const QuizComponent = () => {
         
         {renderAchievements()}
         
-        {/* High Scores */}
         <div className="p-4 bg-gray-900/70 backdrop-blur-md rounded-lg border border-white/10">
           <h3 className="font-semibold text-white mb-3">High Scores</h3>
           <div className="space-y-2">
             {Object.entries(userStats.highScores).map(([type, scores]) => {
-              // Skip if no scores
-              if (scores.easy === 0 && scores.medium === 0 && scores.hard === a - 0) return null;
+              if (scores.easy === 0 && scores.medium === 0 && scores.hard === 0) return null;
               
               return (
                 <div key={type} className="flex items-center justify-between text-sm">
@@ -499,7 +484,6 @@ const QuizComponent = () => {
     
     return (
       <div className="space-y-6">
-        {/* Current Streak */}
         {currentStreak > 0 && (
           <div className="bg-indigo-500/20 border border-indigo-500/40 text-white rounded-md p-2 flex items-center justify-center gap-2 animate-pulse">
             <Zap className="h-4 w-4 text-yellow-400" />
@@ -548,7 +532,6 @@ const QuizComponent = () => {
           </div>
         </div>
         
-        {/* For wordBuilder questions, show a different UI */}
         {currentQuestion.type === "wordBuilder" ? (
           <div className="space-y-4">
             <p className="text-gray-300 text-sm">Select all morphemes that make up this word:</p>
@@ -698,12 +681,10 @@ const QuizComponent = () => {
       variant = "destructive";
     }
     
-    // Animation variants for confetti
     const confettiCount = 50;
     
     return (
       <div className="space-y-6">
-        {/* Confetti effect for good scores */}
         {percentage >= 70 && (
           <div className="absolute inset-0 z-0 overflow-hidden">
             {[...Array(confettiCount)].map((_, i) => (

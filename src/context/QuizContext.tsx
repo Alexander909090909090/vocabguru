@@ -613,8 +613,9 @@ export function QuizProvider({ children }: { children: ReactNode }) {
       case "contextual":
         // Quiz focused on using words in context
         selectedWords.forEach((word, index) => {
-          if (word.usage && word.usage.examples && word.usage.examples.length > 0) {
-            const example = word.usage.examples[0];
+          if (word.usage) {
+            // Use the exampleSentence property instead of examples which doesn't exist
+            const example = word.usage.exampleSentence;
             // Create a sentence with the target word removed
             const blankSentence = example.replace(new RegExp(`\\b${word.word}\\b`, 'i'), "_____");
             
