@@ -16,18 +16,18 @@ const AIAssistantTab = ({ word }: AIAssistantTabProps) => {
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="h-4 w-4 text-primary" />
           <Badge variant="outline" className="bg-primary/10">
-            Enhanced AI Analysis
+            Morphological Analysis
           </Badge>
         </div>
         
         <p className="mb-4 text-sm text-muted-foreground">
-          Ask questions about this word's etymology, usage, or morphological structure. 
-          Try asking "Give me a comprehensive breakdown of {word.word}" to see a detailed analysis.
+          Ask questions about {word.word}'s etymology, usage, or morphological structure. 
+          Try asking "What is the meaning of the {word.morphemeBreakdown.root.text} root?" for targeted analysis.
         </p>
         
         <div className="flex items-center gap-2 mb-4 text-xs bg-secondary/50 p-2 rounded-lg">
           <MessageSquare className="h-3 w-3 text-primary" />
-          <span>Quick prompt: "What are the origins and morphemes of {word.word}?"</span>
+          <span>Quick prompt: "How do the morphemes in {word.word} contribute to its meaning?"</span>
         </div>
         
         <AIChatInterface currentWord={word} />

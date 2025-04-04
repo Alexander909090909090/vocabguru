@@ -55,17 +55,17 @@ const words: Word[] = [
     id: "abundant",
     word: "Abundant",
     pronunciation: "/əˈbʌn.dənt/",
-    description: "Describing a resource as abundant highlights its availability and richness.",
+    description: "Existing in large quantities; plentiful.",
     languageOrigin: "Latin",
     partOfSpeech: "adjective",
     morphemeBreakdown: {
-      root: { text: "abundare", meaning: "to overflow" },
+      prefix: { text: "ab-", meaning: "from, away" },
+      root: { text: "und", meaning: "wave, flow" },
       suffix: { text: "-ant", meaning: "forming adjectives" }
     },
     etymology: {
-      origin: "Abundant entered English in the late 14th century.",
-      evolution: "Derived from Latin abundantem, meaning overflowing, plentiful.",
-      culturalVariations: "The concept of abundance transcends cultures, symbolizing prosperity and plenitude."
+      origin: "Latin 'abundare' meaning 'to overflow'",
+      evolution: "Latin abundantem → Old French → Middle English",
     },
     definitions: [
       {
@@ -75,10 +75,6 @@ const words: Word[] = [
       {
         type: "standard",
         text: "Present in great quantity."
-      },
-      {
-        type: "contextual",
-        text: "Used in economic contexts to describe a surplus of goods or wealth."
       }
     ],
     forms: {
@@ -87,9 +83,8 @@ const words: Word[] = [
     },
     usage: {
       commonCollocations: ["abundant resources", "abundant wildlife"],
-      contextualUsage: "Describing a resource as abundant highlights its availability and richness.",
-      sentenceStructure: "Abundant can function as an adjective describing nouns rich in quantity.",
-      exampleSentence: "The fertile land yielded an abundant harvest, providing sustenance for the entire village."
+      contextualUsage: "Used to describe resources or items that are plentiful",
+      exampleSentence: "The fertile land yielded an abundant harvest."
     },
     synonymsAntonyms: {
       synonyms: ["plentiful", "copious", "ample"],
@@ -100,16 +95,6 @@ const words: Word[] = [
         id: "abundant-1",
         url: "https://images.unsplash.com/photo-1501854140801-50d01698950b",
         alt: "Bird's eye view of abundant green mountains"
-      },
-      {
-        id: "abundant-2",
-        url: "https://images.unsplash.com/photo-1587553330562-08537edd9b9f",
-        alt: "Abundant flowers in a field"
-      },
-      {
-        id: "abundant-3",
-        url: "https://images.unsplash.com/photo-1470685983317-0084951ce1ca",
-        alt: "Abundant fruits in a market"
       }
     ],
     featured: true
@@ -122,13 +107,13 @@ const words: Word[] = [
     languageOrigin: "Latin",
     partOfSpeech: "adjective",
     morphemeBreakdown: {
-      prefix: { text: "Super-", meaning: "above, over, beyond" },
-      root: { text: "fluere", meaning: "to flow" },
+      prefix: { text: "super-", meaning: "above, over, beyond" },
+      root: { text: "flu", meaning: "to flow" },
       suffix: { text: "-ous", meaning: "forming adjectives" }
     },
     etymology: {
-      origin: "The word originated from Latin 'superfluus', combining 'super' (above) and 'fluere' (to flow).",
-      evolution: "Has maintained its essential meaning of excess or redundancy over time."
+      origin: "Latin 'superfluus', combining 'super' (above) and 'fluere' (to flow)",
+      evolution: "Latin superfluus → Old French → Middle English",
     },
     definitions: [
       {
@@ -138,14 +123,6 @@ const words: Word[] = [
       {
         type: "standard",
         text: "Beyond what is needed, redundant."
-      },
-      {
-        type: "extended",
-        text: "Excessive or surplus in quantity."
-      },
-      {
-        type: "contextual",
-        text: "In various fields, refers to elements that are nonessential or redundant."
       }
     ],
     forms: {
@@ -153,24 +130,19 @@ const words: Word[] = [
       adverb: "superfluously"
     },
     usage: {
-      commonCollocations: ["superfluous details", "superfluous expenses", "superfluous decorations"],
-      contextualUsage: "Often used to critique unnecessary additions or excessive elements.",
+      commonCollocations: ["superfluous details", "superfluous expenses"],
+      contextualUsage: "Used to critique unnecessary additions or excessive elements",
       exampleSentence: "The editor removed all superfluous words to make the article more concise."
     },
     synonymsAntonyms: {
-      synonyms: ["unnecessary", "excessive", "redundant", "surplus"],
-      antonyms: ["necessary", "essential", "required", "vital"]
+      synonyms: ["unnecessary", "excessive", "redundant"],
+      antonyms: ["necessary", "essential", "required"]
     },
     images: [
       {
         id: "superfluous-1",
         url: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09",
         alt: "Excessive decorative elements on a building"
-      },
-      {
-        id: "superfluous-2",
-        url: "https://images.unsplash.com/photo-1484101403633-562f891dc89a",
-        alt: "Minimalist design contrasting with excess"
       }
     ],
     featured: true
@@ -183,21 +155,18 @@ const words: Word[] = [
     languageOrigin: "Greek",
     partOfSpeech: "adjective",
     morphemeBreakdown: {
-      root: { text: "ephemeros", meaning: "lasting only a day" },
+      prefix: { text: "ep-", meaning: "on, at, besides" },
+      root: { text: "hemer", meaning: "day" },
       suffix: { text: "-al", meaning: "relating to" }
     },
     etymology: {
-      origin: "From Greek 'ephemeros', literally meaning 'lasting only a day'.",
-      evolution: "Evolved to describe any short-lived phenomenon, not just those lasting exactly one day."
+      origin: "Greek 'ephemeros', literally meaning 'lasting only a day'",
+      evolution: "Greek ephemeros → Late Latin → English",
     },
     definitions: [
       {
         type: "primary",
         text: "Lasting for a very short time; transitory."
-      },
-      {
-        type: "standard",
-        text: "Short-lived; temporary."
       },
       {
         type: "specialized",
@@ -209,24 +178,112 @@ const words: Word[] = [
       adverb: "ephemerally"
     },
     usage: {
-      commonCollocations: ["ephemeral beauty", "ephemeral moment", "ephemeral art"],
-      contextualUsage: "Often used in artistic or philosophical contexts to discuss impermanence.",
+      commonCollocations: ["ephemeral beauty", "ephemeral moment"],
+      contextualUsage: "Often used in artistic or philosophical contexts to discuss impermanence",
       exampleSentence: "The ephemeral nature of cherry blossoms makes their beauty all the more precious."
     },
     synonymsAntonyms: {
-      synonyms: ["fleeting", "transient", "momentary", "brief"],
-      antonyms: ["permanent", "enduring", "everlasting", "eternal"]
+      synonyms: ["fleeting", "transient", "momentary"],
+      antonyms: ["permanent", "enduring", "everlasting"]
     },
     images: [
       {
         id: "ephemeral-1",
         url: "https://images.unsplash.com/photo-1522441815192-d9f04eb0615c",
         alt: "Cherry blossoms exemplifying ephemeral beauty"
+      }
+    ]
+  },
+  {
+    id: "resilient",
+    word: "Resilient",
+    pronunciation: "/rɪˈzɪl.i.ənt/",
+    description: "Able to recover quickly from difficulties; tough.",
+    languageOrigin: "Latin",
+    partOfSpeech: "adjective",
+    morphemeBreakdown: {
+      prefix: { text: "re-", meaning: "back, again" },
+      root: { text: "sili", meaning: "to jump, leap" },
+      suffix: { text: "-ent", meaning: "in a state or condition" }
+    },
+    etymology: {
+      origin: "Latin 'resiliens', from 'resilire' meaning 'to rebound'",
+      evolution: "Latin resiliens → English",
+    },
+    definitions: [
+      {
+        type: "primary",
+        text: "Able to recover quickly from difficulties; tough."
       },
       {
-        id: "ephemeral-2",
-        url: "https://images.unsplash.com/photo-1472614428373-2f05aff79e1a",
-        alt: "Dandelion seeds about to be blown away"
+        type: "standard",
+        text: "Capable of withstanding shock without permanent deformation or rupture."
+      }
+    ],
+    forms: {
+      noun: "resilience",
+      adverb: "resiliently"
+    },
+    usage: {
+      commonCollocations: ["resilient community", "resilient system"],
+      contextualUsage: "Used to describe people or materials that can recover from stress",
+      exampleSentence: "Children are often remarkably resilient when facing challenges."
+    },
+    synonymsAntonyms: {
+      synonyms: ["tough", "adaptable", "hardy"],
+      antonyms: ["fragile", "weak", "vulnerable"]
+    },
+    images: [
+      {
+        id: "resilient-1",
+        url: "https://images.unsplash.com/photo-1520810627419-35e362c5dc07",
+        alt: "Person climbing a challenging mountain, showing resilience"
+      }
+    ]
+  },
+  {
+    id: "ubiquitous",
+    word: "Ubiquitous",
+    pronunciation: "/juːˈbɪk.wɪ.təs/",
+    description: "Present, appearing, or found everywhere.",
+    languageOrigin: "Latin",
+    partOfSpeech: "adjective",
+    morphemeBreakdown: {
+      root: { text: "ubique", meaning: "everywhere" },
+      suffix: { text: "-ous", meaning: "full of, having" }
+    },
+    etymology: {
+      origin: "Latin 'ubique' meaning 'everywhere'",
+      evolution: "Latin ubique → English",
+    },
+    definitions: [
+      {
+        type: "primary",
+        text: "Present, appearing, or found everywhere."
+      },
+      {
+        type: "standard",
+        text: "Omnipresent; constantly encountered."
+      }
+    ],
+    forms: {
+      noun: "ubiquity",
+      adverb: "ubiquitously"
+    },
+    usage: {
+      commonCollocations: ["ubiquitous technology", "ubiquitous presence"],
+      contextualUsage: "Used to describe things that seem to be everywhere at once",
+      exampleSentence: "Smartphones have become ubiquitous in modern society."
+    },
+    synonymsAntonyms: {
+      synonyms: ["omnipresent", "universal", "pervasive"],
+      antonyms: ["rare", "scarce", "uncommon"]
+    },
+    images: [
+      {
+        id: "ubiquitous-1",
+        url: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c",
+        alt: "Crowd of people using smartphones, showing their ubiquity"
       }
     ]
   }
