@@ -17,7 +17,9 @@ export function AIChatInterface({ currentWord }: AIChatInterfaceProps) {
     {
       id: "welcome",
       sender: "ai",
-      text: `Hello! I can provide insights about ${currentWord ? `"${currentWord.word}"` : "vocabulary"} and language. Try asking for a "comprehensive breakdown" for a detailed analysis, or ask specific questions about etymology, meaning, or usage.`,
+      text: currentWord 
+        ? `Hello! I can provide insights about "${currentWord.word}" and its morphological structure. Try asking for a "comprehensive breakdown" for a detailed analysis of its prefix "${currentWord.morphemeBreakdown.prefix?.text || ''}", root "${currentWord.morphemeBreakdown.root.text}", and suffix "${currentWord.morphemeBreakdown.suffix?.text || ''}"!`
+        : "Hello! I can provide insights about vocabulary and language. Try asking for a \"comprehensive breakdown\" for a detailed analysis, or ask specific questions about etymology, meaning, or usage.",
       timestamp: new Date()
     }
   ]);

@@ -12,6 +12,26 @@ interface MessageItemProps {
 }
 
 const MessageItem = ({ message, handleFeedback, formatTimestamp }: MessageItemProps) => {
+  // Convert markdown-style headers to HTML
+  const formatText = (text: string) => {
+    // Format headers
+    let formattedText = text
+      .replace(/^# (.*$)/gm, '<h3 class="text-lg font-bold mt-3 mb-2">$1</h3>')
+      .replace(/^## (.*$)/gm, '<h4 class="text-base font-semibold mt-2 mb-1">$1</h4>')
+      .replace(/^### (.*$)/gm, '<h5 class="text-sm font-medium mt-2 mb-1">$1</h5>');
+    
+    // Format bold text
+    formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // Format lists
+    formattedText = formattedText.replace(/^\s*-\s+(.*$)/gm, '<li class="ml-4">$1</li>');
+    
+    // Add line breaks
+    formattedText = formattedText.replace(/\n\n/g, '<br><br>');
+    
+    return <div dangerouslySetInnerHTML={{ __html: formattedText }} />;
+  };
+
   return (
     <div 
       className={`flex flex-col ${
@@ -23,7 +43,7 @@ const MessageItem = ({ message, handleFeedback, formatTimestamp }: MessageItemPr
           ? "bg-primary text-primary-foreground" 
           : "bg-card/90 backdrop-blur-sm border border-white/10"
       }`}>
-        <div className="whitespace-pre-line">{message.text}</div>
+        <div className="whitespace-pre-line">{message.sender === "ai" ? formatText(message.text) : message.text}</div>
         
         {/* Dictionary information if available */}
         {message.dictionary && (

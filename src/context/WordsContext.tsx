@@ -1,12 +1,12 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import originalWords, { Word } from "@/data/words";
 import { isNonsenseWord, hasMinimumWordDetails } from "@/utils/wordValidation";
 import { toast } from "@/components/ui/use-toast";
+import { prepareWordForRepository } from "@/utils/wordDataCleaner";
 
 interface WordsContextType {
   words: Word[];
-  addWord: (word: Word) => void;
+  addWord: (word: Partial<Word>) => void;
   getWord: (id: string) => Word | undefined;
   allWords: Word[];
   dictionaryWords: Word[];
@@ -67,63 +67,36 @@ export function WordsProvider({ children }: { children: ReactNode }) {
   // Combine original words with dictionary words
   const allWords = [...originalWords, ...dictionaryWords];
   
-  const addWord = (word: Word) => {
-    // Check if word is incomplete (from import)
-    const isComplete = word && 
-                      word.id && 
-                      word.word && 
-                      word.description &&
-                      word.morphemeBreakdown && 
-                      word.etymology && 
-                      word.definitions && 
-                      word.usage && 
-                      word.synonymsAntonyms;
-    
-    // For imported words, we're more lenient but still check basic validity
-    if (!isComplete) {
-      // Ensure minimum required fields
-      if (!word.id || !word.word || !word.description) {
-        toast({
-          title: "Invalid word data",
-          description: "Word is missing required fields (id, word, or description).",
-          variant: "destructive",
-        });
-        return;
-      }
-    } else {
-      // For user-added words (not bulk imports), we do full validation
-      if (isNonsenseWord(word.word)) {
-        toast({
-          title: "Invalid word",
-          description: "This doesn't appear to be a valid word and won't be added to your collection.",
-          variant: "destructive",
-        });
-        return;
-      }
+  const addWord = (word: Partial<Word>) => {
+    try {
+      // Clean and standardize the word data
+      const cleanedWord = prepareWordForRepository(word);
       
-      if (!hasMinimumWordDetails(word.description)) {
-        toast({
-          title: "Insufficient data",
-          description: "This word doesn't have enough detailed information to add to your collection.",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-    
-    // Check if word already exists (either in original or dictionary words)
-    const exists = allWords.some(w => w.id === word.id);
-    
-    if (!exists) {
-      setDictionaryWords(prev => [word, ...prev]);
+      // Check if word already exists (either in original or dictionary words)
+      const exists = allWords.some(w => w.id === cleanedWord.id);
       
-      // Confirm word was added
-      console.log(`Added word: ${word.word} to dictionary collection`);
-    } else {
-      console.log(`Word ${word.word} already exists in the collection`);
+      if (!exists) {
+        setDictionaryWords(prev => [cleanedWord, ...prev]);
+        
+        // Confirm word was added
+        console.log(`Added word: ${cleanedWord.word} to dictionary collection`);
+        toast({
+          title: "Word added",
+          description: `"${cleanedWord.word}" has been added to your collection.`,
+        });
+      } else {
+        console.log(`Word ${cleanedWord.word} already exists in the collection`);
+        toast({
+          title: "Word already exists",
+          description: `"${cleanedWord.word}" is already in your collection.`,
+        });
+      }
+    } catch (error) {
+      console.error("Error adding word:", error);
       toast({
-        title: "Word already exists",
-        description: `"${word.word}" is already in your collection.`,
+        title: "Error adding word",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
       });
     }
   };
@@ -168,10 +141,16 @@ export function WordsProvider({ children }: { children: ReactNode }) {
       
       const refreshedWord = await searchDictionaryWord(word.word);
       if (refreshedWord) {
+        // Clean and standardize the refreshed word data
+        const cleanedWord = prepareWordForRepository({
+          ...refreshedWord,
+          id // Preserve the original ID
+        });
+        
         // If it's a dictionary word, update it
         if (dictionaryWords.some(w => w.id === id)) {
           setDictionaryWords(prev => prev.map(w => 
-            w.id === id ? { ...refreshedWord, id } : w
+            w.id === id ? cleanedWord : w
           ));
           
           toast({
