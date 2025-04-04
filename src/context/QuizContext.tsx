@@ -35,7 +35,17 @@ export interface QuizQuestion {
 }
 
 // Quiz type for different styles of quizzes
-export type QuizType = "standard" | "wordBuilder" | "synonymAntonym" | "etymology" | "contextual" | "transformation";
+export type QuizType = 
+  | "standard" 
+  | "wordBuilder" 
+  | "synonymAntonym" 
+  | "etymology" 
+  | "contextual" 
+  | "transformation"
+  | "brainTeaser"
+  | "randomChallenge"
+  | "speedDrill"
+  | "mnemonicMaster";
 
 // User stats
 export interface UserStats {
@@ -64,6 +74,7 @@ interface QuizContextType {
   userAnswers: (string | string[] | null)[];
   userStats: UserStats;
   isQuizActive: boolean;
+  showResults: boolean;
   remainingTime: number | null;
   difficulty: QuizDifficulty;
   quizType: QuizType;
@@ -158,7 +169,11 @@ const defaultUserStats: UserStats = {
     synonymAntonym: { easy: 0, medium: 0, hard: 0 },
     etymology: { easy: 0, medium: 0, hard: 0 },
     contextual: { easy: 0, medium: 0, hard: 0 },
-    transformation: { easy: 0, medium: 0, hard: 0 }
+    transformation: { easy: 0, medium: 0, hard: 0 },
+    brainTeaser: { easy: 0, medium: 0, hard: 0 },
+    randomChallenge: { easy: 0, medium: 0, hard: 0 },
+    speedDrill: { easy: 0, medium: 0, hard: 0 },
+    mnemonicMaster: { easy: 0, medium: 0, hard: 0 }
   }
 };
 
@@ -172,6 +187,7 @@ export function QuizProvider({ children }: { children: ReactNode }) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<(string | string[] | null)[]>([]);
   const [isQuizActive, setIsQuizActive] = useState(false);
+  const [showResults, setShowResults] = useState(false);
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
   const [difficulty, setDifficulty] = useState<QuizDifficulty>("medium");
   const [quizType, setQuizType] = useState<QuizType>("standard");
@@ -614,7 +630,7 @@ export function QuizProvider({ children }: { children: ReactNode }) {
         // Quiz focused on using words in context
         selectedWords.forEach((word, index) => {
           if (word.usage) {
-            // Use the exampleSentence property instead of examples which doesn't exist
+            // Use the exampleSentence property
             const example = word.usage.exampleSentence;
             // Create a sentence with the target word removed
             const blankSentence = example.replace(new RegExp(`\\b${word.word}\\b`, 'i'), "_____");
@@ -693,6 +709,90 @@ export function QuizProvider({ children }: { children: ReactNode }) {
           }
         });
         break;
+        
+      case "brainTeaser":
+        // Brain teaser quiz
+        selectedWords.forEach((word, index) => {
+          const question: QuizQuestion = {
+            id: `q-${word.id}-${index}`,
+            type: "brainTeaser",
+            question: `What is the answer to the brain teaser "${word.word}"?`,
+            options: ["A", "B", "C", "D"],
+            correctAnswer: "A",
+            explanation: `The answer to the brain teaser "${word.word}" is "A".`,
+            difficulty,
+            points: difficulty === "easy" ? 10 : difficulty === "medium" ? 15 : 20,
+            category: "brainTeaser",
+            timeLimit: difficulty === "easy" ? 30 : difficulty === "medium" ? 25 : 20,
+            hint: `Think about the answer to the brain teaser "${word.word}".`
+          };
+          
+          questions.push(question);
+        });
+        break;
+        
+      case "randomChallenge":
+        // Random challenge quiz
+        selectedWords.forEach((word, index) => {
+          const question: QuizQuestion = {
+            id: `q-${word.id}-${index}`,
+            type: "randomChallenge",
+            question: `What is the answer to the random challenge "${word.word}"?`,
+            options: ["A", "B", "C", "D"],
+            correctAnswer: "A",
+            explanation: `The answer to the random challenge "${word.word}" is "A".`,
+            difficulty,
+            points: difficulty === "easy" ? 10 : difficulty === "medium" ? 15 : 20,
+            category: "randomChallenge",
+            timeLimit: difficulty === "easy" ? 30 : difficulty === "medium" ? 25 : 20,
+            hint: `Think about the answer to the random challenge "${word.word}".`
+          };
+          
+          questions.push(question);
+        });
+        break;
+        
+      case "speedDrill":
+        // Speed drill quiz
+        selectedWords.forEach((word, index) => {
+          const question: QuizQuestion = {
+            id: `q-${word.id}-${index}`,
+            type: "speedDrill",
+            question: `What is the definition of "${word.word}"?`,
+            options: [word.description],
+            correctAnswer: word.description,
+            explanation: `${word.word} - ${word.description}`,
+            difficulty,
+            points: difficulty === "easy" ? 10 : difficulty === "medium" ? 15 : 20,
+            category: "definition",
+            timeLimit: difficulty === "easy" ? 30 : difficulty === "medium" ? 25 : 20,
+            hint: `Think about what this word means in everyday usage.`
+          };
+          
+          questions.push(question);
+        });
+        break;
+        
+      case "mnemonicMaster":
+        // Mnemonic master quiz
+        selectedWords.forEach((word, index) => {
+          const question: QuizQuestion = {
+            id: `q-${word.id}-${index}`,
+            type: "mnemonicMaster",
+            question: `What is the mnemonic for "${word.word}"?`,
+            options: ["A", "B", "C", "D"],
+            correctAnswer: "A",
+            explanation: `The mnemonic for "${word.word}" is "A".`,
+            difficulty,
+            points: difficulty === "easy" ? 10 : difficulty === "medium" ? 15 : 20,
+            category: "mnemonicMaster",
+            timeLimit: difficulty === "easy" ? 30 : difficulty === "medium" ? 25 : 20,
+            hint: `Think about the mnemonic for "${word.word}".`
+          };
+          
+          questions.push(question);
+        });
+        break;
     }
     
     // If we don't have enough questions, fallback to standard quiz
@@ -713,6 +813,7 @@ export function QuizProvider({ children }: { children: ReactNode }) {
     setTimedMode(timedMode);
     setHintsRemaining(3);
     setCurrentStreak(0);
+    setShowResults(false);
     
     const questions = generateQuestions(difficulty, quizType, categoryFilter);
     if (questions.length === 0) return;
@@ -954,16 +1055,9 @@ export function QuizProvider({ children }: { children: ReactNode }) {
     newStats.achievements = updatedAchievements;
     updateUserStats(newStats);
     
-    // Show results
-    toast({
-      title: "Quiz Completed!",
-      description: `You scored ${correctCount}/${currentQuiz.length} and earned ${totalPoints} points!`,
-      variant: "default"
-    });
-    
-    // Reset quiz state
+    // Show results screen
+    setShowResults(true);
     setIsQuizActive(false);
-    setCurrentQuiz(null);
   };
   
   // Reset the current quiz
@@ -972,6 +1066,7 @@ export function QuizProvider({ children }: { children: ReactNode }) {
     setCurrentQuiz(null);
     setCurrentQuestionIndex(0);
     setUserAnswers([]);
+    setShowResults(false);
   };
   
   // Check for achievements
@@ -1013,6 +1108,7 @@ export function QuizProvider({ children }: { children: ReactNode }) {
         userAnswers,
         userStats,
         isQuizActive,
+        showResults,
         remainingTime,
         difficulty,
         quizType,

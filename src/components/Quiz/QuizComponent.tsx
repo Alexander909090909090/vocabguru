@@ -62,7 +62,8 @@ const QuizComponent = () => {
     submitQuiz,
     resetQuiz,
     useHint,
-    toggleTimedMode
+    toggleTimedMode,
+    showResults
   } = useQuiz();
   
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
@@ -70,7 +71,7 @@ const QuizComponent = () => {
   const [selectedQuizType, setSelectedQuizType] = useState<QuizType>("standard");
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<string[]>([]);
-  const [showResults, setShowResults] = useState(false);
+  const [localShowResults, setLocalShowResults] = useState(false);
   const [resultsData, setResultsData] = useState<{
     correctCount: number;
     totalCount: number;
@@ -101,7 +102,7 @@ const QuizComponent = () => {
       selectedFilter !== "all" ? selectedFilter : undefined,
       isTimedMode
     );
-    setShowResults(false);
+    setLocalShowResults(false);
     setResultsData(null);
   };
   
@@ -158,7 +159,7 @@ const QuizComponent = () => {
       pointsEarned: totalPoints
     });
     
-    setShowResults(true);
+    setLocalShowResults(true);
     
     submitQuiz();
   };
@@ -768,9 +769,9 @@ const QuizComponent = () => {
   
   return (
     <div className="max-w-2xl mx-auto py-6">
-      {!isQuizActive && !showResults && renderStartScreen()}
-      {isQuizActive && currentQuiz && !showResults && renderQuizQuestion()}
-      {showResults && renderResults()}
+      {!isQuizActive && !showResults && !localShowResults && renderStartScreen()}
+      {isQuizActive && currentQuiz && !showResults && !localShowResults && renderQuizQuestion()}
+      {(showResults || localShowResults) && resultsData && renderResults()}
     </div>
   );
 };

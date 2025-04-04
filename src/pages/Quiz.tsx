@@ -4,10 +4,11 @@ import { useQuiz } from "@/context/QuizContext";
 import { toast } from "@/components/ui/use-toast";
 import Header from "@/components/Header";
 import QuizComponent from "@/components/Quiz/QuizComponent";
+import QuizGrid from "@/components/Quiz/QuizGrid";
 import { motion } from "framer-motion";
 
 const Quiz = () => {
-  const { userStats, checkAchievements } = useQuiz();
+  const { userStats, checkAchievements, isQuizActive, showResults } = useQuiz();
   
   useEffect(() => {
     // Check for achievements on page load
@@ -55,7 +56,11 @@ const Quiz = () => {
       
       <main className="container-inner py-8 relative z-10">
         <div className="max-w-4xl mx-auto">
-          <QuizComponent />
+          {isQuizActive || showResults ? (
+            <QuizComponent />
+          ) : (
+            <QuizGrid />
+          )}
         </div>
       </main>
       
