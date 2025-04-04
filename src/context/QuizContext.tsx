@@ -6,7 +6,20 @@ import { toast } from "@/components/ui/use-toast";
 export type QuizDifficulty = "easy" | "medium" | "hard";
 
 // Question types
-export type QuestionType = "multiple" | "trueFalse" | "matching" | "fillBlank" | "wordBuilder" | "synonymAntonym" | "etymology" | "contextual" | "transformation";
+export type QuestionType = 
+  | "multiple" 
+  | "trueFalse" 
+  | "matching" 
+  | "fillBlank" 
+  | "wordBuilder" 
+  | "synonymAntonym" 
+  | "etymology" 
+  | "contextual" 
+  | "transformation"
+  | "brainTeaser"
+  | "randomChallenge"
+  | "speedDrill"
+  | "mnemonicMaster";
 
 // Achievement types
 export type Achievement = {

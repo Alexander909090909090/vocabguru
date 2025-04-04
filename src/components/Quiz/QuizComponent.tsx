@@ -30,7 +30,11 @@ const quizTypeIcons: Record<QuizType, React.ReactNode> = {
   "synonymAntonym": <Shuffle className="h-5 w-5" />,
   "etymology": <Languages className="h-5 w-5" />,
   "contextual": <FileText className="h-5 w-5" />,
-  "transformation": <GitBranch className="h-5 w-5" />
+  "transformation": <GitBranch className="h-5 w-5" />,
+  "brainTeaser": <Brain className="h-5 w-5" />,
+  "randomChallenge": <Dices className="h-5 w-5" />,
+  "speedDrill": <Clock className="h-5 w-5" />,
+  "mnemonicMaster": <Lightbulb className="h-5 w-5" />
 };
 
 const quizTypeLabels: Record<QuizType, string> = {
@@ -39,7 +43,11 @@ const quizTypeLabels: Record<QuizType, string> = {
   "synonymAntonym": "Synonym/Antonym",
   "etymology": "Etymology Explorer",
   "contextual": "Contextual Usage",
-  "transformation": "Word Transformation"
+  "transformation": "Word Transformation",
+  "brainTeaser": "Brain Teaser",
+  "randomChallenge": "Random Challenge",
+  "speedDrill": "Speed Drill",
+  "mnemonicMaster": "Mnemonic Master"
 };
 
 const QuizComponent = () => {
@@ -240,6 +248,34 @@ const QuizComponent = () => {
         description: "Transform words from one form to another.", 
         icon: <GitBranch className="h-6 w-6" />,
         gradient: "from-cyan-500 to-blue-600"
+      },
+      { 
+        id: "brainTeaser", 
+        title: "Brain Teaser", 
+        description: "Test your logical reasoning skills with challenging puzzles.", 
+        icon: <Brain className="h-6 w-6" />,
+        gradient: "from-rose-500 to-pink-600"
+      },
+      { 
+        id: "randomChallenge", 
+        title: "Random Challenge", 
+        description: "Test your vocabulary knowledge with a random selection of questions.", 
+        icon: <Dices className="h-6 w-6" />,
+        gradient: "from-yellow-500 to-orange-600"
+      },
+      { 
+        id: "speedDrill", 
+        title: "Speed Drill", 
+        description: "Test your vocabulary knowledge with a timed quiz.", 
+        icon: <Clock className="h-6 w-6" />,
+        gradient: "from-green-500 to-teal-500"
+      },
+      { 
+        id: "mnemonicMaster", 
+        title: "Mnemonic Master", 
+        description: "Test your memory skills with mnemonic devices.", 
+        icon: <Lightbulb className="h-6 w-6" />,
+        gradient: "from-amber-500 to-orange-600"
       }
     ];
     

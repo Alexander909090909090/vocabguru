@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuiz, QuizDifficulty, QuizType } from "@/context/QuizContext";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,11 @@ const quizTypeIcons: Record<QuizType, React.ReactNode> = {
   "synonymAntonym": <Shuffle className="h-5 w-5" />,
   "etymology": <Languages className="h-5 w-5" />,
   "contextual": <FileText className="h-5 w-5" />,
-  "transformation": <GitBranch className="h-5 w-5" />
+  "transformation": <GitBranch className="h-5 w-5" />,
+  "brainTeaser": <Brain className="h-5 w-5" />,
+  "randomChallenge": <Dices className="h-5 w-5" />,
+  "speedDrill": <Clock className="h-5 w-5" />,
+  "mnemonicMaster": <Lightbulb className="h-5 w-5" />
 };
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -50,7 +53,6 @@ const QuizCard = ({ title, description, icon, gradient, type, difficulty, onClic
       whileTap={{ scale: 0.98 }}
       onClick={() => onClick(type, difficulty)}
     >
-      {/* Glow effect on hover */}
       <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
       
       <div className="flex items-start gap-4">
@@ -84,7 +86,6 @@ const QuizGrid = () => {
   const { userStats, startQuiz, toggleTimedMode } = useQuiz();
   const [isTimedMode, setIsTimedMode] = useState(false);
   
-  // Define quiz types with their details
   const quizTypes = [
     {
       id: "wordBuilder" as QuizType,
@@ -218,7 +219,6 @@ const QuizGrid = () => {
         </motion.p>
       </div>
       
-      {/* User Stats */}
       <motion.div 
         className="p-6 bg-gray-900/70 backdrop-blur-md rounded-lg shadow-md border border-white/10 space-y-4"
         initial={{ opacity: 0, y: 20 }}
@@ -254,7 +254,6 @@ const QuizGrid = () => {
         </div>
       </motion.div>
       
-      {/* Timed Mode Toggle */}
       <motion.div 
         className="flex items-center space-x-2 pt-2"
         initial={{ opacity: 0 }}
@@ -274,7 +273,6 @@ const QuizGrid = () => {
         </Label>
       </motion.div>
       
-      {/* Quiz Types Grid */}
       <motion.div 
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
         initial={{ opacity: 0 }}
@@ -295,7 +293,6 @@ const QuizGrid = () => {
         ))}
       </motion.div>
       
-      {/* Achievements */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -304,7 +301,6 @@ const QuizGrid = () => {
         {renderAchievements()}
       </motion.div>
       
-      {/* High Scores */}
       <motion.div 
         className="p-4 bg-gray-900/70 backdrop-blur-md rounded-lg border border-white/10"
         initial={{ opacity: 0 }}
