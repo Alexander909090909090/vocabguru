@@ -10,6 +10,24 @@ interface AIAssistantTabProps {
 }
 
 const AIAssistantTab = ({ word }: AIAssistantTabProps) => {
+  // Create a targeted prompt based on the word's morphological structure
+  const getMorphemePrompt = () => {
+    const parts = [];
+    if (word.morphemeBreakdown.prefix) {
+      parts.push(`the prefix "${word.morphemeBreakdown.prefix.text}" (meaning: ${word.morphemeBreakdown.prefix.meaning})`);
+    }
+    
+    parts.push(`the root "${word.morphemeBreakdown.root.text}" (meaning: ${word.morphemeBreakdown.root.meaning})`);
+    
+    if (word.morphemeBreakdown.suffix) {
+      parts.push(`the suffix "${word.morphemeBreakdown.suffix.text}" (meaning: ${word.morphemeBreakdown.suffix.meaning})`);
+    }
+    
+    return parts.length > 1 
+      ? `How do ${parts.join(', ')} combine to form the meaning of "${word.word}"?` 
+      : `What does the root "${word.morphemeBreakdown.root.text}" tell us about the word "${word.word}"?`;
+  };
+
   return (
     <div className="mt-6">
       <WordSection title="AI Language Assistant" className="mb-0">
@@ -27,7 +45,7 @@ const AIAssistantTab = ({ word }: AIAssistantTabProps) => {
         
         <div className="flex items-center gap-2 mb-4 text-xs bg-secondary/50 p-2 rounded-lg">
           <MessageSquare className="h-3 w-3 text-primary" />
-          <span>Quick prompt: "How do the morphemes in {word.word} contribute to its meaning?"</span>
+          <span>Quick prompt: "{getMorphemePrompt()}"</span>
         </div>
         
         <AIChatInterface currentWord={word} />
