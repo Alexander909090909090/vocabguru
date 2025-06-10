@@ -78,7 +78,7 @@ const AIAssistantTab = ({ word }: AIAssistantTabProps) => {
               onClick={() => document.getElementById('message-input')?.setAttribute('value', `What other words contain the root "${word.morphemeBreakdown.root.text}"?`)}
             >
               <MessageSquare className="h-3 w-3 text-primary inline mr-1" />
-              <span>"What other words contain the root "${word.morphemeBreakdown.root.text}"?"</span>
+              <span>"What other words contain the root "{word.morphemeBreakdown.root.text}"?"</span>
             </div>
           </div>
         </Card>
