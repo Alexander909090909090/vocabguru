@@ -5,7 +5,7 @@ import { WordProfile } from "@/types/wordProfile";
 import { WordProfileService } from "@/services/wordProfileService";
 
 // Legacy data structure for backward compatibility
-export { words } from "./words";
+export { default as words } from "./words";
 
 // New database-driven functions
 export const getWordProfiles = async (): Promise<WordProfile[]> => {

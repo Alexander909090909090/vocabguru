@@ -1,6 +1,38 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { WordProfile, WebhookLog } from "@/types/wordProfile";
+import { WordProfile, WebhookLog, Definition } from "@/types/wordProfile";
+
+// Helper function to safely parse JSON fields
+const parseJsonField = <T>(field: any, fallback: T): T => {
+  if (typeof field === 'string') {
+    try {
+      return JSON.parse(field);
+    } catch {
+      return fallback;
+    }
+  }
+  return field || fallback;
+};
+
+// Helper function to convert database row to WordProfile
+const convertToWordProfile = (row: any): WordProfile => {
+  return {
+    ...row,
+    definitions: parseJsonField<Definition[]>(row.definitions, []),
+    common_collocations: parseJsonField<string[]>(row.common_collocations, []),
+    synonyms: parseJsonField<string[]>(row.synonyms, []),
+    antonyms: parseJsonField<string[]>(row.antonyms, [])
+  };
+};
+
+// Helper function to convert database row to WebhookLog
+const convertToWebhookLog = (row: any): WebhookLog => {
+  return {
+    ...row,
+    status: row.status as 'pending' | 'processed' | 'failed',
+    payload: parseJsonField<any>(row.payload, {})
+  };
+};
 
 export class WordProfileService {
   static async getAllWordProfiles(): Promise<WordProfile[]> {
@@ -14,7 +46,7 @@ export class WordProfileService {
       throw error;
     }
 
-    return data || [];
+    return (data || []).map(convertToWordProfile);
   }
 
   static async getWordProfile(word: string): Promise<WordProfile | null> {
@@ -29,7 +61,7 @@ export class WordProfileService {
       throw error;
     }
 
-    return data;
+    return data ? convertToWordProfile(data) : null;
   }
 
   static async getWordProfileById(id: string): Promise<WordProfile | null> {
@@ -44,7 +76,7 @@ export class WordProfileService {
       throw error;
     }
 
-    return data;
+    return data ? convertToWordProfile(data) : null;
   }
 
   static async getFeaturedWords(): Promise<WordProfile[]> {
@@ -59,7 +91,7 @@ export class WordProfileService {
       throw error;
     }
 
-    return data || [];
+    return (data || []).map(convertToWordProfile);
   }
 
   static async searchWords(query: string): Promise<WordProfile[]> {
@@ -75,7 +107,7 @@ export class WordProfileService {
       throw error;
     }
 
-    return data || [];
+    return (data || []).map(convertToWordProfile);
   }
 
   static async getWordsByLanguageOrigin(origin: string): Promise<WordProfile[]> {
@@ -90,7 +122,7 @@ export class WordProfileService {
       throw error;
     }
 
-    return data || [];
+    return (data || []).map(convertToWordProfile);
   }
 
   static async getWordsByDifficulty(level: string): Promise<WordProfile[]> {
@@ -105,7 +137,7 @@ export class WordProfileService {
       throw error;
     }
 
-    return data || [];
+    return (data || []).map(convertToWordProfile);
   }
 
   static async processWebhook(source: string, payload: any): Promise<void> {
@@ -133,6 +165,6 @@ export class WordProfileService {
       throw error;
     }
 
-    return data || [];
+    return (data || []).map(convertToWebhookLog);
   }
 }

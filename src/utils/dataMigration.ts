@@ -1,6 +1,6 @@
 
 import { WordProfileService } from "@/services/wordProfileService";
-import { words } from "@/data/words";
+import words from "@/data/words";
 import { Definition } from "@/types/wordProfile";
 
 export class DataMigration {
