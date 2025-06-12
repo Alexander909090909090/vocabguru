@@ -35,7 +35,7 @@ export function AIChatInterface({ currentWord }: AIChatInterfaceProps) {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
 
@@ -51,9 +51,9 @@ export function AIChatInterface({ currentWord }: AIChatInterfaceProps) {
     setInputValue("");
     setIsLoading(true);
     
-    // Simulate AI response with enhanced capabilities
-    setTimeout(() => {
-      const responseText = generateResponseText(userMessage.text, currentWord);
+    try {
+      // Generate AI response using async function
+      const responseText = await generateResponseText(userMessage.text, currentWord);
       
       const aiMessage: Message = {
         id: `ai-${Date.now()}`,
@@ -63,8 +63,18 @@ export function AIChatInterface({ currentWord }: AIChatInterfaceProps) {
       };
       
       setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Error generating response:', error);
+      const errorMessage: Message = {
+        id: `ai-${Date.now()}`,
+        sender: "ai",
+        text: "I apologize, but I encountered an error while generating a response. Please try again.",
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1200);
+    }
   };
 
   const handleFeedback = (messageId: string, type: 'like' | 'dislike') => {

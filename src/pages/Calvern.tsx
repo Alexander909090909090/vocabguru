@@ -35,7 +35,7 @@ const Calvern = () => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
 
@@ -68,10 +68,9 @@ const Calvern = () => {
       }
     }
     
-    // Generate AI response with simulated delay for realistic feel
-    setTimeout(() => {
+    try {
       // Use the enhanced generateResponseText function
-      let responseText = generateResponseText(userMessage.text, targetWord);
+      let responseText = await generateResponseText(userMessage.text, targetWord);
       
       // Add linguistics insights for queries without specific word matches
       if (!targetWord) {
@@ -96,10 +95,19 @@ const Calvern = () => {
       };
       
       setMessages(prev => [...prev, aiMessage]);
-      setIsLoading(false);
-      
       toast.success("Calvern responded to your query");
-    }, 1500);
+    } catch (error) {
+      console.error('Error generating response:', error);
+      const errorMessage: Message = {
+        id: `ai-${Date.now()}`,
+        sender: "ai",
+        text: "I apologize, but I encountered an error while generating a response. Please try again.",
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleFeedback = (messageId: string, type: 'like' | 'dislike') => {

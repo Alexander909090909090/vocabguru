@@ -1,3 +1,4 @@
+
 import { Word } from "@/data/words";
 import { SemanticSearchService } from "@/services/semanticSearchService";
 

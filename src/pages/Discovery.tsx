@@ -124,7 +124,7 @@ const DiscoveryPage: React.FC = () => {
   };
 
   const addWordToCollection = async (entry: DictionaryEntry | SemanticSearchResult) => {
-    const wordToAdd = 'word' in entry ? entry.word : entry.word;
+    const wordToAdd = entry.word;
     setIsAdding(wordToAdd);
     
     try {
