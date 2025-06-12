@@ -5,44 +5,41 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { WordsProvider } from "@/context/WordsContext";
-import Header from "@/components/Header";
+import { QuizProvider } from "@/context/QuizContext";
 import Index from "./pages/Index";
+import Discovery from "./pages/Discovery";
 import WordDetail from "./pages/WordDetail";
 import Quiz from "./pages/Quiz";
-import Integrations from "./pages/Integrations";
-import Discovery from "./pages/Discovery";
 import Calvern from "./pages/Calvern";
-import WordProfileAdmin from "./components/Admin/WordProfileAdmin";
+import Integrations from "./pages/Integrations";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <WordsProvider>
       <TooltipProvider>
-        <WordsProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-              <Header />
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/word/:id" element={<WordDetail />} />
-                <Route path="/quiz" element={<Quiz />} />
-                <Route path="/integrations" element={<Integrations />} />
-                <Route path="/discovery" element={<Discovery />} />
-                <Route path="/calvern" element={<Calvern />} />
-                <Route path="/admin/word-profiles" element={<WordProfileAdmin />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </div>
-          </BrowserRouter>
-        </WordsProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/discovery" element={<Discovery />} />
+            <Route path="/word/:id" element={<WordDetail />} />
+            <Route path="/quiz" element={
+              <QuizProvider>
+                <Quiz />
+              </QuizProvider>
+            } />
+            <Route path="/calvern" element={<Calvern />} />
+            <Route path="/integrations" element={<Integrations />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
       </TooltipProvider>
-    </QueryClientProvider>
-  );
-}
+    </WordsProvider>
+  </QueryClientProvider>
+);
 
 export default App;
