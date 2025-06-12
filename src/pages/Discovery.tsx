@@ -1,7 +1,6 @@
-
 import React, { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Plus, BookOpen, Globe, Loader2 } from 'lucide-react';
+import { Search, Plus, BookOpen, Globe, Loader2, Sparkles, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
 import { WordProfileService } from '@/services/wordProfileService';
 import { WordProfile } from '@/types/wordProfile';
+import { SemanticSearchService, SemanticSearchResult } from '@/services/semanticSearchService';
+import AIChatInterface from '@/components/AIChatInterface';
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -33,16 +34,19 @@ interface DictionaryEntry {
 
 const DiscoveryPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [meaningSearch, setMeaningSearch] = useState('');
   const [searchResults, setSearchResults] = useState<DictionaryEntry[]>([]);
+  const [semanticResults, setSemanticResults] = useState<SemanticSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isSemanticSearching, setIsSemanticSearching] = useState(false);
   const [isAdding, setIsAdding] = useState<string | null>(null);
+  const [searchMode, setSearchMode] = useState<'dictionary' | 'semantic'>('dictionary');
 
   const searchDictionary = useCallback(async (word: string) => {
     if (!word.trim()) return;
 
     setIsSearching(true);
     try {
-      // Using Free Dictionary API
       const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word.trim()}`);
       
       if (!response.ok) {
@@ -73,62 +77,114 @@ const DiscoveryPage: React.FC = () => {
     }
   }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const searchByMeaning = useCallback(async (meaning: string) => {
+    if (!meaning.trim()) return;
+
+    setIsSemanticSearching(true);
+    try {
+      const results = await SemanticSearchService.enhancedSemanticSearch(meaning.trim());
+      
+      // Convert to semantic results format
+      const semanticData: SemanticSearchResult[] = results.map((word, index) => ({
+        word,
+        score: 100 - (index * 3), // Decreasing score based on position
+        tags: [],
+        defs: []
+      }));
+      
+      setSemanticResults(semanticData);
+      
+      if (semanticData.length === 0) {
+        toast({
+          title: "No words found",
+          description: `No words found related to "${meaning}"`,
+        });
+      }
+    } catch (error) {
+      console.error('Semantic search error:', error);
+      toast({
+        title: "Search failed",
+        description: "Failed to search for related words. Please try again.",
+        variant: "destructive"
+      });
+      setSemanticResults([]);
+    } finally {
+      setIsSemanticSearching(false);
+    }
+  }, []);
+
+  const handleDictionarySearch = (e: React.FormEvent) => {
     e.preventDefault();
     searchDictionary(searchTerm);
   };
 
-  const addWordToCollection = async (entry: DictionaryEntry) => {
-    setIsAdding(entry.word);
+  const handleSemanticSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    searchByMeaning(meaningSearch);
+  };
+
+  const addWordToCollection = async (entry: DictionaryEntry | SemanticSearchResult) => {
+    const wordToAdd = 'word' in entry ? entry.word : entry.word;
+    setIsAdding(wordToAdd);
+    
     try {
-      // Check if word already exists
-      const existingWord = await WordProfileService.getWordProfile(entry.word);
+      const existingWord = await WordProfileService.getWordProfile(wordToAdd);
       if (existingWord) {
         toast({
           title: "Word already exists",
-          description: `"${entry.word}" is already in your collection.`,
+          description: `"${wordToAdd}" is already in your collection.`,
         });
         return;
       }
 
-      // Convert dictionary entry to WordProfile format
-      const primaryMeaning = entry.meanings[0]?.definitions[0];
-      const wordProfile: Partial<WordProfile> = {
-        word: entry.word,
-        morpheme_breakdown: {
-          root: {
-            text: entry.word,
-            meaning: primaryMeaning?.definition || 'Definition not available'
+      // If it's a semantic result, fetch full definition first
+      if ('score' in entry) {
+        try {
+          const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${wordToAdd}`);
+          if (response.ok) {
+            const dictData = await response.json();
+            await addDictionaryEntry(dictData[0]);
+            return;
           }
-        },
-        etymology: {
-          language_of_origin: 'English',
-          historical_origins: entry.origin || 'Etymology not available'
-        },
-        definitions: {
-          primary: primaryMeaning?.definition || 'Definition not available',
-          standard: entry.meanings.slice(0, 3).map(m => 
-            m.definitions[0]?.definition || ''
-          ).filter(Boolean)
-        },
-        word_forms: {
-          base_form: entry.word
-        },
-        analysis: {
-          parts_of_speech: entry.meanings[0]?.partOfSpeech || 'unknown',
-          synonyms_antonyms: JSON.stringify({
-            synonyms: primaryMeaning?.synonyms || [],
-            antonyms: primaryMeaning?.antonyms || []
-          }),
-          example: primaryMeaning?.example || 'No example available'
+        } catch (error) {
+          console.log('Dictionary lookup failed, creating basic entry');
         }
-      };
+        
+        // Create basic entry if dictionary lookup fails
+        const basicProfile: Partial<WordProfile> = {
+          word: wordToAdd,
+          morpheme_breakdown: {
+            root: {
+              text: wordToAdd,
+              meaning: 'Meaning to be analyzed'
+            }
+          },
+          etymology: {
+            language_of_origin: 'English',
+            historical_origins: 'Etymology to be researched'
+          },
+          definitions: {
+            primary: 'Definition to be researched',
+            standard: []
+          },
+          word_forms: {
+            base_form: wordToAdd
+          },
+          analysis: {
+            parts_of_speech: 'unknown',
+            synonyms_antonyms: JSON.stringify({ synonyms: [], antonyms: [] }),
+            example: 'Example usage to be added'
+          }
+        };
 
-      await WordProfileService.createWordProfile(wordProfile);
+        await WordProfileService.createWordProfile(basicProfile);
+      } else {
+        await addDictionaryEntry(entry as DictionaryEntry);
+      }
       
       toast({
         title: "Word added successfully",
-        description: `"${entry.word}" has been added to your collection.`
+        description: `"${wordToAdd}" has been added to your collection.`
       });
     } catch (error) {
       console.error('Error adding word:', error);
@@ -140,6 +196,42 @@ const DiscoveryPage: React.FC = () => {
     } finally {
       setIsAdding(null);
     }
+  };
+
+  const addDictionaryEntry = async (entry: DictionaryEntry) => {
+    const primaryMeaning = entry.meanings[0]?.definitions[0];
+    const wordProfile: Partial<WordProfile> = {
+      word: entry.word,
+      morpheme_breakdown: {
+        root: {
+          text: entry.word,
+          meaning: primaryMeaning?.definition || 'Definition not available'
+        }
+      },
+      etymology: {
+        language_of_origin: 'English',
+        historical_origins: entry.origin || 'Etymology not available'
+      },
+      definitions: {
+        primary: primaryMeaning?.definition || 'Definition not available',
+        standard: entry.meanings.slice(0, 3).map(m => 
+          m.definitions[0]?.definition || ''
+        ).filter(Boolean)
+      },
+      word_forms: {
+        base_form: entry.word
+      },
+      analysis: {
+        parts_of_speech: entry.meanings[0]?.partOfSpeech || 'unknown',
+        synonyms_antonyms: JSON.stringify({
+          synonyms: primaryMeaning?.synonyms || [],
+          antonyms: primaryMeaning?.antonyms || []
+        }),
+        example: primaryMeaning?.example || 'No example available'
+      }
+    };
+
+    await WordProfileService.createWordProfile(wordProfile);
   };
 
   return (
@@ -157,125 +249,241 @@ const DiscoveryPage: React.FC = () => {
       </div>
       
       <p className="text-gray-600 dark:text-gray-400 mb-8">
-        Discover new words using open source dictionary APIs and add them to your collection.
+        Discover new words using dictionary search or find words by meaning using semantic search.
       </p>
 
-      <form onSubmit={handleSearch} className="mb-8">
-        <div className="flex gap-4">
-          <div className="flex-1">
-            <Input
-              type="text"
-              placeholder="Search for a word to discover..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="text-lg"
-              disabled={isSearching}
-            />
+      {/* Search Mode Toggle */}
+      <div className="flex gap-2 mb-6">
+        <Button
+          variant={searchMode === 'dictionary' ? 'default' : 'outline'}
+          onClick={() => setSearchMode('dictionary')}
+          className="flex items-center gap-2"
+        >
+          <Search className="h-4 w-4" />
+          Dictionary Search
+        </Button>
+        <Button
+          variant={searchMode === 'semantic' ? 'default' : 'outline'}
+          onClick={() => setSearchMode('semantic')}
+          className="flex items-center gap-2"
+        >
+          <Sparkles className="h-4 w-4" />
+          Search by Meaning
+        </Button>
+      </div>
+
+      {/* Dictionary Search */}
+      {searchMode === 'dictionary' && (
+        <form onSubmit={handleDictionarySearch} className="mb-8">
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <Input
+                type="text"
+                placeholder="Search for a specific word..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="text-lg"
+                disabled={isSearching}
+              />
+            </div>
+            <Button 
+              type="submit" 
+              disabled={isSearching || !searchTerm.trim()}
+              className="px-8"
+            >
+              {isSearching ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Search className="h-4 w-4 mr-2" />
+              )}
+              Search
+            </Button>
           </div>
-          <Button 
-            type="submit" 
-            disabled={isSearching || !searchTerm.trim()}
-            className="px-8"
-          >
-            {isSearching ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <Search className="h-4 w-4 mr-2" />
-            )}
-            Search
-          </Button>
-        </div>
-      </form>
+        </form>
+      )}
 
-      {searchResults.length > 0 && (
-        <div className="space-y-6">
-          <h2 className="text-2xl font-medium">Search Results</h2>
-          
-          {searchResults.map((entry, index) => (
-            <Card key={index} className="overflow-hidden">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-2xl">{entry.word}</CardTitle>
-                    {entry.phonetic && (
-                      <p className="text-sm text-gray-500 mt-1">{entry.phonetic}</p>
-                    )}
-                  </div>
-                  <Button
-                    onClick={() => addWordToCollection(entry)}
-                    disabled={isAdding === entry.word}
-                    className="flex items-center gap-2"
-                  >
-                    {isAdding === entry.word ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Plus className="h-4 w-4" />
-                    )}
-                    Add to Collection
-                  </Button>
-                </div>
-              </CardHeader>
+      {/* Semantic Search */}
+      {searchMode === 'semantic' && (
+        <form onSubmit={handleSemanticSearch} className="mb-8">
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <Input
+                type="text"
+                placeholder="Describe the meaning you're looking for (e.g., 'fast', 'abundant', 'beautiful')..."
+                value={meaningSearch}
+                onChange={(e) => setMeaningSearch(e.target.value)}
+                className="text-lg"
+                disabled={isSemanticSearching}
+              />
+            </div>
+            <Button 
+              type="submit" 
+              disabled={isSemanticSearching || !meaningSearch.trim()}
+              className="px-8"
+            >
+              {isSemanticSearching ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-2" />
+              )}
+              Find Words
+            </Button>
+          </div>
+        </form>
+      )}
+
+      <div className="grid lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+          {/* Dictionary Search Results */}
+          {searchMode === 'dictionary' && searchResults.length > 0 && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-medium">Dictionary Results</h2>
               
-              <CardContent className="space-y-4">
-                {entry.origin && (
-                  <div>
-                    <h4 className="font-medium text-sm text-gray-500 mb-1">Etymology</h4>
-                    <p className="text-sm">{entry.origin}</p>
-                  </div>
-                )}
-                
-                <div className="space-y-4">
-                  {entry.meanings.map((meaning, meaningIndex) => (
-                    <div key={meaningIndex} className="border-l-4 border-primary/20 pl-4">
-                      <Badge variant="outline" className="mb-2">
-                        {meaning.partOfSpeech}
-                      </Badge>
-                      
-                      <div className="space-y-2">
-                        {meaning.definitions.slice(0, 3).map((def, defIndex) => (
-                          <div key={defIndex} className="space-y-1">
-                            <p className="text-sm">{def.definition}</p>
-                            {def.example && (
-                              <p className="text-xs text-gray-500 italic">
-                                Example: "{def.example}"
-                              </p>
-                            )}
-                            {def.synonyms && def.synonyms.length > 0 && (
-                              <p className="text-xs text-gray-500">
-                                Synonyms: {def.synonyms.slice(0, 3).join(', ')}
-                              </p>
-                            )}
-                          </div>
-                        ))}
+              {searchResults.map((entry, index) => (
+                <Card key={index} className="overflow-hidden">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-2xl">{entry.word}</CardTitle>
+                        {entry.phonetic && (
+                          <p className="text-sm text-gray-500 mt-1">{entry.phonetic}</p>
+                        )}
                       </div>
+                      <Button
+                        onClick={() => addWordToCollection(entry)}
+                        disabled={isAdding === entry.word}
+                        className="flex items-center gap-2"
+                      >
+                        {isAdding === entry.word ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Plus className="h-4 w-4" />
+                        )}
+                        Add to Collection
+                      </Button>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+                  </CardHeader>
+                  
+                  <CardContent className="space-y-4">
+                    {entry.origin && (
+                      <div>
+                        <h4 className="font-medium text-sm text-gray-500 mb-1">Etymology</h4>
+                        <p className="text-sm">{entry.origin}</p>
+                      </div>
+                    )}
+                    
+                    <div className="space-y-4">
+                      {entry.meanings.map((meaning, meaningIndex) => (
+                        <div key={meaningIndex} className="border-l-4 border-primary/20 pl-4">
+                          <Badge variant="outline" className="mb-2">
+                            {meaning.partOfSpeech}
+                          </Badge>
+                          
+                          <div className="space-y-2">
+                            {meaning.definitions.slice(0, 3).map((def, defIndex) => (
+                              <div key={defIndex} className="space-y-1">
+                                <p className="text-sm">{def.definition}</p>
+                                {def.example && (
+                                  <p className="text-xs text-gray-500 italic">
+                                    Example: "{def.example}"
+                                  </p>
+                                )}
+                                {def.synonyms && def.synonyms.length > 0 && (
+                                  <p className="text-xs text-gray-500">
+                                    Synonyms: {def.synonyms.slice(0, 3).join(', ')}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
-      {searchTerm && searchResults.length === 0 && !isSearching && (
-        <div className="text-center py-12">
-          <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-500 mb-2">No results found</h3>
-          <p className="text-gray-400">
-            Try searching for a different word or check your spelling.
-          </p>
-        </div>
-      )}
+          {/* Semantic Search Results */}
+          {searchMode === 'semantic' && semanticResults.length > 0 && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-medium">Words Related to "{meaningSearch}"</h2>
+              
+              <div className="grid gap-4">
+                {semanticResults.map((result, index) => (
+                  <Card key={index} className="overflow-hidden hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-lg font-medium">{result.word}</h3>
+                          <Badge variant="outline" className="text-xs">
+                            Score: {Math.round(result.score)}
+                          </Badge>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => addWordToCollection(result)}
+                          disabled={isAdding === result.word}
+                          className="flex items-center gap-2"
+                        >
+                          {isAdding === result.word ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Plus className="h-3 w-3" />
+                          )}
+                          Add
+                        </Button>
+                      </div>
+                      {result.defs && result.defs.length > 0 && (
+                        <p className="text-sm text-gray-600 mt-2">{result.defs[0]}</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
 
-      {!searchTerm && (
-        <div className="text-center py-12">
-          <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-500 mb-2">Discover New Words</h3>
-          <p className="text-gray-400">
-            Enter a word above to search the dictionary and discover new vocabulary.
-          </p>
+          {/* No Results States */}
+          {searchMode === 'dictionary' && searchTerm && searchResults.length === 0 && !isSearching && (
+            <div className="text-center py-12">
+              <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-500 mb-2">No results found</h3>
+              <p className="text-gray-400">
+                Try searching for a different word or check your spelling.
+              </p>
+            </div>
+          )}
+
+          {searchMode === 'semantic' && meaningSearch && semanticResults.length === 0 && !isSemanticSearching && (
+            <div className="text-center py-12">
+              <Sparkles className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-500 mb-2">No related words found</h3>
+              <p className="text-gray-400">
+                Try describing the meaning differently or using simpler terms.
+              </p>
+            </div>
+          )}
+
+          {!searchTerm && !meaningSearch && (
+            <div className="text-center py-12">
+              <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-500 mb-2">Discover New Words</h3>
+              <p className="text-gray-400">
+                Search for specific words or find words by their meaning using our semantic search.
+              </p>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* AI Chat Panel */}
+        <div className="lg:col-span-1">
+          <div className="sticky top-8">
+            <AIChatInterface />
+          </div>
+        </div>
+      </div>
     </motion.div>
   );
 };
