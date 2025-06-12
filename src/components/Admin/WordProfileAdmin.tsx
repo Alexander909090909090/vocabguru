@@ -47,17 +47,17 @@ export function WordProfileAdmin() {
     try {
       const testPayload = {
         word: "testword",
-        morphemes: {
+        morpheme_breakdown: {
           root: { text: "test", meaning: "to examine" }
         },
-        definitions: [
-          { type: "primary", text: "A test word for webhook testing" }
-        ],
-        metadata: {
-          language_origin: "English",
-          part_of_speech: "noun",
-          frequency_score: 50,
-          difficulty_level: "intermediate"
+        definitions: {
+          primary: "A test word for webhook testing"
+        },
+        etymology: {
+          language_of_origin: "English"
+        },
+        analysis: {
+          parts_of_speech: "noun"
         }
       };
 
@@ -69,6 +69,16 @@ export function WordProfileAdmin() {
       toast.error('Test webhook failed');
       console.error('Test webhook error:', error);
     }
+  };
+
+  // Helper function to get language origin from etymology
+  const getLanguageOrigin = (profile: any) => {
+    return profile.etymology?.language_of_origin || 'Unknown';
+  };
+
+  // Helper function to get parts of speech from analysis
+  const getPartsOfSpeech = (profile: any) => {
+    return profile.analysis?.parts_of_speech || 'Unknown';
   };
 
   return (
@@ -94,12 +104,12 @@ export function WordProfileAdmin() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Featured Words</CardTitle>
+            <CardTitle className="text-sm font-medium">With Definitions</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {wordProfiles.filter(w => w.is_featured).length}
+              {wordProfiles.filter(w => w.definitions?.primary).length}
             </div>
           </CardContent>
         </Card>
@@ -164,13 +174,13 @@ export function WordProfileAdmin() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {Array.from(new Set(wordProfiles.map(w => w.language_origin)))
+                  {Array.from(new Set(wordProfiles.map(w => getLanguageOrigin(w))))
                     .slice(0, 5)
                     .map((origin) => (
                       <div key={origin} className="flex justify-between items-center">
                         <span className="text-sm">{origin}</span>
                         <Badge variant="outline">
-                          {wordProfiles.filter(w => w.language_origin === origin).length}
+                          {wordProfiles.filter(w => getLanguageOrigin(w) === origin).length}
                         </Badge>
                       </div>
                     ))}
@@ -196,14 +206,16 @@ export function WordProfileAdmin() {
                         <div className="flex-1">
                           <h3 className="font-medium">{profile.word}</h3>
                           <p className="text-sm text-muted-foreground">
-                            {profile.language_origin} • {profile.difficulty_level}
+                            {getLanguageOrigin(profile)} • {getPartsOfSpeech(profile)}
                           </p>
+                          {profile.definitions?.primary && (
+                            <p className="text-sm text-gray-600 mt-1 truncate">
+                              {profile.definitions.primary}
+                            </p>
+                          )}
                         </div>
                         <div className="flex gap-2">
-                          {profile.is_featured && (
-                            <Badge>Featured</Badge>
-                          )}
-                          <Badge variant="outline">{profile.part_of_speech}</Badge>
+                          <Badge variant="outline">{getPartsOfSpeech(profile)}</Badge>
                         </div>
                       </div>
                     ))}
