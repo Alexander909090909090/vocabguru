@@ -1,13 +1,14 @@
+
 import React, { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { useWords } from '@/context/WordsContext';
-import { ArrowUpFromLine, ArrowDownToLine, X, Check, AlertCircle, Upload } from 'lucide-react';
+import { ArrowUpFromLine, ArrowDownToLine, Upload, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/use-toast';
-import { Word } from '@/data/words';
+import { WordProfileService } from '@/services/wordProfileService';
+import { WordProfile } from '@/types/wordProfile';
 import { v4 as uuidv4 } from 'uuid';
 
 const pageVariants = {
@@ -16,131 +17,71 @@ const pageVariants = {
   exit: { opacity: 0, y: -20 }
 };
 
-const wordToCSV = (word: Word): string => {
-  const header = "id,word,pronunciation,description,languageOrigin,partOfSpeech";
+const wordProfileToCSV = (profile: WordProfile): string => {
+  const header = "word,primary_definition,language_origin,parts_of_speech,root_text,root_meaning";
   
-  const csvRow = `${word.id},${word.word},${word.pronunciation || ''},${word.description.replace(/,/g, ';')},${word.languageOrigin},${word.partOfSpeech}`;
+  const csvRow = `${profile.word},"${profile.definitions?.primary || ''}","${profile.etymology?.language_of_origin || ''}","${profile.analysis?.parts_of_speech || ''}","${profile.morpheme_breakdown?.root?.text || ''}","${profile.morpheme_breakdown?.root?.meaning || ''}"`;
   
   return csvRow;
 };
 
-const detectHeaders = (headerRow: string): Record<string, string> => {
-  const headers = headerRow.split(',').map(h => h.trim().toLowerCase());
-  const headerMap: Record<string, string> = {};
-  
-  headers.forEach((header, index) => {
-    if (header === 'word' || header === 'term' || header === 'vocabulary' || header === 'expression') {
-      headerMap['word'] = index.toString();
-    } else if (header === 'definition' || header === 'description' || header === 'meaning' || header === 'explanation') {
-      headerMap['description'] = index.toString();
-    } else if (header === 'pronunciation' || header === 'phonetics' || header === 'sound') {
-      headerMap['pronunciation'] = index.toString();
-    } else if (header === 'origin' || header === 'language' || header === 'languageorigin' || header === 'language_origin' || header === 'etymology') {
-      headerMap['languageOrigin'] = index.toString();
-    } else if (header === 'partofspeech' || header === 'part_of_speech' || header === 'pos' || header === 'wordtype' || header === 'word_type') {
-      headerMap['partOfSpeech'] = index.toString();
-    } else if (header === 'id' || header === 'identifier' || header === 'key') {
-      headerMap['id'] = index.toString();
-    }
-  });
-  
-  return headerMap;
-};
-
-const csvToWord = (row: string, headerMap: Record<string, string>): Partial<Word> | null => {
-  const values = row.split(',').map(v => v.trim());
+const csvToWordProfile = (row: string, headers: string[]): Partial<WordProfile> | null => {
+  const values = row.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
   
   if (values.join('').trim() === '') {
     return null;
   }
-  
-  const wordData: Record<string, any> = {};
-  
-  if (!headerMap['id'] || !values[parseInt(headerMap['id'])]) {
-    wordData.id = uuidv4();
-  } else {
-    wordData.id = values[parseInt(headerMap['id'])];
-  }
-  
-  if (headerMap['word'] && values[parseInt(headerMap['word'])]) {
-    wordData.word = values[parseInt(headerMap['word'])];
-  } else {
-    for (let i = 0; i < values.length; i++) {
-      if (values[i] && values[i].length > 0 && values[i].length < 30 && /^[a-zA-Z\s-]+$/.test(values[i])) {
-        wordData.word = values[i];
-        break;
+
+  const headerMap: Record<string, number> = {};
+  headers.forEach((header, index) => {
+    headerMap[header.toLowerCase().trim()] = index;
+  });
+
+  const getValueByHeader = (possibleHeaders: string[]): string => {
+    for (const header of possibleHeaders) {
+      const index = headerMap[header];
+      if (index !== undefined && values[index]) {
+        return values[index];
       }
     }
-    
-    if (!wordData.word) {
-      return null;
-    }
-  }
-  
-  if (headerMap['description'] && values[parseInt(headerMap['description'])]) {
-    wordData.description = values[parseInt(headerMap['description'])];
-  } else {
-    for (let i = 0; i < values.length; i++) {
-      if (values[i] && values[i].length > 30) {
-        wordData.description = values[i];
-        break;
+    return '';
+  };
+
+  const word = getValueByHeader(['word', 'term', 'vocabulary', 'name']);
+  if (!word) return null;
+
+  const primaryDefinition = getValueByHeader(['definition', 'description', 'meaning', 'primary_definition']);
+  const languageOrigin = getValueByHeader(['origin', 'language', 'language_origin', 'etymology']);
+  const partOfSpeech = getValueByHeader(['part_of_speech', 'pos', 'parts_of_speech', 'type']);
+  const rootText = getValueByHeader(['root', 'root_text', 'base_word']);
+  const rootMeaning = getValueByHeader(['root_meaning', 'core_meaning', 'base_meaning']);
+
+  const wordProfile: Partial<WordProfile> = {
+    id: uuidv4(),
+    word: word,
+    morpheme_breakdown: {
+      root: {
+        text: rootText || word,
+        meaning: rootMeaning || 'Not analyzed'
       }
-    }
-    
-    if (!wordData.description) {
-      wordData.description = `Definition for ${wordData.word}`;
-    }
-  }
-  
-  if (headerMap['pronunciation'] && values[parseInt(headerMap['pronunciation'])]) {
-    wordData.pronunciation = values[parseInt(headerMap['pronunciation'])];
-  }
-  
-  if (headerMap['languageOrigin'] && values[parseInt(headerMap['languageOrigin'])]) {
-    wordData.languageOrigin = values[parseInt(headerMap['languageOrigin'])];
-  } else {
-    wordData.languageOrigin = "Unknown";
-  }
-  
-  if (headerMap['partOfSpeech'] && values[parseInt(headerMap['partOfSpeech'])]) {
-    wordData.partOfSpeech = values[parseInt(headerMap['partOfSpeech'])];
-  } else {
-    wordData.partOfSpeech = "noun";
-  }
-  
-  const partialWord: Partial<Word> = {
-    ...wordData,
-    morphemeBreakdown: {
-      root: { text: wordData.word, meaning: "Not analyzed" }
     },
     etymology: {
-      origin: wordData.languageOrigin || "Unknown",
-      evolution: "Not provided"
+      language_of_origin: languageOrigin || 'Unknown',
+      historical_origins: 'Imported from CSV'
     },
-    definitions: [
-      {
-        type: "primary",
-        text: wordData.description
-      }
-    ],
-    forms: {},
-    usage: {
-      commonCollocations: [],
-      contextualUsage: "Not provided",
-      exampleSentence: "Not provided"
+    definitions: {
+      primary: primaryDefinition || `Definition for ${word}`
     },
-    synonymsAntonyms: {
-      synonyms: [],
-      antonyms: []
-    },
-    images: []
+    word_forms: {},
+    analysis: {
+      parts_of_speech: partOfSpeech || 'noun'
+    }
   };
-  
-  return partialWord;
+
+  return wordProfile;
 };
 
 const IntegrationsPage: React.FC = () => {
-  const { words, addWord } = useWords();
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [importProgress, setImportProgress] = useState(0);
   const [importStats, setImportStats] = useState({ total: 0, success: 0, failed: 0 });
@@ -203,20 +144,11 @@ const IntegrationsPage: React.FC = () => {
       const text = await csvFile.text();
       const rows = text.split('\n');
       
-      if (rows.length < 1) {
-        throw new Error("CSV file appears to be empty");
+      if (rows.length < 2) {
+        throw new Error("CSV file must have at least a header row and one data row");
       }
       
-      const headerMap = detectHeaders(rows[0]);
-      
-      if (!headerMap['word']) {
-        toast({
-          title: "CSV format not recognized",
-          description: "Could not identify a column containing words. Import will continue but may not be accurate.",
-          variant: "default"
-        });
-      }
-      
+      const headers = rows[0].split(',').map(h => h.trim().toLowerCase());
       const totalRows = rows.length - 1;
       
       let successCount = 0;
@@ -224,15 +156,14 @@ const IntegrationsPage: React.FC = () => {
       
       for (let i = 1; i < rows.length; i++) {
         if (rows[i].trim()) {
-          const wordData = csvToWord(rows[i], headerMap);
+          const wordProfileData = csvToWordProfile(rows[i], headers);
           
-          if (wordData && wordData.id && wordData.word) {
+          if (wordProfileData && wordProfileData.word) {
             try {
-              const completeWord = wordData as Word;
-              addWord(completeWord);
+              await WordProfileService.createWordProfile(wordProfileData);
               successCount++;
             } catch (error) {
-              console.error("Error adding word:", error);
+              console.error("Error adding word profile:", error);
               failedCount++;
             }
           } else {
@@ -251,7 +182,7 @@ const IntegrationsPage: React.FC = () => {
       
       toast({
         title: "Import completed",
-        description: `Successfully imported ${successCount} words. ${failedCount} entries were skipped.`
+        description: `Successfully imported ${successCount} word profiles to Supabase. ${failedCount} entries were skipped.`
       });
     } catch (error) {
       console.error("Import error:", error);
@@ -266,14 +197,16 @@ const IntegrationsPage: React.FC = () => {
     }
   };
   
-  const handleExport = () => {
+  const handleExport = async () => {
     setIsExporting(true);
     
     try {
-      let csvContent = "id,word,pronunciation,description,languageOrigin,partOfSpeech\n";
+      const wordProfiles = await WordProfileService.getAllWordProfiles();
       
-      words.forEach(word => {
-        csvContent += wordToCSV(word) + "\n";
+      let csvContent = "word,primary_definition,language_origin,parts_of_speech,root_text,root_meaning\n";
+      
+      wordProfiles.forEach(profile => {
+        csvContent += wordProfileToCSV(profile) + "\n";
       });
       
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -281,7 +214,7 @@ const IntegrationsPage: React.FC = () => {
       const link = document.createElement('a');
       
       link.setAttribute('href', url);
-      link.setAttribute('download', 'vocabguru-words.csv');
+      link.setAttribute('download', 'vocabguru-word-profiles.csv');
       document.body.appendChild(link);
       
       link.click();
@@ -289,7 +222,7 @@ const IntegrationsPage: React.FC = () => {
       
       toast({
         title: "Export successful",
-        description: `Exported ${words.length} words to CSV file.`
+        description: `Exported ${wordProfiles.length} word profiles to CSV file.`
       });
     } catch (error) {
       console.error("Export error:", error);
@@ -322,9 +255,12 @@ const IntegrationsPage: React.FC = () => {
         
         <TabsContent value="import" className="space-y-6">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-medium mb-4">Import Words from CSV</h2>
+            <div className="flex items-center gap-2 mb-4">
+              <Database className="h-5 w-5" />
+              <h2 className="text-xl font-medium">Import Word Profiles to Supabase</h2>
+            </div>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Upload any CSV file with vocabulary words. Our system will automatically detect the format and convert it to the application's structure.
+              Upload your CSV file with word data. The system will automatically map columns and save directly to your Supabase database.
             </p>
             
             <div 
@@ -343,7 +279,6 @@ const IntegrationsPage: React.FC = () => {
                 onChange={handleFileChange}
                 className="border-none"
                 disabled={isImporting}
-                fileUploadLabel="Any CSV format is supported - we'll figure it out!"
               />
             </div>
             
@@ -372,55 +307,59 @@ const IntegrationsPage: React.FC = () => {
               className="w-full sm:w-auto flex items-center justify-center gap-2 mt-4"
             >
               {isImporting ? (
-                <>Processing...</>
+                <>Importing to Supabase...</>
               ) : (
                 <>
                   <ArrowUpFromLine size={16} />
-                  Import Words
+                  Import to Supabase
                 </>
               )}
             </Button>
           </div>
           
           <div className="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg border border-gray-200 dark:border-gray-800">
-            <h3 className="text-lg font-medium mb-3">Automatic Format Detection</h3>
+            <h3 className="text-lg font-medium mb-3">Supported CSV Formats</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-              Our system will automatically detect common CSV formats and map them to the appropriate fields:
+              The system automatically detects and maps these column types:
             </p>
             
             <ul className="list-disc ml-5 text-sm text-gray-600 dark:text-gray-400 space-y-1">
-              <li>Word/Term/Vocabulary columns will be mapped to word name</li>
-              <li>Definition/Description/Meaning columns will be mapped to word description</li>
-              <li>Origin/Language/Etymology columns will be mapped to language origin</li>
-              <li>POS/Part of Speech/Word Type columns will be mapped to part of speech</li>
-              <li>Missing data will be filled with sensible defaults</li>
+              <li><strong>Word columns:</strong> word, term, vocabulary, name</li>
+              <li><strong>Definition columns:</strong> definition, description, meaning, primary_definition</li>
+              <li><strong>Origin columns:</strong> origin, language, language_origin, etymology</li>
+              <li><strong>Part of speech:</strong> part_of_speech, pos, parts_of_speech, type</li>
+              <li><strong>Root word:</strong> root, root_text, base_word</li>
+              <li><strong>Root meaning:</strong> root_meaning, core_meaning, base_meaning</li>
             </ul>
           </div>
         </TabsContent>
         
         <TabsContent value="export" className="space-y-6">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-medium mb-4">Export Words to CSV</h2>
+            <div className="flex items-center gap-2 mb-4">
+              <Database className="h-5 w-5" />
+              <h2 className="text-xl font-medium">Export Word Profiles from Supabase</h2>
+            </div>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Download all your vocabulary words as a CSV file that can be opened in spreadsheet applications.
+              Download all word profiles from your Supabase database as a CSV file.
             </p>
             
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-500">
-                {words.length} words available for export
+                Export includes: word, primary definition, language origin, parts of speech, root text, and root meaning
               </div>
               
               <Button
                 onClick={handleExport}
-                disabled={isExporting || words.length === 0}
+                disabled={isExporting}
                 className="flex items-center gap-2"
               >
                 {isExporting ? (
-                  <>Processing...</>
+                  <>Exporting...</>
                 ) : (
                   <>
                     <ArrowDownToLine size={16} />
-                    Export to CSV
+                    Export from Supabase
                   </>
                 )}
               </Button>
