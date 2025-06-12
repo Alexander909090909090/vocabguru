@@ -14,6 +14,11 @@ interface MessageItemProps {
 const MessageItem = ({ message, handleFeedback, formatTimestamp }: MessageItemProps) => {
   // Convert markdown-style headers to HTML
   const formatText = (text: string) => {
+    // Ensure text is a string and handle edge cases
+    if (typeof text !== 'string' || !text) {
+      return <div>No content available</div>;
+    }
+
     // Format headers
     let formattedText = text
       .replace(/^# (.*$)/gm, '<h3 class="text-lg font-bold mt-3 mb-2">$1</h3>')
@@ -32,6 +37,9 @@ const MessageItem = ({ message, handleFeedback, formatTimestamp }: MessageItemPr
     return <div dangerouslySetInnerHTML={{ __html: formattedText }} />;
   };
 
+  // Ensure message.text is a string
+  const messageText = typeof message.text === 'string' ? message.text : 'No content available';
+
   return (
     <div 
       className={`flex flex-col ${
@@ -43,7 +51,9 @@ const MessageItem = ({ message, handleFeedback, formatTimestamp }: MessageItemPr
           ? "bg-primary text-primary-foreground" 
           : "bg-card/90 backdrop-blur-sm border border-white/10"
       }`}>
-        <div className="whitespace-pre-line">{message.sender === "ai" ? formatText(message.text) : message.text}</div>
+        <div className="whitespace-pre-line">
+          {message.sender === "ai" ? formatText(messageText) : messageText}
+        </div>
         
         {/* Dictionary information if available */}
         {message.dictionary && (
