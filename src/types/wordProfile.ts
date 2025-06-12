@@ -2,54 +2,81 @@
 export interface WordProfile {
   id: string;
   word: string;
-  pronunciation?: string;
-  part_of_speech?: string;
-  language_origin?: string;
   created_at: string;
   updated_at: string;
   
   // Morpheme breakdown
-  prefix_text?: string;
-  prefix_meaning?: string;
-  root_text: string;
-  root_meaning?: string;
-  suffix_text?: string;
-  suffix_meaning?: string;
+  morpheme_breakdown: {
+    prefix?: {
+      text: string;
+      meaning: string;
+      origin?: string;
+    };
+    root: {
+      text: string;
+      meaning: string;
+    };
+    suffix?: {
+      text: string;
+      meaning: string;
+      origin?: string;
+    };
+  };
   
   // Etymology details
-  historical_origin?: string;
-  word_evolution?: string;
-  cultural_variations?: string;
+  etymology: {
+    historical_origins?: string;
+    language_of_origin?: string;
+    word_evolution?: string;
+    cultural_regional_variations?: string;
+  };
   
-  // Definitions (JSON array)
-  definitions: Definition[];
+  // Definitions structure
+  definitions: {
+    primary?: string;
+    standard?: string[];
+    extended?: string[];
+    contextual?: string;
+    specialized?: string;
+  };
   
-  // Word forms
-  noun_form?: string;
-  verb_form?: string;
-  adjective_form?: string;
-  adverb_form?: string;
+  // Word forms and inflections
+  word_forms: {
+    base_form?: string;
+    verb_tenses?: {
+      present?: string;
+      past?: string;
+      future?: string;
+      present_participle?: string;
+      past_participle?: string;
+      other?: string;
+    };
+    noun_forms?: {
+      singular?: string;
+      plural?: string;
+    };
+    adjective_forms?: {
+      positive?: string;
+      comparative?: string;
+      superlative?: string;
+    };
+    adverb_form?: string;
+    other_inflections?: string;
+  };
   
-  // Usage information
-  common_collocations: string[];
-  contextual_usage?: string;
-  sentence_structure?: string;
-  example_sentence?: string;
-  
-  // Synonyms and antonyms
-  synonyms: string[];
-  antonyms: string[];
-  
-  // Additional metadata
-  frequency_score: number;
-  difficulty_level: 'beginner' | 'intermediate' | 'advanced';
-  is_featured: boolean;
-}
-
-export interface Definition {
-  type: 'primary' | 'standard' | 'extended' | 'contextual';
-  text: string;
-  example?: string;
+  // Analysis of the word
+  analysis: {
+    parts_of_speech?: string;
+    tenses_voice_mood?: string;
+    articles_determiners?: string;
+    sentence_positions?: string;
+    sentence_structure?: string;
+    contextual_usage?: string;
+    synonyms_antonyms?: string;
+    common_collocations?: string;
+    cultural_historical_significance?: string;
+    example?: string;
+  };
 }
 
 export interface WebhookLog {
@@ -62,37 +89,11 @@ export interface WebhookLog {
   word_profile_id?: string;
 }
 
-export interface CalvinWebhookPayload {
+export interface CalvernWebhookPayload {
   word: string;
-  morphemes: {
-    prefix?: { text: string; meaning: string };
-    root: { text: string; meaning: string };
-    suffix?: { text: string; meaning: string };
-  };
-  definitions: Definition[];
-  etymology?: {
-    origin: string;
-    evolution: string;
-    cultural_variations?: string;
-  };
-  forms?: {
-    noun?: string;
-    verb?: string;
-    adjective?: string;
-    adverb?: string;
-  };
-  usage?: {
-    collocations: string[];
-    contextual_usage: string;
-    example_sentence: string;
-  };
-  synonyms?: string[];
-  antonyms?: string[];
-  metadata?: {
-    frequency_score: number;
-    difficulty_level: 'beginner' | 'intermediate' | 'advanced';
-    language_origin: string;
-    part_of_speech: string;
-    pronunciation: string;
-  };
+  morpheme_breakdown: WordProfile['morpheme_breakdown'];
+  etymology: WordProfile['etymology'];
+  definitions: WordProfile['definitions'];
+  word_forms: WordProfile['word_forms'];
+  analysis: WordProfile['analysis'];
 }

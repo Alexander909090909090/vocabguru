@@ -5,7 +5,7 @@ import { WordProfile } from "@/types/wordProfile";
 import { WordProfileService } from "@/services/wordProfileService";
 
 // Legacy data structure for backward compatibility
-export { default as words } from "./words";
+export { default as wordsData } from "./words";
 
 // New database-driven functions
 export const getWordProfiles = async (): Promise<WordProfile[]> => {
@@ -16,12 +16,12 @@ export const getWordProfile = async (word: string): Promise<WordProfile | null> 
   return await WordProfileService.getWordProfile(word);
 };
 
-export const getFeaturedWordProfiles = async (): Promise<WordProfile[]> => {
-  return await WordProfileService.getFeaturedWords();
-};
-
 export const searchWordProfiles = async (query: string): Promise<WordProfile[]> => {
   return await WordProfileService.searchWords(query);
+};
+
+export const createWordProfile = async (profile: Partial<WordProfile>): Promise<WordProfile> => {
+  return await WordProfileService.createWordProfile(profile);
 };
 
 // Migration function to be called once

@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { WordProfile, WebhookLog, Definition } from "@/types/wordProfile";
+import { WordProfile, WebhookLog } from "@/types/wordProfile";
 
 // Helper function to safely parse JSON fields
 const parseJsonField = <T>(field: any, fallback: T): T => {
@@ -18,10 +18,11 @@ const parseJsonField = <T>(field: any, fallback: T): T => {
 const convertToWordProfile = (row: any): WordProfile => {
   return {
     ...row,
-    definitions: parseJsonField<Definition[]>(row.definitions, []),
-    common_collocations: parseJsonField<string[]>(row.common_collocations, []),
-    synonyms: parseJsonField<string[]>(row.synonyms, []),
-    antonyms: parseJsonField<string[]>(row.antonyms, [])
+    morpheme_breakdown: parseJsonField(row.morpheme_breakdown, {}),
+    etymology: parseJsonField(row.etymology, {}),
+    definitions: parseJsonField(row.definitions, {}),
+    word_forms: parseJsonField(row.word_forms, {}),
+    analysis: parseJsonField(row.analysis, {})
   };
 };
 
@@ -79,27 +80,12 @@ export class WordProfileService {
     return data ? convertToWordProfile(data) : null;
   }
 
-  static async getFeaturedWords(): Promise<WordProfile[]> {
-    const { data, error } = await supabase
-      .from('word_profiles')
-      .select('*')
-      .eq('is_featured', true)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching featured words:', error);
-      throw error;
-    }
-
-    return (data || []).map(convertToWordProfile);
-  }
-
   static async searchWords(query: string): Promise<WordProfile[]> {
     const { data, error } = await supabase
       .from('word_profiles')
       .select('*')
       .ilike('word', `%${query}%`)
-      .order('frequency_score', { ascending: false })
+      .order('word', { ascending: true })
       .limit(20);
 
     if (error) {
@@ -110,34 +96,60 @@ export class WordProfileService {
     return (data || []).map(convertToWordProfile);
   }
 
-  static async getWordsByLanguageOrigin(origin: string): Promise<WordProfile[]> {
+  static async createWordProfile(profile: Partial<WordProfile>): Promise<WordProfile> {
     const { data, error } = await supabase
       .from('word_profiles')
-      .select('*')
-      .eq('language_origin', origin)
-      .order('frequency_score', { ascending: false });
+      .insert({
+        word: profile.word,
+        morpheme_breakdown: profile.morpheme_breakdown || {},
+        etymology: profile.etymology || {},
+        definitions: profile.definitions || {},
+        word_forms: profile.word_forms || {},
+        analysis: profile.analysis || {}
+      })
+      .select()
+      .single();
 
     if (error) {
-      console.error('Error fetching words by origin:', error);
+      console.error('Error creating word profile:', error);
       throw error;
     }
 
-    return (data || []).map(convertToWordProfile);
+    return convertToWordProfile(data);
   }
 
-  static async getWordsByDifficulty(level: string): Promise<WordProfile[]> {
+  static async updateWordProfile(id: string, updates: Partial<WordProfile>): Promise<WordProfile> {
     const { data, error } = await supabase
       .from('word_profiles')
-      .select('*')
-      .eq('difficulty_level', level)
-      .order('frequency_score', { ascending: false });
+      .update({
+        morpheme_breakdown: updates.morpheme_breakdown,
+        etymology: updates.etymology,
+        definitions: updates.definitions,
+        word_forms: updates.word_forms,
+        analysis: updates.analysis
+      })
+      .eq('id', id)
+      .select()
+      .single();
 
     if (error) {
-      console.error('Error fetching words by difficulty:', error);
+      console.error('Error updating word profile:', error);
       throw error;
     }
 
-    return (data || []).map(convertToWordProfile);
+    return convertToWordProfile(data);
+  }
+
+  static async deleteWordProfile(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('word_profiles')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting word profile:', error);
+      throw error;
+    }
   }
 
   static async processWebhook(source: string, payload: any): Promise<void> {

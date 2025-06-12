@@ -37,112 +37,41 @@ export type Database = {
           status?: string | null
           word_profile_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "webhook_logs_word_profile_id_fkey"
-            columns: ["word_profile_id"]
-            isOneToOne: false
-            referencedRelation: "word_profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       word_profiles: {
         Row: {
-          adjective_form: string | null
-          adverb_form: string | null
-          antonyms: Json | null
-          common_collocations: Json | null
-          contextual_usage: string | null
+          analysis: Json | null
           created_at: string
-          cultural_variations: string | null
           definitions: Json | null
-          difficulty_level: string | null
-          example_sentence: string | null
-          frequency_score: number | null
-          historical_origin: string | null
+          etymology: Json | null
           id: string
-          is_featured: boolean | null
-          language_origin: string | null
-          noun_form: string | null
-          part_of_speech: string | null
-          prefix_meaning: string | null
-          prefix_text: string | null
-          pronunciation: string | null
-          root_meaning: string | null
-          root_text: string
-          sentence_structure: string | null
-          suffix_meaning: string | null
-          suffix_text: string | null
-          synonyms: Json | null
+          morpheme_breakdown: Json | null
           updated_at: string
-          verb_form: string | null
           word: string
-          word_evolution: string | null
+          word_forms: Json | null
         }
         Insert: {
-          adjective_form?: string | null
-          adverb_form?: string | null
-          antonyms?: Json | null
-          common_collocations?: Json | null
-          contextual_usage?: string | null
+          analysis?: Json | null
           created_at?: string
-          cultural_variations?: string | null
           definitions?: Json | null
-          difficulty_level?: string | null
-          example_sentence?: string | null
-          frequency_score?: number | null
-          historical_origin?: string | null
+          etymology?: Json | null
           id?: string
-          is_featured?: boolean | null
-          language_origin?: string | null
-          noun_form?: string | null
-          part_of_speech?: string | null
-          prefix_meaning?: string | null
-          prefix_text?: string | null
-          pronunciation?: string | null
-          root_meaning?: string | null
-          root_text: string
-          sentence_structure?: string | null
-          suffix_meaning?: string | null
-          suffix_text?: string | null
-          synonyms?: Json | null
+          morpheme_breakdown?: Json | null
           updated_at?: string
-          verb_form?: string | null
           word: string
-          word_evolution?: string | null
+          word_forms?: Json | null
         }
         Update: {
-          adjective_form?: string | null
-          adverb_form?: string | null
-          antonyms?: Json | null
-          common_collocations?: Json | null
-          contextual_usage?: string | null
+          analysis?: Json | null
           created_at?: string
-          cultural_variations?: string | null
           definitions?: Json | null
-          difficulty_level?: string | null
-          example_sentence?: string | null
-          frequency_score?: number | null
-          historical_origin?: string | null
+          etymology?: Json | null
           id?: string
-          is_featured?: boolean | null
-          language_origin?: string | null
-          noun_form?: string | null
-          part_of_speech?: string | null
-          prefix_meaning?: string | null
-          prefix_text?: string | null
-          pronunciation?: string | null
-          root_meaning?: string | null
-          root_text?: string
-          sentence_structure?: string | null
-          suffix_meaning?: string | null
-          suffix_text?: string | null
-          synonyms?: Json | null
+          morpheme_breakdown?: Json | null
           updated_at?: string
-          verb_form?: string | null
           word?: string
-          word_evolution?: string | null
+          word_forms?: Json | null
         }
         Relationships: []
       }
