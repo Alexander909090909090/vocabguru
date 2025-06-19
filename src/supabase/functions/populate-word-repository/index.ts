@@ -1,17 +1,13 @@
 
-/// <reference types="https://deno.land/x/types/index.d.ts" />
-
 import { serve } from "https://deno.land/std@0.184.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 
-// Type declarations for Deno environment
-declare global {
-  namespace Deno {
-    export const env: {
-      get(key: string): string | undefined;
-    };
-  }
-}
+// Simple type declaration for Deno environment
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+};
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
