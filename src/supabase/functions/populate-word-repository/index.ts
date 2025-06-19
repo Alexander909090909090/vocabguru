@@ -1,5 +1,4 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -7,15 +6,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req) => {
+export default async function handler(req: Request) {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      'https://sehrwrwkrwyibxlicpsy.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlaHJ3cndrcnd5aWJ4bGljcHN5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTU1MjM4MywiZXhwIjoyMDY1MTI4MzgzfQ.NsJFi4h-H4dn67bpR6LmhsjNhAuPaWJNWuq7tSTh0ZY'
     )
 
     const { words } = await req.json()
@@ -86,8 +85,8 @@ serve(async (req) => {
           results.push({ word, success: false, error: 'Word not found in dictionary' })
         }
       } catch (error) {
-        console.error(`Error processing word ${word}:`, error)
-        results.push({ word, success: false, error: error.message })
+        console.error(`Error processing word ${word}:`, error instanceof Error ? error.message : 'Unknown error')
+        results.push({ word, success: false, error: error instanceof Error ? error.message : 'Unknown error' })
       }
     }
 
@@ -100,11 +99,11 @@ serve(async (req) => {
   } catch (error) {
     console.error('Function error:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
   }
-})
+}
