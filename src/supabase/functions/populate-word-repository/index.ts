@@ -1,8 +1,7 @@
+/// <reference types="https://deno.land/x/deno@v1.28.0/lib/deno.ns.d.ts" />
 
-/// <reference types="https://deno.land/x/xhr@0.3.0/lib/deno.xhr.d.ts" />
-
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
