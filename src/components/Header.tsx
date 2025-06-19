@@ -1,80 +1,103 @@
 
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { BookOpen, Menu, X, Users, Search, Upload, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Menu, X, BookOpen, Compass, MessageSquare, Trophy, Settings } from "lucide-react";
+import { UserMenu } from "@/components/UserMenu";
 
 const Header = () => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
-  
-  const isActive = (path: string) => location.pathname === path;
 
-  const navItems = [
-    { path: "/", label: "Vocabulary", icon: BookOpen },
-    { path: "/discovery", label: "Discovery", icon: Globe },
-    { path: "/quiz", label: "Quiz", icon: Users },
-    { path: "/integrations", label: "Integrations", icon: Upload },
+  const navigationItems = [
+    { href: "/", label: "Words", icon: BookOpen },
+    { href: "/discovery", label: "Discovery", icon: Compass },
+    { href: "/calvern", label: "Calvern AI", icon: MessageSquare },
+    { href: "/quiz", label: "Quiz", icon: Trophy },
+    { href: "/integrations", label: "Settings", icon: Settings },
   ];
 
   return (
-    <header className="bg-white/90 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
-          <Link to="/" className="flex items-center space-x-2">
-            <BookOpen className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold text-gray-900">VocabGuru</span>
+    <header className="fixed top-0 left-0 right-0 z-50 bg-slate-800/80 backdrop-blur-md border-b border-slate-700">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <div className="flex items-center justify-center bg-primary w-8 h-8 rounded-full">
+              <BookOpen className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <span className="font-bold text-xl text-white">VocabGuru</span>
           </Link>
-          
-          <nav className="hidden md:flex items-center space-x-8">
-            {navItems.map((item) => {
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center space-x-1">
+            {navigationItems.map((item) => {
               const Icon = item.icon;
+              const isActive = location.pathname === item.href;
+              
               return (
                 <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`flex items-center space-x-2 text-sm font-medium transition-colors hover:text-primary ${
-                    isActive(item.path) ? "text-primary" : "text-gray-600"
+                  key={item.href}
+                  to={item.href}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "text-slate-300 hover:text-white hover:bg-slate-700"
                   }`}
                 >
                   <Icon className="h-4 w-4" />
-                  <span>{item.label}</span>
+                  {item.label}
                 </Link>
               );
             })}
           </nav>
 
+          {/* Desktop User Menu */}
+          <div className="hidden md:flex items-center gap-2">
+            <UserMenu />
+          </div>
+
+          {/* Mobile Menu Button */}
           <Button
             variant="ghost"
             size="sm"
-            className="md:hidden"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="md:hidden text-white"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
-            {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
         </div>
 
-        {isMobileMenuOpen && (
-          <nav className="mt-4 md:hidden">
-            <div className="flex flex-col space-y-2">
-              {navItems.map((item) => {
+        {/* Mobile Navigation */}
+        {isMenuOpen && (
+          <div className="md:hidden border-t border-slate-700 py-4">
+            <nav className="flex flex-col space-y-2">
+              {navigationItems.map((item) => {
                 const Icon = item.icon;
+                const isActive = location.pathname === item.href;
+                
                 return (
                   <Link
-                    key={item.path}
-                    to={item.path}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-gray-100 ${
-                      isActive(item.path) ? "text-primary bg-gray-100" : "text-gray-600"
+                    key={item.href}
+                    to={item.href}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      isActive
+                        ? "bg-primary text-primary-foreground"
+                        : "text-slate-300 hover:text-white hover:bg-slate-700"
                     }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    onClick={() => setIsMenuOpen(false)}
                   >
                     <Icon className="h-4 w-4" />
-                    <span>{item.label}</span>
+                    {item.label}
                   </Link>
                 );
               })}
+            </nav>
+            
+            <div className="mt-4 pt-4 border-t border-slate-700">
+              <UserMenu />
             </div>
-          </nav>
+          </div>
         )}
       </div>
     </header>
