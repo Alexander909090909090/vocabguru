@@ -70,6 +70,55 @@ export interface UserWordLibrary {
   word?: WordRepositoryEntry;
 }
 
+// Helper function to convert word_profiles to WordRepositoryEntry format
+const convertWordProfileToEntry = (profile: any): WordRepositoryEntry => {
+  return {
+    id: profile.id,
+    word: profile.word,
+    phonetic: profile.morpheme_breakdown?.phonetic || '',
+    audio_url: profile.morpheme_breakdown?.audio_url || '',
+    morpheme_data: {
+      prefix: profile.morpheme_breakdown?.prefix || { text: '', meaning: '' },
+      root: profile.morpheme_breakdown?.root || { text: profile.word, meaning: '' },
+      suffix: profile.morpheme_breakdown?.suffix || { text: '', meaning: '' }
+    },
+    etymology_data: {
+      historical_origins: profile.etymology?.historical_origins || '',
+      language_of_origin: profile.etymology?.language_of_origin || '',
+      word_evolution: profile.etymology?.word_evolution || '',
+      cultural_variations: profile.etymology?.cultural_variations || ''
+    },
+    definitions_data: {
+      primary: profile.definitions?.primary || '',
+      standard: profile.definitions?.standard || [],
+      extended: profile.definitions?.extended || [],
+      contextual: profile.definitions?.contextual || '',
+      specialized: profile.definitions?.specialized || ''
+    },
+    word_forms_data: {
+      base_form: profile.word_forms?.base_form || profile.word,
+      verb_tenses: profile.word_forms?.verb_tenses || {},
+      noun_forms: profile.word_forms?.noun_forms || {},
+      adjective_forms: profile.word_forms?.adjective_forms || {},
+      adverb_form: profile.word_forms?.adverb_form || ''
+    },
+    analysis_data: {
+      parts_of_speech: profile.analysis?.parts_of_speech || '',
+      usage_examples: profile.analysis?.usage_examples || [],
+      synonyms: profile.analysis?.synonyms || [],
+      antonyms: profile.analysis?.antonyms || [],
+      collocations: profile.analysis?.collocations || [],
+      cultural_significance: profile.analysis?.cultural_significance || '',
+      example_sentence: profile.analysis?.example_sentence || ''
+    },
+    source_apis: ['word_profiles'], // Temporary until we have the new table
+    frequency_score: 0,
+    difficulty_level: 'medium',
+    created_at: profile.created_at,
+    updated_at: profile.updated_at
+  };
+};
+
 export class WordRepositoryService {
   static async getWordsWithPagination(
     page: number = 0,
@@ -77,9 +126,9 @@ export class WordRepositoryService {
     searchQuery?: string
   ): Promise<{ words: WordRepositoryEntry[]; hasMore: boolean }> {
     let query = supabase
-      .from('word_repository')
+      .from('word_profiles')
       .select('*')
-      .order('frequency_score', { ascending: false })
+      .order('created_at', { ascending: false })
       .range(page * limit, (page + 1) * limit - 1);
 
     if (searchQuery) {
@@ -93,18 +142,20 @@ export class WordRepositoryService {
       throw error;
     }
 
+    const words = (data || []).map(convertWordProfileToEntry);
+
     return {
-      words: data || [],
-      hasMore: (data || []).length === limit
+      words,
+      hasMore: words.length === limit
     };
   }
 
   static async searchWords(query: string): Promise<WordRepositoryEntry[]> {
     const { data, error } = await supabase
-      .from('word_repository')
+      .from('word_profiles')
       .select('*')
-      .or(`word.ilike.%${query}%,definitions_data->>primary.ilike.%${query}%`)
-      .order('frequency_score', { ascending: false })
+      .or(`word.ilike.%${query}%,definitions->>primary.ilike.%${query}%`)
+      .order('created_at', { ascending: false })
       .limit(10);
 
     if (error) {
@@ -112,12 +163,12 @@ export class WordRepositoryService {
       throw error;
     }
 
-    return data || [];
+    return (data || []).map(convertWordProfileToEntry);
   }
 
   static async getWordByName(word: string): Promise<WordRepositoryEntry | null> {
     const { data, error } = await supabase
-      .from('word_repository')
+      .from('word_profiles')
       .select('*')
       .eq('word', word.toLowerCase())
       .maybeSingle();
@@ -127,92 +178,34 @@ export class WordRepositoryService {
       throw error;
     }
 
-    return data;
+    return data ? convertWordProfileToEntry(data) : null;
   }
 
+  // Temporary methods until we have the new user_word_library table
   static async addToUserLibrary(wordId: string, notes?: string): Promise<void> {
-    const { error } = await supabase
-      .from('user_word_library')
-      .insert({
-        word_id: wordId,
-        notes,
-        mastery_level: 1
-      });
-
-    if (error) {
-      console.error('Error adding to library:', error);
-      throw error;
-    }
+    console.log('Add to library functionality will be available after database migration');
+    // This will be implemented once the user_word_library table is created
   }
 
   static async getUserLibrary(userId: string): Promise<UserWordLibrary[]> {
-    const { data, error } = await supabase
-      .from('user_word_library')
-      .select(`
-        *,
-        word:word_repository(*)
-      `)
-      .eq('user_id', userId)
-      .order('added_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching user library:', error);
-      throw error;
-    }
-
-    return data || [];
+    console.log('User library functionality will be available after database migration');
+    return [];
   }
 
   static async removeFromUserLibrary(wordId: string): Promise<void> {
-    const { error } = await supabase
-      .from('user_word_library')
-      .delete()
-      .eq('word_id', wordId);
-
-    if (error) {
-      console.error('Error removing from library:', error);
-      throw error;
-    }
+    console.log('Remove from library functionality will be available after database migration');
   }
 
   static async updateMasteryLevel(wordId: string, level: number): Promise<void> {
-    const { error } = await supabase
-      .from('user_word_library')
-      .update({ mastery_level: level })
-      .eq('word_id', wordId);
-
-    if (error) {
-      console.error('Error updating mastery level:', error);
-      throw error;
-    }
+    console.log('Mastery level functionality will be available after database migration');
   }
 
   static async addQueryToHistory(query: string, resultWordId?: string): Promise<void> {
-    const { error } = await supabase
-      .from('user_query_history')
-      .insert({
-        query,
-        result_word_id: resultWordId
-      });
-
-    if (error) {
-      console.error('Error adding query to history:', error);
-      throw error;
-    }
+    console.log('Query history functionality will be available after database migration');
   }
 
   static async getQueryHistory(limit: number = 10): Promise<any[]> {
-    const { data, error } = await supabase
-      .from('user_query_history')
-      .select('*')
-      .order('queried_at', { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      console.error('Error fetching query history:', error);
-      throw error;
-    }
-
-    return data || [];
+    console.log('Query history functionality will be available after database migration');
+    return [];
   }
 }
