@@ -3,12 +3,12 @@ import { useState } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { searchDictionaryWord } from "@/lib/dictionaryApi";
-import { searchMerriamWebsterWord } from "@/lib/merriamWebsterApi";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { useWords } from "@/context/WordsContext";
 import { isNonsenseWord, hasMinimumWordDetails } from "@/utils/wordValidation";
+import { WordRepositoryService } from "@/services/wordRepositoryService";
+import { DictionaryApiService } from "@/services/dictionaryApiService";
 
 interface DictionarySearchProps {
   onWordAdded?: () => void;
@@ -64,65 +64,102 @@ export function DictionarySearch({ onWordAdded, useMerriamWebster = false }: Dic
       return;
     }
     
-    // Check if word already exists
-    const existingWord = getWord(normalizedWord);
-    
-    if (existingWord) {
-      // Word exists, navigate directly to it
-      navigate(`/word/${existingWord.id}`);
-      setSearchWord("");
-      saveRecent(normalizedWord);
-      return;
-    }
-    
     setIsSearching(true);
     
     try {
-      // Use Merriam-Webster API if specified, otherwise use the default dictionary API
-      const word = useMerriamWebster 
-        ? await searchMerriamWebsterWord(normalizedWord)
-        : await searchDictionaryWord(normalizedWord);
+      // First, check if the word exists in our repository
+      let wordEntry = await WordRepositoryService.getWordByName(normalizedWord);
       
-      if (word) {
-        // Check if the definition is substantial enough
-        if (!hasMinimumWordDetails(word.description)) {
+      if (!wordEntry) {
+        // Word doesn't exist in our repository, fetch from external API
+        console.log(`Word "${normalizedWord}" not found in repository, fetching from API...`);
+        
+        const success = await DictionaryApiService.fetchAndStoreWord(normalizedWord);
+        
+        if (success) {
+          // Try to get the word again after storing
+          wordEntry = await WordRepositoryService.getWordByName(normalizedWord);
+          
+          if (wordEntry) {
+            toast({
+              title: "Word found and added!",
+              description: `"${normalizedWord}" has been added to the repository.`,
+            });
+          }
+        } else {
           toast({
-            title: "Limited information",
-            description: "This word doesn't have enough detailed information to add to your collection.",
+            title: "Word not found",
+            description: "Sorry, we couldn't find that word in our dictionary.",
             variant: "destructive",
           });
           setIsSearching(false);
           return;
         }
+      }
+      
+      if (wordEntry) {
+        // Convert repository entry to Word format for existing context
+        const contextWord = {
+          id: wordEntry.id,
+          word: wordEntry.word,
+          description: wordEntry.definitions_data.primary || "No description available",
+          pronunciation: wordEntry.phonetic || "",
+          partOfSpeech: wordEntry.analysis_data.parts_of_speech || "unknown",
+          languageOrigin: wordEntry.etymology_data.language_of_origin || "Unknown",
+          featured: false,
+          definitions: [
+            {
+              type: "primary" as const,
+              text: wordEntry.definitions_data.primary || "No definition available"
+            },
+            ...(wordEntry.definitions_data.standard || []).map((def: string, index: number) => ({
+              type: "standard" as const,
+              text: def
+            }))
+          ],
+          morphemeBreakdown: {
+            prefix: wordEntry.morpheme_data.prefix || undefined,
+            root: wordEntry.morpheme_data.root,
+            suffix: wordEntry.morpheme_data.suffix || undefined
+          },
+          etymology: {
+            origin: wordEntry.etymology_data.historical_origins || "",
+            evolution: wordEntry.etymology_data.word_evolution || "",
+            culturalVariations: wordEntry.etymology_data.cultural_variations || ""
+          },
+          forms: {
+            noun: wordEntry.word_forms_data.noun_forms?.singular,
+            verb: wordEntry.word_forms_data.base_form,
+            adjective: wordEntry.word_forms_data.adjective_forms?.positive,
+            adverb: wordEntry.word_forms_data.adverb_form
+          },
+          usage: {
+            contextualUsage: wordEntry.analysis_data.example_sentence || "",
+            commonCollocations: wordEntry.analysis_data.collocations || [],
+            exampleSentence: wordEntry.analysis_data.usage_examples?.[0] || ""
+          },
+          synonymsAntonyms: {
+            synonyms: wordEntry.analysis_data.synonyms || [],
+            antonyms: wordEntry.analysis_data.antonyms || []
+          }
+        };
         
-        // Add word to context
-        addWord(word);
+        // Add to existing words context for compatibility
+        addWord(contextWord);
         
         // Save to recent searches
         saveRecent(normalizedWord);
         
         // Navigate to the word detail page
-        navigate(`/word/${word.id}`);
+        navigate(`/word/${wordEntry.id}`);
         
         // Call the callback if provided
         if (onWordAdded) {
           onWordAdded();
         }
         
-        toast({
-          title: "Word found!",
-          description: `"${word.word}" has been added to your vocabulary.`,
-        });
-        
         // Reset search
         setSearchWord("");
-      } else {
-        // Handle case when no word is returned
-        toast({
-          title: "Word not found",
-          description: "Sorry, we couldn't find that word in our dictionary.",
-          variant: "destructive",
-        });
       }
     } catch (error) {
       console.error("Search error:", error);
@@ -141,7 +178,7 @@ export function DictionarySearch({ onWordAdded, useMerriamWebster = false }: Dic
       <form onSubmit={handleSearch} className="relative">
         <Input
           type="text"
-          placeholder={`Search any word in the ${useMerriamWebster ? "Merriam-Webster" : ""} dictionary...`}
+          placeholder="Search any word in the dictionary..."
           className="w-full bg-secondary/50 border-none h-12 pl-12 focus-visible:ring-primary"
           value={searchWord}
           onChange={(e) => setSearchWord(e.target.value)}
