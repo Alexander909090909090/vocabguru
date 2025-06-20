@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, BookOpen, Compass, MessageSquare, Trophy, Settings } from "lucide-react";
+import { Menu, X, BookOpen, Compass, MessageSquare, Trophy, Settings, User, Brain } from "lucide-react";
 import { UserMenu } from "@/components/UserMenu";
 
 const Header = () => {
@@ -12,8 +12,10 @@ const Header = () => {
   const navigationItems = [
     { href: "/", label: "Words", icon: BookOpen },
     { href: "/discovery", label: "Discovery", icon: Compass },
+    { href: "/study", label: "Study Center", icon: Brain },
     { href: "/calvern", label: "Calvern AI", icon: MessageSquare },
     { href: "/quiz", label: "Quiz", icon: Trophy },
+    { href: "/profile", label: "Profile", icon: User },
     { href: "/integrations", label: "Settings", icon: Settings },
   ];
 

@@ -14,6 +14,8 @@ import WordDetail from "./pages/WordDetail";
 import Quiz from "./pages/Quiz";
 import Calvern from "./pages/Calvern";
 import Integrations from "./pages/Integrations";
+import Profile from "./pages/Profile";
+import StudyCenter from "./pages/StudyCenter";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -58,6 +60,16 @@ const App = () => (
                 <Route path="/integrations" element={
                   <ProtectedRoute>
                     <Integrations />
+                  </ProtectedRoute>
+                } />
+                <Route path="/profile" element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/study" element={
+                  <ProtectedRoute>
+                    <StudyCenter />
                   </ProtectedRoute>
                 } />
                 <Route path="*" element={<NotFound />} />
