@@ -1,4 +1,5 @@
 
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -6,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-Deno.serve(async (req: Request) => {
+serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -85,8 +86,8 @@ Deno.serve(async (req: Request) => {
           results.push({ word, success: false, error: 'Word not found in dictionary' })
         }
       } catch (error) {
-        console.error(`Error processing word ${word}:`, error instanceof Error ? error.message : 'Unknown error')
-        results.push({ word, success: false, error: error instanceof Error ? error.message : 'Unknown error' })
+        console.error(`Error processing word ${word}:`, error)
+        results.push({ word, success: false, error: error.message })
       }
     }
 
@@ -99,7 +100,7 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error('Function error:', error)
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: error.message }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

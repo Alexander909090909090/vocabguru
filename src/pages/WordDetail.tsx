@@ -12,110 +12,24 @@ import WordNotFound from "@/components/WordDetail/WordNotFound";
 import WordMainContent from "@/components/WordDetail/WordMainContent";
 import AIAssistantTab from "@/components/WordDetail/AIAssistantTab";
 import { Skeleton } from "@/components/ui/skeleton";
-import { WordRepositoryService, WordRepositoryEntry } from "@/services/wordRepositoryService";
-import { toast } from "@/components/ui/use-toast";
 
 const WordDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [repositoryWord, setRepositoryWord] = useState<WordRepositoryEntry | null>(null);
   const { getWord } = useWords();
   
-  // Get word data from context (fallback for existing words)
-  const contextWord = id ? getWord(id) : undefined;
+  // Get word data from context
+  const word = id ? getWord(id) : undefined;
 
   useEffect(() => {
-    const loadWordData = async () => {
-      if (!id) return;
-      
-      try {
-        setIsLoading(true);
-        
-        // First try to get from repository
-        const repoWord = await WordRepositoryService.getWordByName(id);
-        if (repoWord) {
-          setRepositoryWord(repoWord);
-        } else {
-          // Try to get by ID from repository
-          try {
-            const repoWordById = await WordRepositoryService.getWordById?.(id);
-            if (repoWordById) {
-              setRepositoryWord(repoWordById);
-            }
-          } catch (e) {
-            // Fallback to context word if repository doesn't have it
-            console.log("Word not found in repository, using context data");
-          }
-        }
-      } catch (error) {
-        console.error("Error loading word data:", error);
-        toast({
-          title: "Error loading word",
-          description: "Failed to load word details. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadWordData();
+    // Simulate loading to show nice transitions
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 300);
+    
+    return () => clearTimeout(timer);
   }, [id]);
-
-  // Convert repository entry to Word format for existing components
-  const getWordForDisplay = () => {
-    if (repositoryWord) {
-      return {
-        id: repositoryWord.id,
-        word: repositoryWord.word,
-        description: repositoryWord.definitions_data.primary || "No description available",
-        pronunciation: repositoryWord.phonetic || "",
-        partOfSpeech: repositoryWord.analysis_data.parts_of_speech || "unknown",
-        languageOrigin: repositoryWord.etymology_data.language_of_origin || "Unknown",
-        featured: false,
-        images: [], // Add missing images property
-        definitions: [
-          {
-            type: "primary" as const,
-            text: repositoryWord.definitions_data.primary || "No definition available"
-          },
-          ...(repositoryWord.definitions_data.standard || []).map((def: string) => ({
-            type: "standard" as const,
-            text: def
-          }))
-        ],
-        morphemeBreakdown: {
-          prefix: repositoryWord.morpheme_data.prefix || undefined,
-          root: repositoryWord.morpheme_data.root,
-          suffix: repositoryWord.morpheme_data.suffix || undefined
-        },
-        etymology: {
-          origin: repositoryWord.etymology_data.historical_origins || "",
-          evolution: repositoryWord.etymology_data.word_evolution || "",
-          culturalVariations: repositoryWord.etymology_data.cultural_variations || ""
-        },
-        forms: {
-          noun: repositoryWord.word_forms_data.noun_forms?.singular,
-          verb: repositoryWord.word_forms_data.base_form,
-          adjective: repositoryWord.word_forms_data.adjective_forms?.positive,
-          adverb: repositoryWord.word_forms_data.adverb_form
-        },
-        usage: {
-          contextualUsage: repositoryWord.analysis_data.example_sentence || "",
-          commonCollocations: repositoryWord.analysis_data.collocations || [],
-          exampleSentence: repositoryWord.analysis_data.usage_examples?.[0] || ""
-        },
-        synonymsAntonyms: {
-          synonyms: repositoryWord.analysis_data.synonyms || [],
-          antonyms: repositoryWord.analysis_data.antonyms || []
-        }
-      };
-    }
-    return contextWord;
-  };
-
-  const word = getWordForDisplay();
 
   // Handle word not found
   if (!isLoading && !word) {

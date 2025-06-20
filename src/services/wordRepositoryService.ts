@@ -111,7 +111,7 @@ const convertWordProfileToEntry = (profile: any): WordRepositoryEntry => {
       cultural_significance: profile.analysis?.cultural_significance || '',
       example_sentence: profile.analysis?.example_sentence || ''
     },
-    source_apis: ['word_profiles'],
+    source_apis: ['word_profiles'], // Temporary until we have the new table
     frequency_score: 0,
     difficulty_level: 'medium',
     created_at: profile.created_at,
@@ -175,21 +175,6 @@ export class WordRepositoryService {
 
     if (error) {
       console.error('Error fetching word:', error);
-      throw error;
-    }
-
-    return data ? convertWordProfileToEntry(data) : null;
-  }
-
-  static async getWordById(id: string): Promise<WordRepositoryEntry | null> {
-    const { data, error } = await supabase
-      .from('word_profiles')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Error fetching word by ID:', error);
       throw error;
     }
 
