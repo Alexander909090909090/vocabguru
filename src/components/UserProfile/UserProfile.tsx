@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,7 +56,16 @@ export function UserProfile() {
       }
 
       if (data) {
-        setProfile(data);
+        // Convert the database record to our UserProfile interface
+        const profileData: UserProfile = {
+          ...data,
+          learning_level: data.learning_level || 'intermediate',
+          daily_goal: data.daily_goal || 10,
+          streak_count: data.streak_count || 0,
+          total_words_learned: data.total_words_learned || 0,
+          achievements: Array.isArray(data.achievements) ? data.achievements as string[] : []
+        };
+        setProfile(profileData);
         setEditForm({
           full_name: data.full_name || '',
           username: data.username || '',
@@ -96,7 +104,17 @@ export function UserProfile() {
         .single();
 
       if (error) throw error;
-      setProfile(data);
+      
+      // Convert the database record to our UserProfile interface
+      const profileData: UserProfile = {
+        ...data,
+        learning_level: data.learning_level || 'intermediate',
+        daily_goal: data.daily_goal || 10,
+        streak_count: data.streak_count || 0,
+        total_words_learned: data.total_words_learned || 0,
+        achievements: Array.isArray(data.achievements) ? data.achievements as string[] : []
+      };
+      setProfile(profileData);
     } catch (error) {
       console.error('Error creating profile:', error);
     }
