@@ -14,15 +14,16 @@ import { toast } from "sonner";
 
 interface UserProfile {
   id: string;
-  full_name: string;
-  username: string;
-  avatar_url: string;
+  full_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
   learning_level: string;
   daily_goal: number;
   streak_count: number;
   total_words_learned: number;
   achievements: string[];
   created_at: string;
+  updated_at: string;
 }
 
 export function UserProfile() {
@@ -79,8 +80,8 @@ export function UserProfile() {
     try {
       const defaultProfile = {
         id: user?.id,
-        full_name: user?.user_metadata?.full_name || '',
-        username: user?.email?.split('@')[0] || '',
+        full_name: user?.user_metadata?.full_name || null,
+        username: user?.email?.split('@')[0] || null,
         learning_level: 'intermediate',
         daily_goal: 10,
         streak_count: 0,
@@ -136,14 +137,14 @@ export function UserProfile() {
         <CardHeader>
           <CardTitle className="flex items-center gap-3">
             <Avatar className="h-16 w-16">
-              <AvatarImage src={profile.avatar_url} />
+              <AvatarImage src={profile.avatar_url || undefined} />
               <AvatarFallback className="text-lg">
                 {profile.full_name ? profile.full_name.charAt(0).toUpperCase() : 'U'}
               </AvatarFallback>
             </Avatar>
             <div>
               <h2 className="text-2xl font-bold">{profile.full_name || 'Vocabulary Scholar'}</h2>
-              <p className="text-muted-foreground">@{profile.username}</p>
+              <p className="text-muted-foreground">@{profile.username || 'user'}</p>
             </div>
           </CardTitle>
         </CardHeader>

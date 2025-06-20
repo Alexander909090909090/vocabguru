@@ -9,6 +9,48 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      user_profiles: {
+        Row: {
+          achievements: Json | null
+          avatar_url: string | null
+          created_at: string
+          daily_goal: number | null
+          full_name: string | null
+          id: string
+          learning_level: string | null
+          streak_count: number | null
+          total_words_learned: number | null
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          achievements?: Json | null
+          avatar_url?: string | null
+          created_at?: string
+          daily_goal?: number | null
+          full_name?: string | null
+          id: string
+          learning_level?: string | null
+          streak_count?: number | null
+          total_words_learned?: number | null
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          achievements?: Json | null
+          avatar_url?: string | null
+          created_at?: string
+          daily_goal?: number | null
+          full_name?: string | null
+          id?: string
+          learning_level?: string | null
+          streak_count?: number | null
+          total_words_learned?: number | null
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
       webhook_logs: {
         Row: {
           error_message: string | null
