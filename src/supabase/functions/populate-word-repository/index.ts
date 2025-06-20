@@ -13,8 +13,8 @@ export default async function handler(req: Request) {
 
   try {
     const supabaseClient = createClient(
-      'https://sehrwrwkrwyibxlicpsy.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlaHJ3cndrcnd5aWJ4bGljcHN5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTU1MjM4MywiZXhwIjoyMDY1MTI4MzgzfQ.NsJFi4h-H4dn67bpR6LmhsjNhAuPaWJNWuq7tSTh0ZY'
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
     const { words } = await req.json()

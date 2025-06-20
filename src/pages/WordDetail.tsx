@@ -74,6 +74,7 @@ const WordDetail = () => {
         partOfSpeech: repositoryWord.analysis_data.parts_of_speech || "unknown",
         languageOrigin: repositoryWord.etymology_data.language_of_origin || "Unknown",
         featured: false,
+        images: [], // Add missing images property
         definitions: [
           {
             type: "primary" as const,
