@@ -219,7 +219,7 @@ export function SmartSearch({ onResults, onLoading }: SmartSearchProps) {
                         <SelectItem value="beginner">Beginner</SelectItem>
                         <SelectItem value="intermediate">Intermediate</SelectItem>
                         <SelectItem value="advanced">Advanced</SelectItem>
-                        <SelectItem value="expert">Expert</Select>
+                        <SelectItem value="expert">Expert</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
