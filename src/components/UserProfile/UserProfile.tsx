@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Trophy, BookOpen, Target, Calendar } from "lucide-react";
 import { toast } from "sonner";
+import { InputValidator } from "@/utils/inputValidation";
 
 interface UserProfile {
   id: string;
@@ -122,9 +123,35 @@ export function UserProfile() {
 
   const updateProfile = async () => {
     try {
+      // Validate inputs
+      const fullName = InputValidator.sanitizeText(editForm.full_name, 100);
+      const username = InputValidator.sanitizeText(editForm.username, 30);
+      
+      if (username && !InputValidator.isValidUsername(username)) {
+        toast.error('Username must be 3-30 characters and contain only letters, numbers, hyphens, and underscores');
+        return;
+      }
+
+      if (!InputValidator.isValidLearningLevel(editForm.learning_level)) {
+        toast.error('Invalid learning level selected');
+        return;
+      }
+
+      if (!InputValidator.isValidDailyGoal(editForm.daily_goal)) {
+        toast.error('Daily goal must be between 1 and 100');
+        return;
+      }
+
+      const sanitizedForm = {
+        full_name: fullName || null,
+        username: username || null,
+        learning_level: editForm.learning_level,
+        daily_goal: editForm.daily_goal
+      };
+
       const { error } = await supabase
         .from('user_profiles')
-        .update(editForm)
+        .update(sanitizedForm)
         .eq('id', user?.id);
 
       if (error) throw error;
@@ -132,9 +159,13 @@ export function UserProfile() {
       await loadProfile();
       setIsEditing(false);
       toast.success('Profile updated successfully!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating profile:', error);
-      toast.error('Failed to update profile');
+      if (error.code === '23505') {
+        toast.error('Username is already taken');
+      } else {
+        toast.error('Failed to update profile');
+      }
     }
   };
 
@@ -175,6 +206,7 @@ export function UserProfile() {
                   id="full_name"
                   value={editForm.full_name}
                   onChange={(e) => setEditForm({...editForm, full_name: e.target.value})}
+                  maxLength={100}
                 />
               </div>
               <div>
@@ -183,6 +215,8 @@ export function UserProfile() {
                   id="username"
                   value={editForm.username}
                   onChange={(e) => setEditForm({...editForm, username: e.target.value})}
+                  maxLength={30}
+                  pattern="[a-zA-Z0-9_-]+"
                 />
               </div>
               <div>
@@ -207,7 +241,7 @@ export function UserProfile() {
                   min="1"
                   max="100"
                   value={editForm.daily_goal}
-                  onChange={(e) => setEditForm({...editForm, daily_goal: parseInt(e.target.value)})}
+                  onChange={(e) => setEditForm({...editForm, daily_goal: parseInt(e.target.value) || 1})}
                 />
               </div>
               <div className="flex gap-2">

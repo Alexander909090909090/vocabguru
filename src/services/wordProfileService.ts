@@ -1,6 +1,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { WordProfile, WebhookLog } from "@/types/wordProfile";
+import { RoleService } from "./roleService";
+import { toast } from "sonner";
 
 // Helper function to safely parse JSON fields
 const parseJsonField = <T>(field: any, fallback: T): T => {
@@ -97,6 +99,12 @@ export class WordProfileService {
   }
 
   static async createWordProfile(profile: Partial<WordProfile>): Promise<WordProfile> {
+    const isAdmin = await RoleService.hasRole('admin');
+    if (!isAdmin) {
+      toast.error('Only administrators can create word profiles');
+      throw new Error('Insufficient permissions');
+    }
+
     const { data, error } = await supabase
       .from('word_profiles')
       .insert({
@@ -119,6 +127,12 @@ export class WordProfileService {
   }
 
   static async updateWordProfile(id: string, updates: Partial<WordProfile>): Promise<WordProfile> {
+    const isAdmin = await RoleService.hasRole('admin');
+    if (!isAdmin) {
+      toast.error('Only administrators can update word profiles');
+      throw new Error('Insufficient permissions');
+    }
+
     const { data, error } = await supabase
       .from('word_profiles')
       .update({
@@ -141,6 +155,12 @@ export class WordProfileService {
   }
 
   static async deleteWordProfile(id: string): Promise<void> {
+    const isAdmin = await RoleService.hasRole('admin');
+    if (!isAdmin) {
+      toast.error('Only administrators can delete word profiles');
+      throw new Error('Insufficient permissions');
+    }
+
     const { error } = await supabase
       .from('word_profiles')
       .delete()
@@ -166,6 +186,12 @@ export class WordProfileService {
   }
 
   static async getWebhookLogs(): Promise<WebhookLog[]> {
+    const isAdmin = await RoleService.hasRole('admin');
+    if (!isAdmin) {
+      toast.error('Only administrators can view webhook logs');
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('webhook_logs')
       .select('*')

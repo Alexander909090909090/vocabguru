@@ -9,16 +9,20 @@ import { WordProfileService } from "@/services/wordProfileService";
 import { WebhookLog } from "@/types/wordProfile";
 import { migrateToDatabase } from "@/data/wordProfiles";
 import { useWordProfiles } from "@/hooks/useWordProfiles";
-import { RefreshCw, Database, Webhook, TrendingUp } from "lucide-react";
+import { useSecureAuth } from "@/hooks/useSecureAuth";
+import { RefreshCw, Database, Webhook, TrendingUp, Shield } from "lucide-react";
 
 export function WordProfileAdmin() {
   const { wordProfiles, loading, refreshWordProfiles } = useWordProfiles();
+  const { isAdmin, loading: authLoading } = useSecureAuth();
   const [webhookLogs, setWebhookLogs] = useState<WebhookLog[]>([]);
   const [migrating, setMigrating] = useState(false);
 
   useEffect(() => {
-    loadWebhookLogs();
-  }, []);
+    if (isAdmin) {
+      loadWebhookLogs();
+    }
+  }, [isAdmin]);
 
   const loadWebhookLogs = async () => {
     try {
@@ -30,6 +34,11 @@ export function WordProfileAdmin() {
   };
 
   const handleMigration = async () => {
+    if (!isAdmin) {
+      toast.error('Admin access required');
+      return;
+    }
+
     setMigrating(true);
     try {
       await migrateToDatabase();
@@ -44,6 +53,11 @@ export function WordProfileAdmin() {
   };
 
   const testWebhook = async () => {
+    if (!isAdmin) {
+      toast.error('Admin access required');
+      return;
+    }
+
     try {
       const testPayload = {
         word: "testword",
@@ -70,6 +84,30 @@ export function WordProfileAdmin() {
       console.error('Test webhook error:', error);
     }
   };
+
+  if (authLoading) {
+    return <div className="animate-pulse">Loading...</div>;
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-red-500" />
+              Access Denied
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">
+              You need administrator privileges to access this page.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // Helper function to get language origin from etymology
   const getLanguageOrigin = (profile: any) => {
