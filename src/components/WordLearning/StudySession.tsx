@@ -100,28 +100,28 @@ export function StudySession({ words, onComplete, onExit }: StudySessionProps) {
       case 'definition':
         return {
           question: `What does "${currentWord.word}" mean?`,
-          answer: currentWord.definitions_data.primary || 'No definition available',
-          hint: `Part of speech: ${currentWord.analysis_data.parts_of_speech || 'Unknown'}`
+          answer: currentWord.definitions.primary || 'No definition available',
+          hint: `Part of speech: ${currentWord.analysis.parts_of_speech || 'Unknown'}`
         };
       case 'etymology':
         return {
           question: `What is the origin of "${currentWord.word}"?`,
-          answer: currentWord.etymology_data.historical_origins || 'Origin unknown',
-          hint: `Language of origin: ${currentWord.etymology_data.language_of_origin || 'Unknown'}`
+          answer: currentWord.etymology.historical_origins || 'Origin unknown',
+          hint: `Language of origin: ${currentWord.etymology.language_of_origin || 'Unknown'}`
         };
       case 'usage':
         return {
           question: `How would you use "${currentWord.word}" in a sentence?`,
-          answer: currentWord.analysis_data.usage_examples?.[0] || currentWord.analysis_data.example_sentence || 'No example available',
-          hint: `Context: ${currentWord.definitions_data.contextual || 'General usage'}`
+          answer: currentWord.analysis.usage_examples?.[0] || currentWord.analysis.example_sentence || 'No example available',
+          hint: `Context: ${currentWord.definitions.contextual?.[0] || 'General usage'}`
         };
       case 'morphemes':
         return {
           question: `Break down the word parts of "${currentWord.word}"`,
-          answer: `Root: ${currentWord.morpheme_data.root.text} (${currentWord.morpheme_data.root.meaning})${
-            currentWord.morpheme_data.prefix ? `\nPrefix: ${currentWord.morpheme_data.prefix.text} (${currentWord.morpheme_data.prefix.meaning})` : ''
+          answer: `Root: ${currentWord.morpheme_breakdown.root.text} (${currentWord.morpheme_breakdown.root.meaning})${
+            currentWord.morpheme_breakdown.prefix ? `\nPrefix: ${currentWord.morpheme_breakdown.prefix.text} (${currentWord.morpheme_breakdown.prefix.meaning})` : ''
           }${
-            currentWord.morpheme_data.suffix ? `\nSuffix: ${currentWord.morpheme_data.suffix.text} (${currentWord.morpheme_data.suffix.meaning})` : ''
+            currentWord.morpheme_breakdown.suffix ? `\nSuffix: ${currentWord.morpheme_breakdown.suffix.text} (${currentWord.morpheme_breakdown.suffix.meaning})` : ''
           }`,
           hint: 'Think about prefixes, roots, and suffixes'
         };

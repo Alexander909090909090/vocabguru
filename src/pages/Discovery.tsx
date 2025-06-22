@@ -74,16 +74,16 @@ const DiscoveryPage: React.FC = () => {
             primary: word.definitions?.primary,
             standard: word.definitions?.standard || [],
             extended: word.definitions?.extended || [],
-            contextual: word.definitions?.contextual?.[0] || '',
-            specialized: word.definitions?.specialized?.[0] || ''
+            contextual: Array.isArray(word.definitions?.contextual) ? word.definitions.contextual[0] : word.definitions?.contextual || '',
+            specialized: Array.isArray(word.definitions?.specialized) ? word.definitions.specialized[0] : word.definitions?.specialized || ''
           },
           word_forms: {
             ...word.word_forms,
-            other_inflections: word.word_forms?.other_inflections?.[0] || ''
+            other_inflections: Array.isArray(word.word_forms?.other_inflections) ? word.word_forms.other_inflections[0] : word.word_forms?.other_inflections || ''
           },
           analysis: {
             ...word.analysis,
-            common_collocations: word.analysis?.collocations?.join(', ') || ''
+            common_collocations: Array.isArray(word.analysis?.collocations) ? word.analysis.collocations.join(', ') : word.analysis?.collocations || ''
           }
         })
       );
@@ -238,8 +238,8 @@ const DiscoveryPage: React.FC = () => {
             primary: entry.definitions.primary,
             standard: entry.definitions.standard,
             extended: entry.definitions.extended,
-            contextual: entry.definitions.contextual?.[0] || '',
-            specialized: entry.definitions.specialized?.[0] || ''
+            contextual: Array.isArray(entry.definitions.contextual) ? entry.definitions.contextual[0] : entry.definitions.contextual || '',
+            specialized: Array.isArray(entry.definitions.specialized) ? entry.definitions.specialized[0] : entry.definitions.specialized || ''
           },
           word_forms: entry.word_forms,
           analysis: entry.analysis

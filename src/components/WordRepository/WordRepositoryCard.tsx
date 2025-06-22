@@ -53,16 +53,16 @@ export function WordRepositoryCard({ wordEntry, priority = false }: WordReposito
         <div className="p-4">
           <h3 className="text-xl font-medium">{wordEntry.word}</h3>
           <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-            {wordEntry.definitions_data.primary || "No definition available"}
+            {wordEntry.definitions.primary || "No definition available"}
           </p>
           
           <div className="mt-3 flex gap-2">
             <span className="chip bg-secondary text-secondary-foreground">
-              {wordEntry.etymology_data.language_of_origin || "Unknown"}
+              {wordEntry.etymology.language_of_origin || "Unknown"}
             </span>
-            {wordEntry.analysis_data.parts_of_speech && (
+            {wordEntry.analysis.parts_of_speech && (
               <span className="chip bg-primary/20 text-primary">
-                {wordEntry.analysis_data.parts_of_speech}
+                {wordEntry.analysis.parts_of_speech}
               </span>
             )}
           </div>

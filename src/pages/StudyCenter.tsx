@@ -202,14 +202,14 @@ const StudyCenter = () => {
                               </Badge>
                             </div>
                             <p className="text-sm text-muted-foreground line-clamp-2">
-                              {word.definitions_data.primary}
+                              {word.definitions.primary}
                             </p>
                             <div className="flex gap-1">
                               <Badge variant="outline" className="text-xs">
-                                {word.analysis_data.parts_of_speech}
+                                {word.analysis.parts_of_speech}
                               </Badge>
                               <Badge variant="outline" className="text-xs">
-                                {word.etymology_data.language_of_origin}
+                                {word.etymology.language_of_origin}
                               </Badge>
                             </div>
                           </div>
