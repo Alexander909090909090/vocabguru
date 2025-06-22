@@ -1,6 +1,6 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,21 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Trophy, BookOpen, Target, Calendar } from "lucide-react";
 import { toast } from "sonner";
-import { InputValidator } from "@/utils/inputValidation";
-
-interface UserProfile {
-  id: string;
-  full_name: string | null;
-  username: string | null;
-  avatar_url: string | null;
-  learning_level: string;
-  daily_goal: number;
-  streak_count: number;
-  total_words_learned: number;
-  achievements: string[];
-  created_at: string;
-  updated_at: string;
-}
+import { UserProfileService, UserProfile } from "@/services/userProfileService";
 
 export function UserProfile() {
   const { user } = useAuth();
@@ -45,37 +31,31 @@ export function UserProfile() {
   }, [user]);
 
   const loadProfile = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', user?.id)
-        .maybeSingle();
+    if (!user?.id) return;
 
-      if (error && error.code !== 'PGRST116') {
-        throw error;
+    try {
+      setLoading(true);
+      let userProfile = await UserProfileService.getUserProfile(user.id);
+      
+      if (!userProfile) {
+        // Create default profile if none exists
+        userProfile = await UserProfileService.createUserProfile({
+          id: user.id,
+          full_name: user.user_metadata?.full_name || null,
+          username: user.email?.split('@')[0] || null,
+          learning_level: 'intermediate',
+          daily_goal: 10
+        });
       }
 
-      if (data) {
-        // Convert the database record to our UserProfile interface
-        const profileData: UserProfile = {
-          ...data,
-          learning_level: data.learning_level || 'intermediate',
-          daily_goal: data.daily_goal || 10,
-          streak_count: data.streak_count || 0,
-          total_words_learned: data.total_words_learned || 0,
-          achievements: Array.isArray(data.achievements) ? data.achievements as string[] : []
-        };
-        setProfile(profileData);
+      if (userProfile) {
+        setProfile(userProfile);
         setEditForm({
-          full_name: data.full_name || '',
-          username: data.username || '',
-          learning_level: data.learning_level || 'intermediate',
-          daily_goal: data.daily_goal || 10
+          full_name: userProfile.full_name || '',
+          username: userProfile.username || '',
+          learning_level: userProfile.learning_level,
+          daily_goal: userProfile.daily_goal
         });
-      } else {
-        // Create default profile
-        await createDefaultProfile();
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -85,87 +65,22 @@ export function UserProfile() {
     }
   };
 
-  const createDefaultProfile = async () => {
-    try {
-      const defaultProfile = {
-        id: user?.id,
-        full_name: user?.user_metadata?.full_name || null,
-        username: user?.email?.split('@')[0] || null,
-        learning_level: 'intermediate',
-        daily_goal: 10,
-        streak_count: 0,
-        total_words_learned: 0,
-        achievements: []
-      };
-
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .insert(defaultProfile)
-        .select()
-        .single();
-
-      if (error) throw error;
-      
-      // Convert the database record to our UserProfile interface
-      const profileData: UserProfile = {
-        ...data,
-        learning_level: data.learning_level || 'intermediate',
-        daily_goal: data.daily_goal || 10,
-        streak_count: data.streak_count || 0,
-        total_words_learned: data.total_words_learned || 0,
-        achievements: Array.isArray(data.achievements) ? data.achievements as string[] : []
-      };
-      setProfile(profileData);
-    } catch (error) {
-      console.error('Error creating profile:', error);
-    }
-  };
-
   const updateProfile = async () => {
+    if (!user?.id) return;
+
     try {
-      // Validate inputs
-      const fullName = InputValidator.sanitizeText(editForm.full_name, 100);
-      const username = InputValidator.sanitizeText(editForm.username, 30);
+      const updatedProfile = await UserProfileService.updateUserProfile(user.id, editForm);
       
-      if (username && !InputValidator.isValidUsername(username)) {
-        toast.error('Username must be 3-30 characters and contain only letters, numbers, hyphens, and underscores');
-        return;
-      }
-
-      if (!InputValidator.isValidLearningLevel(editForm.learning_level)) {
-        toast.error('Invalid learning level selected');
-        return;
-      }
-
-      if (!InputValidator.isValidDailyGoal(editForm.daily_goal)) {
-        toast.error('Daily goal must be between 1 and 100');
-        return;
-      }
-
-      const sanitizedForm = {
-        full_name: fullName || null,
-        username: username || null,
-        learning_level: editForm.learning_level,
-        daily_goal: editForm.daily_goal
-      };
-
-      const { error } = await supabase
-        .from('user_profiles')
-        .update(sanitizedForm)
-        .eq('id', user?.id);
-
-      if (error) throw error;
-
-      await loadProfile();
-      setIsEditing(false);
-      toast.success('Profile updated successfully!');
-    } catch (error: any) {
-      console.error('Error updating profile:', error);
-      if (error.code === '23505') {
-        toast.error('Username is already taken');
+      if (updatedProfile) {
+        setProfile(updatedProfile);
+        setIsEditing(false);
+        toast.success('Profile updated successfully!');
       } else {
         toast.error('Failed to update profile');
       }
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      toast.error('Failed to update profile');
     }
   };
 
@@ -216,7 +131,6 @@ export function UserProfile() {
                   value={editForm.username}
                   onChange={(e) => setEditForm({...editForm, username: e.target.value})}
                   maxLength={30}
-                  pattern="[a-zA-Z0-9_-]+"
                 />
               </div>
               <div>
