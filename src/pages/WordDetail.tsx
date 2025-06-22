@@ -12,7 +12,7 @@ import WordNotFound from "@/components/WordDetail/WordNotFound";
 import EnhancedWordContent from "@/components/WordDetail/EnhancedWordContent";
 import AIAssistantTab from "@/components/WordDetail/AIAssistantTab";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EnhancedWordProfileService } from "@/services/enhancedWordProfileService";
+import { UnifiedWordService } from "@/services/unifiedWordService";
 import { EnhancedWordProfile } from "@/types/enhancedWordProfile";
 
 const WordDetail = () => {
@@ -32,29 +32,112 @@ const WordDetail = () => {
       setIsLoading(true);
       
       try {
-        // Try to get enhanced word profile from database first
-        let profile = await EnhancedWordProfileService.getEnhancedWordProfile(id);
+        // Try to get enhanced word profile from unified service first
+        let profile = await UnifiedWordService.getWordById(id);
         
-        // Fallback to legacy word conversion
+        // Fallback to legacy word conversion if needed
         if (!profile && legacyWord) {
-          profile = EnhancedWordProfileService.convertLegacyWord(legacyWord);
-          // Ensure required properties are present
-          if (profile) {
-            profile.languageOrigin = profile.languageOrigin || legacyWord.languageOrigin || 'Unknown';
-          }
+          // Convert legacy word to enhanced profile format
+          profile = {
+            id: legacyWord.id,
+            word: legacyWord.word,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            pronunciation: legacyWord.pronunciation,
+            partOfSpeech: legacyWord.partOfSpeech,
+            languageOrigin: legacyWord.languageOrigin || 'Unknown', // Ensure required property
+            description: legacyWord.description,
+            featured: legacyWord.featured,
+            morpheme_breakdown: legacyWord.morphemeBreakdown,
+            morphemeBreakdown: legacyWord.morphemeBreakdown,
+            etymology: {
+              historical_origins: legacyWord.etymology?.origin,
+              language_of_origin: legacyWord.languageOrigin,
+              word_evolution: legacyWord.etymology?.evolution,
+              cultural_regional_variations: legacyWord.etymology?.culturalVariations,
+              origin: legacyWord.etymology?.origin,
+              evolution: legacyWord.etymology?.evolution,
+              culturalVariations: legacyWord.etymology?.culturalVariations
+            },
+            definitions: {
+              primary: legacyWord.description,
+              standard: [],
+              extended: [],
+              contextual: [],
+              specialized: []
+            },
+            word_forms: {
+              base_form: legacyWord.word,
+              other_inflections: []
+            },
+            analysis: {
+              parts_of_speech: legacyWord.partOfSpeech,
+              example: legacyWord.usage?.exampleSentence
+            },
+            images: legacyWord.images || [],
+            synonymsAntonyms: legacyWord.synonymsAntonyms || { synonyms: [], antonyms: [] },
+            usage: legacyWord.usage || {
+              commonCollocations: [],
+              contextualUsage: '',
+              sentenceStructure: '',
+              exampleSentence: ''
+            },
+            forms: legacyWord.forms || {}
+          };
         }
         
         setEnhancedWordProfile(profile);
       } catch (error) {
         console.error("Error loading word profile:", error);
         
-        // Final fallback to legacy word
+        // Final fallback to legacy word with required properties
         if (legacyWord) {
-          const profile = EnhancedWordProfileService.convertLegacyWord(legacyWord);
-          // Ensure required properties are present
-          if (profile) {
-            profile.languageOrigin = profile.languageOrigin || legacyWord.languageOrigin || 'Unknown';
-          }
+          const profile: EnhancedWordProfile = {
+            id: legacyWord.id,
+            word: legacyWord.word,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            pronunciation: legacyWord.pronunciation,
+            partOfSpeech: legacyWord.partOfSpeech,
+            languageOrigin: legacyWord.languageOrigin || 'Unknown', // Ensure required property
+            description: legacyWord.description,
+            featured: legacyWord.featured,
+            morpheme_breakdown: legacyWord.morphemeBreakdown,
+            morphemeBreakdown: legacyWord.morphemeBreakdown,
+            etymology: {
+              historical_origins: legacyWord.etymology?.origin,
+              language_of_origin: legacyWord.languageOrigin || 'Unknown',
+              word_evolution: legacyWord.etymology?.evolution,
+              cultural_regional_variations: legacyWord.etymology?.culturalVariations,
+              origin: legacyWord.etymology?.origin,
+              evolution: legacyWord.etymology?.evolution,
+              culturalVariations: legacyWord.etymology?.culturalVariations
+            },
+            definitions: {
+              primary: legacyWord.description,
+              standard: [],
+              extended: [],
+              contextual: [],
+              specialized: []
+            },
+            word_forms: {
+              base_form: legacyWord.word,
+              other_inflections: []
+            },
+            analysis: {
+              parts_of_speech: legacyWord.partOfSpeech,
+              example: legacyWord.usage?.exampleSentence
+            },
+            images: legacyWord.images || [],
+            synonymsAntonyms: legacyWord.synonymsAntonyms || { synonyms: [], antonyms: [] },
+            usage: legacyWord.usage || {
+              commonCollocations: [],
+              contextualUsage: '',
+              sentenceStructure: '',
+              exampleSentence: ''
+            },
+            forms: legacyWord.forms || {}
+          };
           setEnhancedWordProfile(profile);
         }
       } finally {
