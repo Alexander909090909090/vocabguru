@@ -4,7 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, BookOpen, Brain, Search, Users, BarChart3, Settings, MessageSquare } from "lucide-react";
-import UserMenu from "./UserMenu";
+import { UserMenu } from "./UserMenu";
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);

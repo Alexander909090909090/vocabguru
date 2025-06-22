@@ -10,5 +10,8 @@
     "moduleResolution": "node",
     "target": "es2020",
     "module": "esnext"
-  }
+  },
+  "include": [
+    "**/*.ts"
+  ]
 }

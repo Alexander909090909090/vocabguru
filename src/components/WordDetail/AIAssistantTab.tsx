@@ -41,6 +41,13 @@ const AIAssistantTab = ({ word }: AIAssistantTabProps) => {
 `;
   };
 
+  // Convert EnhancedWordProfile to compatible format for AIChatInterface
+  const compatibleWord = {
+    ...word,
+    languageOrigin: word.languageOrigin || 'Unknown', // Ensure required property exists
+    morphemeBreakdown: word.morpheme_breakdown // Use the correct property name
+  };
+
   return (
     <div className="mt-6">
       <WordSection title="AI Language Assistant" className="mb-0">
@@ -94,7 +101,7 @@ const AIAssistantTab = ({ word }: AIAssistantTabProps) => {
           </div>
         </Card>
         
-        <AIChatInterface currentWord={word} />
+        <AIChatInterface currentWord={compatibleWord} />
       </WordSection>
     </div>
   );
