@@ -1,270 +1,249 @@
 
 import { Word } from "@/data/words";
-import { SemanticSearchService } from "@/services/semanticSearchService";
+import { EnhancedWordProfile } from "@/types/enhancedWordProfile";
 
-// Helper function to format timestamps
 export const formatTimestamp = (date: Date): string => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
-// Helper function to generate morphological breakdown response
-const generateMorphologicalBreakdown = (word: Word): string => {
-  let response = `# Morphological Analysis of "${word.word}"\n\n`;
-  
-  // Add Morpheme Breakdown section
-  response += "## Morpheme Breakdown\n\n";
-  
-  if (word.morphemeBreakdown.prefix) {
-    response += `- **Prefix: ${word.morphemeBreakdown.prefix.text}** - ${word.morphemeBreakdown.prefix.meaning}\n`;
+export const generateResponseText = async (
+  userMessage: string, 
+  targetWord?: Word | EnhancedWordProfile
+): Promise<string> => {
+  // Enhanced comprehensive breakdown detection
+  const isComprehensiveRequest = userMessage.toLowerCase().includes('comprehensive breakdown') ||
+                                userMessage.toLowerCase().includes('complete analysis') ||
+                                userMessage.toLowerCase().includes('deep dive') ||
+                                userMessage.toLowerCase().includes('detailed breakdown');
+
+  // Enhanced morphological analysis detection
+  const isMorphologicalRequest = userMessage.toLowerCase().includes('morpheme') ||
+                               userMessage.toLowerCase().includes('prefix') ||
+                               userMessage.toLowerCase().includes('suffix') ||
+                               userMessage.toLowerCase().includes('root word') ||
+                               userMessage.toLowerCase().includes('word parts');
+
+  // Etymology request detection
+  const isEtymologyRequest = userMessage.toLowerCase().includes('etymology') ||
+                           userMessage.toLowerCase().includes('origin') ||
+                           userMessage.toLowerCase().includes('history') ||
+                           userMessage.toLowerCase().includes('evolution');
+
+  if (targetWord && isComprehensiveRequest) {
+    return generateComprehensiveAnalysis(targetWord);
   }
   
-  response += `- **Root Word: ${word.morphemeBreakdown.root.text}** - ${word.morphemeBreakdown.root.meaning}\n`;
-  
-  if (word.morphemeBreakdown.suffix) {
-    response += `- **Suffix: ${word.morphemeBreakdown.suffix.text}** - ${word.morphemeBreakdown.suffix.meaning}\n`;
+  if (targetWord && isMorphologicalRequest) {
+    return generateMorphologicalAnalysis(targetWord);
   }
   
-  response += "\n## Etymology\n\n";
-  response += `- **Historical Origins**: "${word.word}" comes from ${word.languageOrigin} "${word.etymology.origin}"\n`;
-  response += `- **Word Evolution**: ${word.etymology.evolution}\n`;
-  
-  if (word.etymology.culturalVariations) {
-    response += `- **Cultural & Regional Variations**: ${word.etymology.culturalVariations}\n`;
+  if (targetWord && isEtymologyRequest) {
+    return generateEtymologyAnalysis(targetWord);
   }
   
-  // Add combined meaning explanation
-  response += "\n## How the Morphemes Combine\n\n";
-  const prefix = word.morphemeBreakdown.prefix ? `"${word.morphemeBreakdown.prefix.text}" (${word.morphemeBreakdown.prefix.meaning})` : "";
-  const root = `"${word.morphemeBreakdown.root.text}" (${word.morphemeBreakdown.root.meaning})`;
-  const suffix = word.morphemeBreakdown.suffix ? `"${word.morphemeBreakdown.suffix.text}" (${word.morphemeBreakdown.suffix.meaning})` : "";
-  
-  if (prefix && suffix) {
-    response += `When the prefix ${prefix} combines with the root ${root} and the suffix ${suffix}, it creates the meaning "${word.definitions.find(d => d.type === 'primary')?.text || word.description}".\n\n`;
-  } else if (prefix) {
-    response += `When the prefix ${prefix} combines with the root ${root}, it creates the meaning "${word.definitions.find(d => d.type === 'primary')?.text || word.description}".\n\n`;
-  } else if (suffix) {
-    response += `When the root ${root} combines with the suffix ${suffix}, it creates the meaning "${word.definitions.find(d => d.type === 'primary')?.text || word.description}".\n\n`;
-  } else {
-    response += `The root ${root} directly provides the meaning "${word.definitions.find(d => d.type === 'primary')?.text || word.description}".\n\n`;
+  if (targetWord) {
+    return generateWordSpecificResponse(targetWord, userMessage);
   }
   
-  return response;
+  return generateGeneralLinguisticResponse(userMessage);
 };
 
-// Generate response based on user input and current word
-export const generateResponseText = async (userMessage: string, currentWord?: Word): Promise<string> => {
-  const lowerMessage = userMessage.toLowerCase();
+const generateComprehensiveAnalysis = (word: Word | EnhancedWordProfile): string => {
+  const morphemes = 'morpheme_breakdown' in word ? word.morpheme_breakdown : word.morphemeBreakdown;
+  const etymology = word.etymology;
   
-  // Enhanced semantic search queries
-  if (lowerMessage.includes('find words') || lowerMessage.includes('words meaning') || 
-      lowerMessage.includes('similar to') || lowerMessage.includes('words like')) {
-    const searchTerm = extractSearchTerm(userMessage);
-    if (searchTerm) {
-      try {
-        const suggestions = await SemanticSearchService.suggestRelatedWords(searchTerm);
-        if (suggestions.length > 0) {
-          return `Here are words related to "${searchTerm}":\n\n${suggestions.slice(0, 8).map(word => `• **${word}**`).join('\n')}\n\nYou can search for any of these words using the semantic search feature above to add them to your collection!`;
-        }
-      } catch (error) {
-        console.error('Error getting word suggestions:', error);
-      }
-    }
+  let analysis = `## Comprehensive Breakdown: "${word.word}"\n\n`;
+  
+  // Morphological Analysis
+  analysis += `### 🔍 Morphological Structure\n\n`;
+  if (morphemes?.prefix) {
+    analysis += `**Prefix:** ${morphemes.prefix.text}\n`;
+    analysis += `- Meaning: ${morphemes.prefix.meaning}\n`;
+    analysis += `- Origin: ${morphemes.prefix.origin || 'Classical'}\n\n`;
   }
-
-  // Word explanation requests
-  if (lowerMessage.includes('explain') || lowerMessage.includes('what does') || 
-      lowerMessage.includes('meaning of')) {
-    const wordToExplain = extractWordFromExplanationRequest(userMessage);
-    if (wordToExplain) {
-      try {
-        const explanation = await SemanticSearchService.generateWordExplanation(wordToExplain, lowerMessage);
-        return explanation;
-      } catch (error) {
-        console.error('Error generating explanation:', error);
-      }
-    }
+  
+  if (morphemes?.root) {
+    analysis += `**Root:** ${morphemes.root.text}\n`;
+    analysis += `- Meaning: ${morphemes.root.meaning}\n`;
+    analysis += `- Origin: ${morphemes.root.origin || 'Indo-European'}\n\n`;
   }
-
-  // Enhanced comprehensive breakdown
-  if (lowerMessage.includes('comprehensive breakdown') || lowerMessage.includes('detailed analysis')) {
-    if (currentWord) {
-      return generateComprehensiveBreakdown(currentWord);
-    } else {
-      return "I'd be happy to provide a comprehensive breakdown! Please specify which word you'd like me to analyze, or use the search feature to find and select a word first.";
-    }
+  
+  if (morphemes?.suffix) {
+    analysis += `**Suffix:** ${morphemes.suffix.text}\n`;
+    analysis += `- Meaning: ${morphemes.suffix.meaning}\n`;
+    analysis += `- Origin: ${morphemes.suffix.origin || 'Germanic'}\n\n`;
   }
-
-  // Morpheme and etymology queries
-  if (lowerMessage.includes('morpheme') || lowerMessage.includes('root') || 
-      lowerMessage.includes('prefix') || lowerMessage.includes('suffix')) {
-    if (currentWord) {
-      return generateMorphemeAnalysis(currentWord);
-    } else {
-      return "Morphemes are the smallest meaningful units in language! I can analyze word structure, roots, prefixes, and suffixes. Try asking about a specific word or use the search to find one.";
-    }
+  
+  // Etymology Section
+  analysis += `### 📚 Etymology & Historical Development\n\n`;
+  if (etymology?.origin || etymology?.historical_origins) {
+    analysis += `**Historical Origins:** ${etymology.historical_origins || etymology.origin}\n\n`;
   }
-
-  // Etymology questions
-  if (lowerMessage.includes('etymology') || lowerMessage.includes('origin') || 
-      lowerMessage.includes('history') || lowerMessage.includes('where does') ||
-      lowerMessage.includes('come from')) {
-    if (currentWord) {
-      return generateEtymologyResponse(currentWord);
-    } else {
-      return "Etymology is fascinating! It reveals how words traveled through languages and cultures. I can trace word origins, historical development, and linguistic connections. Search for a word to explore its etymology!";
-    }
+  
+  if (etymology?.evolution || etymology?.word_evolution) {
+    analysis += `**Word Evolution:** ${etymology.word_evolution || etymology.evolution}\n\n`;
   }
-
-  // Usage and examples
-  if (lowerMessage.includes('example') || lowerMessage.includes('how to use') || 
-      lowerMessage.includes('sentence') || lowerMessage.includes('context')) {
-    if (currentWord) {
-      return generateUsageExamples(currentWord);
-    } else {
-      return "I can provide usage examples and context for words! Search for a specific word and I'll show you how to use it effectively in different situations.";
-    }
+  
+  if (etymology?.culturalVariations || etymology?.cultural_regional_variations) {
+    analysis += `**Cultural Variations:** ${etymology.cultural_regional_variations || etymology.culturalVariations}\n\n`;
   }
-
-  // Semantic search help
-  if (lowerMessage.includes('semantic search') || lowerMessage.includes('search by meaning') ||
-      lowerMessage.includes('how to find')) {
-    return "🔍 **Semantic Search Help**\n\nUse the 'Search by Meaning' feature to find words by describing what you're looking for:\n\n• Type meanings like 'fast', 'beautiful', 'abundant'\n• Describe concepts like 'showing happiness' or 'very large'\n• Find synonyms and related terms\n\nTry searching for concepts rather than specific words to discover new vocabulary!";
+  
+  // Linguistic Insights
+  analysis += `### 🧠 Linguistic Insights\n\n`;
+  analysis += `- **Part of Speech:** ${word.partOfSpeech}\n`;
+  analysis += `- **Language Origin:** ${word.languageOrigin || 'Multiple influences'}\n`;
+  
+  if ('pronunciation' in word && word.pronunciation) {
+    analysis += `- **Pronunciation:** ${word.pronunciation}\n`;
   }
+  
+  // Semantic Analysis
+  analysis += `\n### 💡 Semantic Analysis\n\n`;
+  analysis += `The word "${word.word}" demonstrates fascinating linguistic evolution. `;
+  
+  if (morphemes?.prefix && morphemes?.root) {
+    analysis += `The combination of the ${morphemes.prefix.text}- prefix (${morphemes.prefix.meaning}) `;
+    analysis += `with the root ${morphemes.root.text} (${morphemes.root.meaning}) `;
+    analysis += `creates a compound meaning that has evolved over centuries.\n\n`;
+  }
+  
+  // Related Words and Word Family
+  analysis += `### 🌟 Word Family & Related Terms\n\n`;
+  analysis += `Words sharing similar morphological components:\n`;
+  
+  if (morphemes?.root) {
+    const rootText = morphemes.root.text;
+    analysis += `- Words with root "${rootText}": ${rootText}al, ${rootText}ic, ${rootText}ism\n`;
+  }
+  
+  if (morphemes?.prefix) {
+    const prefixText = morphemes.prefix.text;
+    analysis += `- Words with prefix "${prefixText}-": ${prefixText}determine, ${prefixText}conceive, ${prefixText}establish\n`;
+  }
+  
+  analysis += `\n### 🎯 Memory Techniques\n\n`;
+  analysis += `**Morpheme Memory:** Break down "${word.word}" into its components:\n`;
+  if (morphemes?.prefix) analysis += `- "${morphemes.prefix.text}" = ${morphemes.prefix.meaning}\n`;
+  if (morphemes?.root) analysis += `- "${morphemes.root.text}" = ${morphemes.root.meaning}\n`;
+  if (morphemes?.suffix) analysis += `- "${morphemes.suffix.text}" = ${morphemes.suffix.meaning}\n`;
+  
+  analysis += `\n**Etymology Connection:** Remember that this word comes from ${word.languageOrigin || 'ancient linguistic roots'}, `;
+  analysis += `which helps explain its modern meaning and usage patterns.`;
+  
+  return analysis;
+};
 
-  // Default responses with semantic search integration
+const generateMorphologicalAnalysis = (word: Word | EnhancedWordProfile): string => {
+  const morphemes = 'morpheme_breakdown' in word ? word.morpheme_breakdown : word.morphemeBreakdown;
+  
+  let analysis = `## Morphological Analysis: "${word.word}"\n\n`;
+  
+  analysis += `The word "${word.word}" can be broken down into the following morphological components:\n\n`;
+  
+  if (morphemes?.prefix) {
+    analysis += `🔸 **Prefix: ${morphemes.prefix.text}**\n`;
+    analysis += `   - Meaning: ${morphemes.prefix.meaning}\n`;
+    analysis += `   - Function: Modifies the root meaning\n`;
+    analysis += `   - Origin: ${morphemes.prefix.origin || 'Classical languages'}\n\n`;
+  }
+  
+  if (morphemes?.root) {
+    analysis += `🔹 **Root: ${morphemes.root.text}** (Core meaning)\n`;
+    analysis += `   - Meaning: ${morphemes.root.meaning}\n`;
+    analysis += `   - Function: Carries the primary semantic content\n`;
+    analysis += `   - Origin: ${morphemes.root.origin || 'Indo-European base'}\n\n`;
+  }
+  
+  if (morphemes?.suffix) {
+    analysis += `🔸 **Suffix: ${morphemes.suffix.text}**\n`;
+    analysis += `   - Meaning: ${morphemes.suffix.meaning}\n`;
+    analysis += `   - Function: Determines grammatical category\n`;
+    analysis += `   - Origin: ${morphemes.suffix.origin || 'Germanic inflection'}\n\n`;
+  }
+  
+  analysis += `### Morphological Pattern\n\n`;
+  const pattern = [];
+  if (morphemes?.prefix) pattern.push("PREFIX");
+  pattern.push("ROOT");
+  if (morphemes?.suffix) pattern.push("SUFFIX");
+  
+  analysis += `Structure: ${pattern.join(" + ")}\n\n`;
+  
+  analysis += `This morphological structure is common in ${word.languageOrigin || 'Indo-European'} languages `;
+  analysis += `and demonstrates how meaning is built through systematic combination of meaningful units.`;
+  
+  return analysis;
+};
+
+const generateEtymologyAnalysis = (word: Word | EnhancedWordProfile): string => {
+  const etymology = word.etymology;
+  
+  let analysis = `## Etymology of "${word.word}"\n\n`;
+  
+  analysis += `### Historical Development\n\n`;
+  
+  if (etymology?.historical_origins || etymology?.origin) {
+    analysis += `**Origins:** ${etymology.historical_origins || etymology.origin}\n\n`;
+  }
+  
+  if (etymology?.word_evolution || etymology?.evolution) {
+    analysis += `**Evolution:** ${etymology.word_evolution || etymology.evolution}\n\n`;
+  }
+  
+  analysis += `### Language Journey\n\n`;
+  analysis += `The word "${word.word}" has traveled through multiple languages before reaching modern English:\n\n`;
+  
+  analysis += `1. **Original Form:** Proto-${word.languageOrigin || 'Indo-European'}\n`;
+  analysis += `2. **Classical Period:** Adapted into Latin/Greek scholarly usage\n`;
+  analysis += `3. **Medieval Period:** Entered Old French or Medieval Latin\n`;
+  analysis += `4. **Modern English:** Standardized during the Renaissance\n\n`;
+  
+  if (etymology?.cultural_regional_variations || etymology?.culturalVariations) {
+    analysis += `### Cultural Context\n\n`;
+    analysis += `${etymology.cultural_regional_variations || etymology.culturalVariations}\n\n`;
+  }
+  
+  analysis += `### Linguistic Significance\n\n`;
+  analysis += `This etymology demonstrates the international nature of English vocabulary `;
+  analysis += `and shows how words acquire layers of meaning through historical usage.`;
+  
+  return analysis;
+};
+
+const generateWordSpecificResponse = (word: Word | EnhancedWordProfile, userMessage: string): string => {
   const responses = [
-    "I'm here to help you explore language and discover new words! Try asking me to find words related to a specific meaning, or use the semantic search feature above.",
-    "Would you like me to explain a word's etymology, find similar words, or analyze its morphological structure? I can also help you discover new vocabulary through meaning-based search.",
-    "I can help you understand word relationships, etymologies, and meanings. Try searching by meaning using the 'Search by Meaning' feature, or ask me about specific linguistic concepts!",
-    "Exploring vocabulary is exciting! I can analyze word structures, suggest related terms, and explain linguistic concepts. How can I assist your vocabulary journey?",
-    "Language is full of fascinating connections! I can help you discover words, understand their origins, and explore morphological patterns. How can I assist your vocabulary journey?"
+    `Great question about "${word.word}"! This ${word.partOfSpeech} has fascinating linguistic properties. ${word.description}`,
+    
+    `The word "${word.word}" is particularly interesting from a morphological perspective. Its structure reveals ${word.languageOrigin || 'classical'} influences in modern English.`,
+    
+    `"${word.word}" demonstrates how ${word.languageOrigin || 'ancient'} roots continue to shape contemporary vocabulary. The word's semantic development shows typical patterns of language evolution.`,
+    
+    `From a linguistic standpoint, "${word.word}" exemplifies the layered nature of English vocabulary, combining elements from ${word.languageOrigin || 'multiple language families'}.`
   ];
   
-  return responses[Math.floor(Math.random() * responses.length)];
+  let response = responses[Math.floor(Math.random() * responses.length)];
+  
+  // Add morpheme information if available
+  const morphemes = 'morpheme_breakdown' in word ? word.morpheme_breakdown : word.morphemeBreakdown;
+  if (morphemes?.root) {
+    response += `\n\nThe root "${morphemes.root.text}" (meaning: ${morphemes.root.meaning}) is the semantic core of this word.`;
+  }
+  
+  return response;
 };
 
-// Helper functions
-function extractSearchTerm(message: string): string | null {
-  const patterns = [
-    /find words.*["']([^"']+)["']/i,
-    /words meaning.*["']([^"']+)["']/i,
-    /similar to.*["']([^"']+)["']/i,
-    /words like.*["']([^"']+)["']/i,
-    /words.*meaning\s+(.+)/i,
-    /find.*words.*about\s+(.+)/i
+const generateGeneralLinguisticResponse = (userMessage: string): string => {
+  const linguisticResponses = [
+    "That's a fascinating linguistic question! Language evolution demonstrates how human communication adapts and develops over centuries.",
+    
+    "From a morphological perspective, this touches on how words are constructed from meaningful units called morphemes.",
+    
+    "Etymology reveals the historical journey of words through different languages and cultures, showing how meaning evolves over time.",
+    
+    "This relates to fundamental principles of historical linguistics and how languages influence each other through contact and borrowing.",
+    
+    "Morphological analysis helps us understand how prefixes, roots, and suffixes combine to create complex meanings in systematic ways."
   ];
   
-  for (const pattern of patterns) {
-    const match = message.match(pattern);
-    if (match) return match[1].trim();
-  }
-  
-  return null;
-}
-
-function extractWordFromExplanationRequest(message: string): string | null {
-  const patterns = [
-    /explain.*["']([^"']+)["']/i,
-    /what does.*["']([^"']+)["']/i,
-    /meaning of.*["']([^"']+)["']/i,
-    /explain\s+(\w+)/i,
-    /what does\s+(\w+)/i,
-    /meaning of\s+(\w+)/i
-  ];
-  
-  for (const pattern of patterns) {
-    const match = message.match(pattern);
-    if (match) return match[1].trim();
-  }
-  
-  return null;
-}
-
-// Helper function to generate comprehensive breakdown response
-const generateComprehensiveBreakdown = (word: Word): string => {
-  let response = `# Comprehensive Breakdown of "${word.word}"\n\n`;
-  
-  // Add Morpheme Breakdown section
-  response += "## Morpheme Breakdown\n\n";
-  
-  if (word.morphemeBreakdown.prefix) {
-    response += `- **Prefix: ${word.morphemeBreakdown.prefix.text}** - ${word.morphemeBreakdown.prefix.meaning}\n`;
-  }
-  
-  response += `- **Root Word: ${word.morphemeBreakdown.root.text}** - ${word.morphemeBreakdown.root.meaning}\n`;
-  
-  if (word.morphemeBreakdown.suffix) {
-    response += `- **Suffix: ${word.morphemeBreakdown.suffix.text}** - ${word.morphemeBreakdown.suffix.meaning}\n`;
-  }
-  
-  response += "\n## Etymology\n\n";
-  response += `- **Historical Origins**: "${word.word}" comes from ${word.languageOrigin} "${word.etymology.origin}"\n`;
-  response += `- **Word Evolution**: ${word.etymology.evolution}\n`;
-  
-  if (word.etymology.culturalVariations) {
-    response += `- **Cultural & Regional Variations**: ${word.etymology.culturalVariations}\n`;
-  }
-  
-  // Add combined meaning explanation
-  response += "\n## How the Morphemes Combine\n\n";
-  const prefix = word.morphemeBreakdown.prefix ? `"${word.morphemeBreakdown.prefix.text}" (${word.morphemeBreakdown.prefix.meaning})` : "";
-  const root = `"${word.morphemeBreakdown.root.text}" (${word.morphemeBreakdown.root.meaning})`;
-  const suffix = word.morphemeBreakdown.suffix ? `"${word.morphemeBreakdown.suffix.text}" (${word.morphemeBreakdown.suffix.meaning})` : "";
-  
-  if (prefix && suffix) {
-    response += `When the prefix ${prefix} combines with the root ${root} and the suffix ${suffix}, it creates the meaning "${word.definitions.find(d => d.type === 'primary')?.text || word.description}".\n\n`;
-  } else if (prefix) {
-    response += `When the prefix ${prefix} combines with the root ${root}, it creates the meaning "${word.definitions.find(d => d.type === 'primary')?.text || word.description}".\n\n`;
-  } else if (suffix) {
-    response += `When the root ${root} combines with the suffix ${suffix}, it creates the meaning "${word.definitions.find(d => d.type === 'primary')?.text || word.description}".\n\n`;
-  } else {
-    response += `The root ${root} directly provides the meaning "${word.definitions.find(d => d.type === 'primary')?.text || word.description}".\n\n`;
-  }
-  
-  return response;
-};
-
-// Helper function to generate morpheme analysis response
-const generateMorphemeAnalysis = (word: Word): string => {
-  let response = `# Morphological Analysis of "${word.word}"\n\n`;
-  
-  // Add Morpheme Breakdown section
-  response += "## Morpheme Breakdown\n\n";
-  
-  if (word.morphemeBreakdown.prefix) {
-    response += `- **Prefix: ${word.morphemeBreakdown.prefix.text}** - ${word.morphemeBreakdown.prefix.meaning}\n`;
-  }
-  
-  response += `- **Root Word: ${word.morphemeBreakdown.root.text}** - ${word.morphemeBreakdown.root.meaning}\n`;
-  
-  if (word.morphemeBreakdown.suffix) {
-    response += `- **Suffix: ${word.morphemeBreakdown.suffix.text}** - ${word.morphemeBreakdown.suffix.meaning}\n`;
-  }
-  
-  return response;
-};
-
-// Helper function to generate etymology response
-const generateEtymologyResponse = (word: Word): string => {
-  let response = `# Etymology of "${word.word}"\n\n`;
-  
-  response += `- **Historical Origins**: "${word.word}" comes from ${word.languageOrigin} "${word.etymology.origin}"\n`;
-  response += `- **Word Evolution**: ${word.etymology.evolution}\n`;
-  
-  if (word.etymology.culturalVariations) {
-    response += `- **Cultural & Regional Variations**: ${word.etymology.culturalVariations}\n`;
-  }
-  
-  return response;
-};
-
-// Helper function to generate usage examples
-const generateUsageExamples = (word: Word): string => {
-  let response = `# Usage Examples of "${word.word}"\n\n`;
-  
-  response += `- **Example usage of "${word.word}"**: ${word.usage.exampleSentence}\n\n`;
-  response += `- **Common collocations**: ${word.usage.commonCollocations.join(", ")}\n\n`;
-  response += `- **Contextual usage**: ${word.usage.contextualUsage}\n\n`;
-  
-  return response;
+  return linguisticResponses[Math.floor(Math.random() * linguisticResponses.length)];
 };

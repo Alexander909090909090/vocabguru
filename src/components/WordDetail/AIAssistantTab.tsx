@@ -1,32 +1,34 @@
 
 import AIChatInterface from "@/components/AIChatInterface";
 import WordSection from "@/components/WordSection";
-import { Word } from "@/data/words";
+import { EnhancedWordProfile } from "@/types/enhancedWordProfile";
 import { MessageSquare, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 
 interface AIAssistantTabProps {
-  word: Word;
+  word: EnhancedWordProfile;
 }
 
 const AIAssistantTab = ({ word }: AIAssistantTabProps) => {
   // Create a targeted prompt based on the word's morphological structure
   const getMorphemePrompt = () => {
     const parts = [];
-    if (word.morphemeBreakdown.prefix) {
-      parts.push(`the prefix "${word.morphemeBreakdown.prefix.text}" (meaning: ${word.morphemeBreakdown.prefix.meaning})`);
+    if (word.morpheme_breakdown?.prefix) {
+      parts.push(`the prefix "${word.morpheme_breakdown.prefix.text}" (meaning: ${word.morpheme_breakdown.prefix.meaning})`);
     }
     
-    parts.push(`the root "${word.morphemeBreakdown.root.text}" (meaning: ${word.morphemeBreakdown.root.meaning})`);
+    if (word.morpheme_breakdown?.root) {
+      parts.push(`the root "${word.morpheme_breakdown.root.text}" (meaning: ${word.morpheme_breakdown.root.meaning})`);
+    }
     
-    if (word.morphemeBreakdown.suffix) {
-      parts.push(`the suffix "${word.morphemeBreakdown.suffix.text}" (meaning: ${word.morphemeBreakdown.suffix.meaning})`);
+    if (word.morpheme_breakdown?.suffix) {
+      parts.push(`the suffix "${word.morpheme_breakdown.suffix.text}" (meaning: ${word.morpheme_breakdown.suffix.meaning})`);
     }
     
     return parts.length > 1 
       ? `How do ${parts.join(', ')} combine to form the meaning of "${word.word}"?` 
-      : `What does the root "${word.morphemeBreakdown.root.text}" tell us about the word "${word.word}"?`;
+      : `What does the root "${word.morpheme_breakdown?.root?.text || word.word}" tell us about the word "${word.word}"?`;
   };
   
   // Create a comprehensive morpheme analysis prompt
@@ -59,7 +61,10 @@ const AIAssistantTab = ({ word }: AIAssistantTabProps) => {
           <div className="space-y-2">
             <div 
               className="text-xs bg-primary/10 p-2 rounded-lg cursor-pointer hover:bg-primary/20 transition-colors"
-              onClick={() => document.getElementById('message-input')?.setAttribute('value', getMorphemePrompt())}
+              onClick={() => {
+                const input = document.getElementById('message-input') as HTMLInputElement;
+                if (input) input.value = getMorphemePrompt();
+              }}
             >
               <MessageSquare className="h-3 w-3 text-primary inline mr-1" />
               <span>"{getMorphemePrompt()}"</span>
@@ -67,7 +72,10 @@ const AIAssistantTab = ({ word }: AIAssistantTabProps) => {
             
             <div 
               className="text-xs bg-primary/10 p-2 rounded-lg cursor-pointer hover:bg-primary/20 transition-colors"
-              onClick={() => document.getElementById('message-input')?.setAttribute('value', getComprehensivePrompt())}
+              onClick={() => {
+                const input = document.getElementById('message-input') as HTMLInputElement;
+                if (input) input.value = getComprehensivePrompt();
+              }}
             >
               <MessageSquare className="h-3 w-3 text-primary inline mr-1" />
               <span>"Give me a comprehensive morphological analysis of this word"</span>
@@ -75,10 +83,13 @@ const AIAssistantTab = ({ word }: AIAssistantTabProps) => {
             
             <div 
               className="text-xs bg-primary/10 p-2 rounded-lg cursor-pointer hover:bg-primary/20 transition-colors"
-              onClick={() => document.getElementById('message-input')?.setAttribute('value', `What other words contain the root "${word.morphemeBreakdown.root.text}"?`)}
+              onClick={() => {
+                const input = document.getElementById('message-input') as HTMLInputElement;
+                if (input) input.value = `What other words contain the root "${word.morpheme_breakdown?.root?.text || word.word}"?`;
+              }}
             >
               <MessageSquare className="h-3 w-3 text-primary inline mr-1" />
-              <span>"What other words contain the root "{word.morphemeBreakdown.root.text}"?"</span>
+              <span>"What other words contain the root "{word.morpheme_breakdown?.root?.text || word.word}"?"</span>
             </div>
           </div>
         </Card>
