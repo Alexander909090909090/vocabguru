@@ -9,6 +9,7 @@ import { useWords } from "@/context/WordsContext";
 import { isNonsenseWord, hasMinimumWordDetails } from "@/utils/wordValidation";
 import { WordRepositoryService } from "@/services/wordRepositoryService";
 import { DictionaryApiService } from "@/services/dictionaryApiService";
+import { WordSeedingService } from "@/services/wordSeedingService";
 
 interface DictionarySearchProps {
   onWordAdded?: () => void;
@@ -18,8 +19,8 @@ interface DictionarySearchProps {
 export function DictionarySearch({ onWordAdded, useMerriamWebster = false }: DictionarySearchProps) {
   const [searchWord, setSearchWord] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
   const [recents, setRecents] = useState<string[]>(() => {
-    // Load recent searches from localStorage
     try {
       const saved = localStorage.getItem("vocabguru-recent-searches");
       return saved ? JSON.parse(saved) : [];
@@ -40,6 +41,35 @@ export function DictionarySearch({ onWordAdded, useMerriamWebster = false }: Dic
     }
   };
 
+  const initializeDatabase = async () => {
+    if (isInitializing) return;
+    
+    setIsInitializing(true);
+    try {
+      console.log('Initializing database with essential words...');
+      toast({
+        title: "Initializing Vocabulary Database",
+        description: "Adding essential words to get you started...",
+      });
+      
+      await WordSeedingService.initializeIfEmpty();
+      
+      toast({
+        title: "Database Initialized",
+        description: "Essential vocabulary words have been added to your database.",
+      });
+    } catch (error) {
+      console.error('Failed to initialize database:', error);
+      toast({
+        title: "Initialization Error",
+        description: "Failed to initialize the vocabulary database. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsInitializing(false);
+    }
+  };
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -54,7 +84,6 @@ export function DictionarySearch({ onWordAdded, useMerriamWebster = false }: Dic
     
     const normalizedWord = searchWord.trim().toLowerCase();
     
-    // Check if the word looks like a nonsense entry
     if (isNonsenseWord(normalizedWord)) {
       toast({
         title: "Invalid word",
@@ -67,11 +96,12 @@ export function DictionarySearch({ onWordAdded, useMerriamWebster = false }: Dic
     setIsSearching(true);
     
     try {
+      console.log(`=== Starting search for: "${normalizedWord}" ===`);
+      
       // First, check if the word exists in our repository
       let wordEntry = await WordRepositoryService.getWordByName(normalizedWord);
       
       if (!wordEntry) {
-        // Word doesn't exist in our repository, fetch from external API
         console.log(`Word "${normalizedWord}" not found in repository, fetching from API...`);
         
         const success = await DictionaryApiService.fetchAndStoreWord(normalizedWord);
@@ -83,18 +113,20 @@ export function DictionarySearch({ onWordAdded, useMerriamWebster = false }: Dic
           if (wordEntry) {
             toast({
               title: "Word found and added!",
-              description: `"${normalizedWord}" has been added to the repository.`,
+              description: `"${normalizedWord}" has been added to the vocabulary database.`,
             });
           }
         } else {
           toast({
             title: "Word not found",
-            description: "Sorry, we couldn't find that word in our dictionary.",
+            description: "This word couldn't be found in our dictionary sources. Try a different word or check the spelling.",
             variant: "destructive",
           });
           setIsSearching(false);
           return;
         }
+      } else {
+        console.log(`Word "${normalizedWord}" found in repository`);
       }
       
       if (wordEntry) {
@@ -160,6 +192,8 @@ export function DictionarySearch({ onWordAdded, useMerriamWebster = false }: Dic
         
         // Reset search
         setSearchWord("");
+        
+        console.log(`=== Successfully processed search for: "${normalizedWord}" ===`);
       }
     } catch (error) {
       console.error("Search error:", error);
@@ -182,13 +216,13 @@ export function DictionarySearch({ onWordAdded, useMerriamWebster = false }: Dic
           className="w-full bg-secondary/50 border-none h-12 pl-12 focus-visible:ring-primary"
           value={searchWord}
           onChange={(e) => setSearchWord(e.target.value)}
-          disabled={isSearching}
+          disabled={isSearching || isInitializing}
         />
         <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
         <Button 
           type="submit" 
           className="absolute right-1 top-1/2 transform -translate-y-1/2 h-10"
-          disabled={isSearching}
+          disabled={isSearching || isInitializing}
         >
           {isSearching ? (
             <span className="flex items-center">
@@ -198,6 +232,23 @@ export function DictionarySearch({ onWordAdded, useMerriamWebster = false }: Dic
           ) : "Search"}
         </Button>
       </form>
+
+      {/* Initialize Database Button */}
+      <div className="flex justify-center">
+        <Button 
+          onClick={initializeDatabase}
+          disabled={isInitializing || isSearching}
+          variant="outline"
+          size="sm"
+        >
+          {isInitializing ? (
+            <span className="flex items-center">
+              <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+              Initializing Database
+            </span>
+          ) : "Initialize Database with Essential Words"}
+        </Button>
+      </div>
       
       {recents.length > 0 && (
         <div className="text-sm">
@@ -213,6 +264,7 @@ export function DictionarySearch({ onWordAdded, useMerriamWebster = false }: Dic
                   setSearchWord(word);
                   handleSearch(new Event('submit') as any);
                 }}
+                disabled={isSearching || isInitializing}
               >
                 {word}
               </Button>

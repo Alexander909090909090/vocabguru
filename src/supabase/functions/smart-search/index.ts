@@ -1,8 +1,6 @@
 
-/// <reference types="https://esm.sh/@supabase/functions-js/src/edge-runtime.d.ts" />
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,6 +18,8 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
+
+    console.log(`Smart search for query: ${query}`)
 
     // Basic semantic search using word patterns and relationships
     let searchQuery = supabaseClient
@@ -47,15 +47,20 @@ serve(async (req) => {
       .limit(limit)
 
     if (error) {
+      console.error('Search error:', error)
       throw error
     }
 
+    console.log(`Found ${data?.length || 0} basic results`)
+
     // AI-powered semantic expansion for better results
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
-    let enhancedResults = data
+    let enhancedResults = data || []
 
     if (openaiApiKey && query) {
       try {
+        console.log('Enhancing search with AI suggestions...')
+        
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -79,19 +84,23 @@ serve(async (req) => {
           }),
         })
 
-        const aiData = await response.json()
-        const suggestions = JSON.parse(aiData.choices[0].message.content)
-        
-        // Find additional words based on AI suggestions
-        for (const suggestion of suggestions.slice(0, 5)) {
-          const { data: additionalWords } = await supabaseClient
-            .from('word_profiles')
-            .select('*')
-            .or(`word.ilike.%${suggestion}%,definitions->>primary.ilike.%${suggestion}%`)
-            .limit(2)
+        if (response.ok) {
+          const aiData = await response.json()
+          const suggestions = JSON.parse(aiData.choices[0].message.content)
+          
+          console.log(`AI suggested ${suggestions.length} related terms`)
+          
+          // Find additional words based on AI suggestions
+          for (const suggestion of suggestions.slice(0, 5)) {
+            const { data: additionalWords } = await supabaseClient
+              .from('word_profiles')
+              .select('*')
+              .or(`word.ilike.%${suggestion}%,definitions->>primary.ilike.%${suggestion}%`)
+              .limit(2)
 
-          if (additionalWords) {
-            enhancedResults = [...enhancedResults, ...additionalWords]
+            if (additionalWords) {
+              enhancedResults = [...enhancedResults, ...additionalWords]
+            }
           }
         }
       } catch (aiError) {
@@ -103,6 +112,8 @@ serve(async (req) => {
     const uniqueResults = enhancedResults.filter((word, index, self) => 
       index === self.findIndex(w => w.id === word.id)
     ).slice(0, limit)
+
+    console.log(`Returning ${uniqueResults.length} unique results`)
 
     return new Response(
       JSON.stringify({ results: uniqueResults, total: uniqueResults.length }),

@@ -1,8 +1,6 @@
 
-/// <reference types="https://esm.sh/@supabase/functions-js/src/edge-runtime.d.ts" />
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,16 +21,20 @@ serve(async (req) => {
     const { words } = await req.json()
     
     if (!words || !Array.isArray(words)) {
+      console.error('Invalid words array provided')
       return new Response(
         JSON.stringify({ error: 'Invalid words array' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
+    console.log(`Processing ${words.length} words...`)
     const results = []
     
     for (const word of words) {
       try {
+        console.log(`Fetching data for word: ${word}`)
+        
         // Fetch from Free Dictionary API
         const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
         
@@ -74,6 +76,8 @@ serve(async (req) => {
             }
           }
 
+          console.log(`Storing word data for: ${word}`)
+          
           const { error } = await supabaseClient
             .from('word_profiles')
             .upsert(wordData, { onConflict: 'word' })
@@ -82,9 +86,11 @@ serve(async (req) => {
             console.error(`Error storing word ${word}:`, error)
             results.push({ word, success: false, error: error.message })
           } else {
+            console.log(`Successfully stored word: ${word}`)
             results.push({ word, success: true })
           }
         } else {
+          console.log(`Word not found in dictionary: ${word}`)
           results.push({ word, success: false, error: 'Word not found in dictionary' })
         }
       } catch (error) {
@@ -92,6 +98,8 @@ serve(async (req) => {
         results.push({ word, success: false, error: error.message })
       }
     }
+
+    console.log(`Completed processing. Success: ${results.filter(r => r.success).length}, Failed: ${results.filter(r => !r.success).length}`)
 
     return new Response(
       JSON.stringify({ results }),

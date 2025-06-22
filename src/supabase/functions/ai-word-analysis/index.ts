@@ -1,6 +1,4 @@
 
-/// <reference types="https://esm.sh/@supabase/functions-js/src/edge-runtime.d.ts" />
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -20,8 +18,11 @@ serve(async (req) => {
     const { word } = await req.json();
 
     if (!openAIApiKey) {
+      console.error('OpenAI API key not configured');
       throw new Error('OpenAI API key not configured');
     }
+
+    console.log(`Analyzing word: ${word}`);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -79,6 +80,7 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
+      console.error(`OpenAI API error: ${response.status} ${response.statusText}`);
       throw new Error(`OpenAI API error: ${response.status}`);
     }
 
@@ -87,11 +89,13 @@ serve(async (req) => {
     
     try {
       const analysis = JSON.parse(analysisText);
+      console.log(`Successfully analyzed word: ${word}`);
       return new Response(JSON.stringify(analysis), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
+      console.error('Raw response:', analysisText);
       return new Response(JSON.stringify({
         error: 'Failed to parse AI analysis',
         raw_response: analysisText
