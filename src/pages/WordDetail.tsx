@@ -52,7 +52,7 @@ const WordDetail = () => {
             morphemeBreakdown: legacyWord.morphemeBreakdown,
             etymology: {
               historical_origins: legacyWord.etymology?.origin,
-              language_of_origin: legacyWord.languageOrigin || 'Unknown',
+              language_of_origin: legacyWord.languageOrigin,
               word_evolution: legacyWord.etymology?.evolution,
               cultural_regional_variations: legacyWord.etymology?.culturalVariations,
               origin: legacyWord.etymology?.origin,

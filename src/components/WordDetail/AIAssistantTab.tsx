@@ -1,34 +1,32 @@
 
 import AIChatInterface from "@/components/AIChatInterface";
 import WordSection from "@/components/WordSection";
-import { EnhancedWordProfile } from "@/types/enhancedWordProfile";
+import { Word } from "@/data/words";
 import { MessageSquare, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 
 interface AIAssistantTabProps {
-  word: EnhancedWordProfile;
+  word: Word;
 }
 
 const AIAssistantTab = ({ word }: AIAssistantTabProps) => {
   // Create a targeted prompt based on the word's morphological structure
   const getMorphemePrompt = () => {
     const parts = [];
-    if (word.morpheme_breakdown?.prefix) {
-      parts.push(`the prefix "${word.morpheme_breakdown.prefix.text}" (meaning: ${word.morpheme_breakdown.prefix.meaning})`);
+    if (word.morphemeBreakdown.prefix) {
+      parts.push(`the prefix "${word.morphemeBreakdown.prefix.text}" (meaning: ${word.morphemeBreakdown.prefix.meaning})`);
     }
     
-    if (word.morpheme_breakdown?.root) {
-      parts.push(`the root "${word.morpheme_breakdown.root.text}" (meaning: ${word.morpheme_breakdown.root.meaning})`);
-    }
+    parts.push(`the root "${word.morphemeBreakdown.root.text}" (meaning: ${word.morphemeBreakdown.root.meaning})`);
     
-    if (word.morpheme_breakdown?.suffix) {
-      parts.push(`the suffix "${word.morpheme_breakdown.suffix.text}" (meaning: ${word.morpheme_breakdown.suffix.meaning})`);
+    if (word.morphemeBreakdown.suffix) {
+      parts.push(`the suffix "${word.morphemeBreakdown.suffix.text}" (meaning: ${word.morphemeBreakdown.suffix.meaning})`);
     }
     
     return parts.length > 1 
       ? `How do ${parts.join(', ')} combine to form the meaning of "${word.word}"?` 
-      : `What does the root "${word.morpheme_breakdown?.root?.text || word.word}" tell us about the word "${word.word}"?`;
+      : `What does the root "${word.morphemeBreakdown.root.text}" tell us about the word "${word.word}"?`;
   };
   
   // Create a comprehensive morpheme analysis prompt
@@ -39,36 +37,6 @@ const AIAssistantTab = ({ word }: AIAssistantTabProps) => {
 3. How the morphemes combine to create the current meaning
 4. Examples of other words that share these morphemes
 `;
-  };
-
-  // Convert EnhancedWordProfile to compatible format for AIChatInterface
-  const compatibleWord = {
-    id: word.id,
-    word: word.word,
-    pronunciation: word.pronunciation,
-    partOfSpeech: word.partOfSpeech,
-    languageOrigin: word.languageOrigin || 'Unknown',
-    description: word.description,
-    featured: word.featured || false,
-    morphemeBreakdown: word.morpheme_breakdown || word.morphemeBreakdown,
-    etymology: {
-      origin: word.etymology?.origin || word.etymology?.historical_origins || 'Unknown origin',
-      evolution: word.etymology?.evolution || word.etymology?.word_evolution || 'Evolution unknown',
-      culturalVariations: word.etymology?.culturalVariations || word.etymology?.cultural_regional_variations
-    },
-    definitions: [{
-      definition: word.definitions?.primary || word.description,
-      context: "primary"
-    }],
-    images: word.images || [],
-    synonymsAntonyms: word.synonymsAntonyms || { synonyms: [], antonyms: [] },
-    usage: word.usage || {
-      commonCollocations: [],
-      contextualUsage: '',
-      sentenceStructure: '',
-      exampleSentence: ''
-    },
-    forms: word.forms || {}
   };
 
   return (
@@ -91,10 +59,7 @@ const AIAssistantTab = ({ word }: AIAssistantTabProps) => {
           <div className="space-y-2">
             <div 
               className="text-xs bg-primary/10 p-2 rounded-lg cursor-pointer hover:bg-primary/20 transition-colors"
-              onClick={() => {
-                const input = document.getElementById('message-input') as HTMLInputElement;
-                if (input) input.value = getMorphemePrompt();
-              }}
+              onClick={() => document.getElementById('message-input')?.setAttribute('value', getMorphemePrompt())}
             >
               <MessageSquare className="h-3 w-3 text-primary inline mr-1" />
               <span>"{getMorphemePrompt()}"</span>
@@ -102,10 +67,7 @@ const AIAssistantTab = ({ word }: AIAssistantTabProps) => {
             
             <div 
               className="text-xs bg-primary/10 p-2 rounded-lg cursor-pointer hover:bg-primary/20 transition-colors"
-              onClick={() => {
-                const input = document.getElementById('message-input') as HTMLInputElement;
-                if (input) input.value = getComprehensivePrompt();
-              }}
+              onClick={() => document.getElementById('message-input')?.setAttribute('value', getComprehensivePrompt())}
             >
               <MessageSquare className="h-3 w-3 text-primary inline mr-1" />
               <span>"Give me a comprehensive morphological analysis of this word"</span>
@@ -113,18 +75,15 @@ const AIAssistantTab = ({ word }: AIAssistantTabProps) => {
             
             <div 
               className="text-xs bg-primary/10 p-2 rounded-lg cursor-pointer hover:bg-primary/20 transition-colors"
-              onClick={() => {
-                const input = document.getElementById('message-input') as HTMLInputElement;
-                if (input) input.value = `What other words contain the root "${word.morpheme_breakdown?.root?.text || word.word}"?`;
-              }}
+              onClick={() => document.getElementById('message-input')?.setAttribute('value', `What other words contain the root "${word.morphemeBreakdown.root.text}"?`)}
             >
               <MessageSquare className="h-3 w-3 text-primary inline mr-1" />
-              <span>"What other words contain the root "{word.morpheme_breakdown?.root?.text || word.word}"?"</span>
+              <span>"What other words contain the root "{word.morphemeBreakdown.root.text}"?"</span>
             </div>
           </div>
         </Card>
         
-        <AIChatInterface currentWord={compatibleWord} />
+        <AIChatInterface currentWord={word} />
       </WordSection>
     </div>
   );

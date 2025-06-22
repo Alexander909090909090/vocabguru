@@ -2,26 +2,13 @@
 {
   "compilerOptions": {
     "allowJs": true,
-    "lib": ["deno.window", "deno.ns", "es2020", "dom"],
+    "lib": ["deno.window", "deno.ns", "es2020"],
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
     "types": ["deno"],
     "moduleResolution": "node",
     "target": "es2020",
-    "module": "esnext",
-    "jsx": "react-jsx",
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "forceConsistentCasingInFileNames": true,
-    "isolatedModules": true,
-    "noUncheckedIndexedAccess": true
-  },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+    "module": "esnext"
+  }
 }
