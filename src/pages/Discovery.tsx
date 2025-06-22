@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Plus, BookOpen, Globe, Loader2, Sparkles, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,10 @@ import { WordProfileService } from '@/services/wordProfileService';
 import { WordProfile } from '@/types/wordProfile';
 import { SemanticSearchService, SemanticSearchResult } from '@/services/semanticSearchService';
 import AIChatInterface from '@/components/AIChatInterface';
+import { EnhancedWordProfile } from '@/types/enhancedWordProfile';
+import { WordRepositoryService } from '@/services/wordRepositoryService';
+import { EnhancedWordProfileService } from '@/services/enhancedWordProfileService';
+import EnhancedWordCard from '@/components/Discovery/EnhancedWordCard';
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -37,10 +41,84 @@ const DiscoveryPage: React.FC = () => {
   const [meaningSearch, setMeaningSearch] = useState('');
   const [searchResults, setSearchResults] = useState<DictionaryEntry[]>([]);
   const [semanticResults, setSemanticResults] = useState<SemanticSearchResult[]>([]);
+  const [enhancedWords, setEnhancedWords] = useState<EnhancedWordProfile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isSemanticSearching, setIsSemanticSearching] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isAdding, setIsAdding] = useState<string | null>(null);
-  const [searchMode, setSearchMode] = useState<'dictionary' | 'semantic'>('dictionary');
+  const [searchMode, setSearchMode] = useState<'dictionary' | 'semantic' | 'browse'>('browse');
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+
+  // Load enhanced word profiles with pagination
+  const loadEnhancedWords = useCallback(async (pageNum: number = 0, reset: boolean = true) => {
+    setIsLoadingMore(true);
+    
+    try {
+      const { words: newWords, hasMore: moreAvailable } = await WordRepositoryService.getWordsWithPagination(
+        pageNum,
+        20
+      );
+      
+      // Convert to enhanced word profiles
+      const enhancedProfiles = newWords.map(word => 
+        EnhancedWordProfileService.convertWordProfile({
+          id: word.id,
+          word: word.word,
+          created_at: word.created_at,
+          updated_at: word.updated_at,
+          morpheme_breakdown: word.morpheme_breakdown || { root: { text: word.word, meaning: 'Root meaning to be analyzed' } },
+          etymology: word.etymology || {},
+          definitions: word.definitions || { primary: word.word + ' definition to be researched' },
+          word_forms: word.word_forms || {},
+          analysis: word.analysis || {}
+        })
+      );
+      
+      if (reset) {
+        setEnhancedWords(enhancedProfiles);
+      } else {
+        setEnhancedWords(prev => [...prev, ...enhancedProfiles]);
+      }
+      
+      setHasMore(moreAvailable);
+      setPage(pageNum);
+    } catch (error) {
+      console.error('Error loading enhanced words:', error);
+      toast({
+        title: "Error loading words",
+        description: "Failed to load word profiles. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, []);
+
+  // Load initial words
+  useEffect(() => {
+    if (searchMode === 'browse') {
+      loadEnhancedWords(0, true);
+    }
+  }, [searchMode, loadEnhancedWords]);
+
+  // Infinite scroll handler
+  useEffect(() => {
+    const handleScroll = () => {
+      if (
+        searchMode === 'browse' &&
+        hasMore &&
+        !isLoadingMore &&
+        window.innerHeight + document.documentElement.scrollTop >= 
+        document.documentElement.offsetHeight - 1000
+      ) {
+        loadEnhancedWords(page + 1, false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [searchMode, hasMore, isLoadingMore, page, loadEnhancedWords]);
 
   const searchDictionary = useCallback(async (word: string) => {
     if (!word.trim()) return;
@@ -123,7 +201,7 @@ const DiscoveryPage: React.FC = () => {
     searchByMeaning(meaningSearch);
   };
 
-  const addWordToCollection = async (entry: DictionaryEntry | SemanticSearchResult) => {
+  const addWordToCollection = async (entry: DictionaryEntry | SemanticSearchResult | EnhancedWordProfile) => {
     const wordToAdd = entry.word;
     setIsAdding(wordToAdd);
     
@@ -137,8 +215,20 @@ const DiscoveryPage: React.FC = () => {
         return;
       }
 
+      // Handle enhanced word profile
+      if ('morpheme_breakdown' in entry) {
+        const basicProfile: Partial<WordProfile> = {
+          word: entry.word,
+          morpheme_breakdown: entry.morpheme_breakdown,
+          etymology: entry.etymology,
+          definitions: entry.definitions,
+          word_forms: entry.word_forms,
+          analysis: entry.analysis
+        };
+        await WordProfileService.createWordProfile(basicProfile);
+      }
       // If it's a semantic result, fetch full definition first
-      if ('score' in entry) {
+      else if ('score' in entry) {
         try {
           const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${wordToAdd}`);
           if (response.ok) {
@@ -249,11 +339,19 @@ const DiscoveryPage: React.FC = () => {
       </div>
       
       <p className="text-gray-600 dark:text-gray-400 mb-8">
-        Discover new words using dictionary search or find words by meaning using semantic search.
+        Discover new words using dictionary search, semantic search, or browse our comprehensive word repository.
       </p>
 
       {/* Search Mode Toggle */}
       <div className="flex gap-2 mb-6">
+        <Button
+          variant={searchMode === 'browse' ? 'default' : 'outline'}
+          onClick={() => setSearchMode('browse')}
+          className="flex items-center gap-2"
+        >
+          <BookOpen className="h-4 w-4" />
+          Browse Words
+        </Button>
         <Button
           variant={searchMode === 'dictionary' ? 'default' : 'outline'}
           onClick={() => setSearchMode('dictionary')}
@@ -334,6 +432,55 @@ const DiscoveryPage: React.FC = () => {
 
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
+          {/* Browse Enhanced Words */}
+          {searchMode === 'browse' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-medium">Word Repository</h2>
+              
+              {enhancedWords.length > 0 ? (
+                <>
+                  <div className="grid gap-6 md:grid-cols-2">
+                    {enhancedWords.map((wordProfile, index) => (
+                      <EnhancedWordCard 
+                        key={wordProfile.id} 
+                        wordProfile={wordProfile}
+                        onAddToCollection={addWordToCollection}
+                        showAddButton={true}
+                      />
+                    ))}
+                  </div>
+                  
+                  {/* Loading more indicator */}
+                  {isLoadingMore && (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                      <span className="ml-2">Loading more words...</span>
+                    </div>
+                  )}
+                  
+                  {!hasMore && enhancedWords.length > 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>You've reached the end of our word repository!</p>
+                    </div>
+                  )}
+                </>
+              ) : isLoadingMore ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <span className="ml-2">Loading word repository...</span>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-500 mb-2">No words available</h3>
+                  <p className="text-gray-400">
+                    Check back later as we continue to expand our word repository.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Dictionary Search Results */}
           {searchMode === 'dictionary' && searchResults.length > 0 && (
             <div className="space-y-6">
@@ -466,7 +613,7 @@ const DiscoveryPage: React.FC = () => {
             </div>
           )}
 
-          {!searchTerm && !meaningSearch && (
+          {searchMode !== 'browse' && !searchTerm && !meaningSearch && (
             <div className="text-center py-12">
               <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-500 mb-2">Discover New Words</h3>

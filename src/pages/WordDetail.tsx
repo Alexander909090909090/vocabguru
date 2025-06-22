@@ -9,42 +9,67 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWords } from "@/context/WordsContext"; 
 import WordHeader from "@/components/WordDetail/WordHeader";
 import WordNotFound from "@/components/WordDetail/WordNotFound";
-import WordMainContent from "@/components/WordDetail/WordMainContent";
+import EnhancedWordContent from "@/components/WordDetail/EnhancedWordContent";
 import AIAssistantTab from "@/components/WordDetail/AIAssistantTab";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EnhancedWordProfileService } from "@/services/enhancedWordProfileService";
+import { EnhancedWordProfile } from "@/types/enhancedWordProfile";
 
 const WordDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
+  const [enhancedWordProfile, setEnhancedWordProfile] = useState<EnhancedWordProfile | null>(null);
   const { getWord } = useWords();
   
-  // Get word data from context
-  const word = id ? getWord(id) : undefined;
+  // Get word data from context for fallback
+  const legacyWord = id ? getWord(id) : undefined;
 
   useEffect(() => {
-    // Simulate loading to show nice transitions
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 300);
-    
-    return () => clearTimeout(timer);
-  }, [id]);
+    const loadWordProfile = async () => {
+      if (!id) return;
+      
+      setIsLoading(true);
+      
+      try {
+        // Try to get enhanced word profile from database first
+        let profile = await EnhancedWordProfileService.getEnhancedWordProfile(id);
+        
+        // Fallback to legacy word conversion
+        if (!profile && legacyWord) {
+          profile = EnhancedWordProfileService.convertLegacyWord(legacyWord);
+        }
+        
+        setEnhancedWordProfile(profile);
+      } catch (error) {
+        console.error("Error loading word profile:", error);
+        
+        // Final fallback to legacy word
+        if (legacyWord) {
+          const profile = EnhancedWordProfileService.convertLegacyWord(legacyWord);
+          setEnhancedWordProfile(profile);
+        }
+      } finally {
+        // Simulate loading for smooth transitions
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 300);
+      }
+    };
+
+    loadWordProfile();
+  }, [id, legacyWord]);
 
   // Handle word not found
-  if (!isLoading && !word) {
+  if (!isLoading && !enhancedWordProfile) {
     return <WordNotFound />;
   }
 
   // Create color gradient based on word id for consistent colors
   const getGradient = (id: string) => {
-    // Simple hash function for the word id
     const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    
-    // Use the hash to generate hue values
     const hue1 = hash % 360;
     const hue2 = (hash * 7) % 360;
-    
     return `linear-gradient(135deg, hsl(${hue1}, 80%, 70%), hsl(${hue2}, 80%, 60%))`;
   };
 
@@ -85,32 +110,32 @@ const WordDetail = () => {
               <Skeleton className="h-64 w-full" />
             </div>
           </>
-        ) : word ? (
+        ) : enhancedWordProfile ? (
           <>
             {/* Word Header */}
             <WordHeader 
-              word={word} 
+              word={enhancedWordProfile} 
               getGradient={getGradient} 
               isLoading={isLoading} 
             />
             
             {/* Morpheme Breakdown */}
-            <MorphemeBreakdown breakdown={word.morphemeBreakdown} />
+            <MorphemeBreakdown breakdown={enhancedWordProfile.morpheme_breakdown} />
             
             {/* Main Word Content */}
             <div className="mt-8">
               <Tabs defaultValue="details" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="details">Word Details</TabsTrigger>
+                  <TabsTrigger value="details">Word Analysis</TabsTrigger>
                   <TabsTrigger value="ai-assist">AI Assistant</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="details">
-                  <WordMainContent word={word} />
+                  <EnhancedWordContent wordProfile={enhancedWordProfile} />
                 </TabsContent>
                 
                 <TabsContent value="ai-assist">
-                  <AIAssistantTab word={word} />
+                  <AIAssistantTab word={enhancedWordProfile} />
                 </TabsContent>
               </Tabs>
             </div>
