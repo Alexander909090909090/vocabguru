@@ -59,33 +59,38 @@ const generateComprehensiveAnalysis = (word: Word | EnhancedWordProfile): string
   if (morphemes?.prefix) {
     analysis += `**Prefix:** ${morphemes.prefix.text}\n`;
     analysis += `- Meaning: ${morphemes.prefix.meaning}\n`;
-    analysis += `- Origin: ${morphemes.prefix.origin || 'Classical'}\n\n`;
+    analysis += `- Origin: ${(morphemes.prefix as any).origin || 'Classical'}\n\n`;
   }
   
   if (morphemes?.root) {
     analysis += `**Root:** ${morphemes.root.text}\n`;
     analysis += `- Meaning: ${morphemes.root.meaning}\n`;
-    analysis += `- Origin: ${morphemes.root.origin || 'Indo-European'}\n\n`;
+    analysis += `- Origin: ${(morphemes.root as any).origin || 'Indo-European'}\n\n`;
   }
   
   if (morphemes?.suffix) {
     analysis += `**Suffix:** ${morphemes.suffix.text}\n`;
     analysis += `- Meaning: ${morphemes.suffix.meaning}\n`;
-    analysis += `- Origin: ${morphemes.suffix.origin || 'Germanic'}\n\n`;
+    analysis += `- Origin: ${(morphemes.suffix as any).origin || 'Germanic'}\n\n`;
   }
   
   // Etymology Section
   analysis += `### 📚 Etymology & Historical Development\n\n`;
-  if (etymology?.origin || etymology?.historical_origins) {
-    analysis += `**Historical Origins:** ${etymology.historical_origins || etymology.origin}\n\n`;
-  }
-  
-  if (etymology?.evolution || etymology?.word_evolution) {
-    analysis += `**Word Evolution:** ${etymology.word_evolution || etymology.evolution}\n\n`;
-  }
-  
-  if (etymology?.culturalVariations || etymology?.cultural_regional_variations) {
-    analysis += `**Cultural Variations:** ${etymology.cultural_regional_variations || etymology.culturalVariations}\n\n`;
+  if (etymology) {
+    const historicalOrigins = (etymology as any).historical_origins || etymology.origin;
+    if (historicalOrigins) {
+      analysis += `**Historical Origins:** ${historicalOrigins}\n\n`;
+    }
+    
+    const wordEvolution = (etymology as any).word_evolution || etymology.evolution;
+    if (wordEvolution) {
+      analysis += `**Word Evolution:** ${wordEvolution}\n\n`;
+    }
+    
+    const culturalVariations = (etymology as any).cultural_regional_variations || etymology.culturalVariations;
+    if (culturalVariations) {
+      analysis += `**Cultural Variations:** ${culturalVariations}\n\n`;
+    }
   }
   
   // Linguistic Insights
@@ -144,21 +149,21 @@ const generateMorphologicalAnalysis = (word: Word | EnhancedWordProfile): string
     analysis += `🔸 **Prefix: ${morphemes.prefix.text}**\n`;
     analysis += `   - Meaning: ${morphemes.prefix.meaning}\n`;
     analysis += `   - Function: Modifies the root meaning\n`;
-    analysis += `   - Origin: ${morphemes.prefix.origin || 'Classical languages'}\n\n`;
+    analysis += `   - Origin: ${(morphemes.prefix as any).origin || 'Classical languages'}\n\n`;
   }
   
   if (morphemes?.root) {
     analysis += `🔹 **Root: ${morphemes.root.text}** (Core meaning)\n`;
     analysis += `   - Meaning: ${morphemes.root.meaning}\n`;
     analysis += `   - Function: Carries the primary semantic content\n`;
-    analysis += `   - Origin: ${morphemes.root.origin || 'Indo-European base'}\n\n`;
+    analysis += `   - Origin: ${(morphemes.root as any).origin || 'Indo-European base'}\n\n`;
   }
   
   if (morphemes?.suffix) {
     analysis += `🔸 **Suffix: ${morphemes.suffix.text}**\n`;
     analysis += `   - Meaning: ${morphemes.suffix.meaning}\n`;
     analysis += `   - Function: Determines grammatical category\n`;
-    analysis += `   - Origin: ${morphemes.suffix.origin || 'Germanic inflection'}\n\n`;
+    analysis += `   - Origin: ${(morphemes.suffix as any).origin || 'Germanic inflection'}\n\n`;
   }
   
   analysis += `### Morphological Pattern\n\n`;
@@ -182,12 +187,16 @@ const generateEtymologyAnalysis = (word: Word | EnhancedWordProfile): string => 
   
   analysis += `### Historical Development\n\n`;
   
-  if (etymology?.historical_origins || etymology?.origin) {
-    analysis += `**Origins:** ${etymology.historical_origins || etymology.origin}\n\n`;
-  }
-  
-  if (etymology?.word_evolution || etymology?.evolution) {
-    analysis += `**Evolution:** ${etymology.word_evolution || etymology.evolution}\n\n`;
+  if (etymology) {
+    const historicalOrigins = (etymology as any).historical_origins || etymology.origin;
+    if (historicalOrigins) {
+      analysis += `**Origins:** ${historicalOrigins}\n\n`;
+    }
+    
+    const wordEvolution = (etymology as any).word_evolution || etymology.evolution;
+    if (wordEvolution) {
+      analysis += `**Evolution:** ${wordEvolution}\n\n`;
+    }
   }
   
   analysis += `### Language Journey\n\n`;
@@ -198,9 +207,12 @@ const generateEtymologyAnalysis = (word: Word | EnhancedWordProfile): string => 
   analysis += `3. **Medieval Period:** Entered Old French or Medieval Latin\n`;
   analysis += `4. **Modern English:** Standardized during the Renaissance\n\n`;
   
-  if (etymology?.cultural_regional_variations || etymology?.culturalVariations) {
-    analysis += `### Cultural Context\n\n`;
-    analysis += `${etymology.cultural_regional_variations || etymology.culturalVariations}\n\n`;
+  if (etymology) {
+    const culturalVariations = (etymology as any).cultural_regional_variations || etymology.culturalVariations;
+    if (culturalVariations) {
+      analysis += `### Cultural Context\n\n`;
+      analysis += `${culturalVariations}\n\n`;
+    }
   }
   
   analysis += `### Linguistic Significance\n\n`;

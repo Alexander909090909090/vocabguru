@@ -44,8 +44,13 @@ const AIAssistantTab = ({ word }: AIAssistantTabProps) => {
   // Convert EnhancedWordProfile to compatible format for AIChatInterface
   const compatibleWord = {
     ...word,
-    languageOrigin: word.languageOrigin || 'Unknown', // Ensure required property exists
-    morphemeBreakdown: word.morpheme_breakdown // Use the correct property name
+    languageOrigin: word.languageOrigin || 'Unknown',
+    morphemeBreakdown: word.morpheme_breakdown,
+    etymology: {
+      origin: word.etymology?.origin || word.etymology?.historical_origins || 'Unknown origin',
+      evolution: word.etymology?.evolution || word.etymology?.word_evolution || 'Evolution unknown',
+      culturalVariations: word.etymology?.culturalVariations || word.etymology?.cultural_regional_variations
+    }
   };
 
   return (
