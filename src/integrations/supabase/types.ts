@@ -9,154 +9,16 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      user_profiles: {
-        Row: {
-          achievements: Json | null
-          avatar_url: string | null
-          created_at: string
-          daily_goal: number | null
-          full_name: string | null
-          id: string
-          learning_level: string | null
-          streak_count: number | null
-          total_words_learned: number | null
-          updated_at: string
-          username: string | null
-        }
-        Insert: {
-          achievements?: Json | null
-          avatar_url?: string | null
-          created_at?: string
-          daily_goal?: number | null
-          full_name?: string | null
-          id: string
-          learning_level?: string | null
-          streak_count?: number | null
-          total_words_learned?: number | null
-          updated_at?: string
-          username?: string | null
-        }
-        Update: {
-          achievements?: Json | null
-          avatar_url?: string | null
-          created_at?: string
-          daily_goal?: number | null
-          full_name?: string | null
-          id?: string
-          learning_level?: string | null
-          streak_count?: number | null
-          total_words_learned?: number | null
-          updated_at?: string
-          username?: string | null
-        }
-        Relationships: []
-      }
-      user_roles: {
-        Row: {
-          created_at: string
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
-      webhook_logs: {
-        Row: {
-          error_message: string | null
-          id: string
-          payload: Json
-          processed_at: string | null
-          source: string
-          status: string | null
-          word_profile_id: string | null
-        }
-        Insert: {
-          error_message?: string | null
-          id?: string
-          payload: Json
-          processed_at?: string | null
-          source: string
-          status?: string | null
-          word_profile_id?: string | null
-        }
-        Update: {
-          error_message?: string | null
-          id?: string
-          payload?: Json
-          processed_at?: string | null
-          source?: string
-          status?: string | null
-          word_profile_id?: string | null
-        }
-        Relationships: []
-      }
-      word_profiles: {
-        Row: {
-          analysis: Json | null
-          created_at: string
-          definitions: Json | null
-          etymology: Json | null
-          id: string
-          morpheme_breakdown: Json | null
-          updated_at: string
-          word: string
-          word_forms: Json | null
-        }
-        Insert: {
-          analysis?: Json | null
-          created_at?: string
-          definitions?: Json | null
-          etymology?: Json | null
-          id?: string
-          morpheme_breakdown?: Json | null
-          updated_at?: string
-          word: string
-          word_forms?: Json | null
-        }
-        Update: {
-          analysis?: Json | null
-          created_at?: string
-          definitions?: Json | null
-          etymology?: Json | null
-          id?: string
-          morpheme_breakdown?: Json | null
-          updated_at?: string
-          word?: string
-          word_forms?: Json | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      get_current_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: Database["public"]["Enums"]["app_role"]
-      }
-      has_role: {
-        Args: {
-          _user_id: string
-          _role: Database["public"]["Enums"]["app_role"]
-        }
-        Returns: boolean
-      }
+      [_ in never]: never
     }
     Enums: {
-      app_role: "admin" | "user"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -271,8 +133,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      app_role: ["admin", "user"],
-    },
+    Enums: {},
   },
 } as const
