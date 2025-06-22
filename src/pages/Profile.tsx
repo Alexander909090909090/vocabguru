@@ -1,6 +1,6 @@
 
 import Header from "@/components/Header";
-import UserProfile from "@/components/UserProfile/UserProfile";
+import UserProfileComponent from "@/components/UserProfile/UserProfileComponent";
 
 const Profile = () => {
   return (
@@ -16,7 +16,7 @@ const Profile = () => {
             </p>
           </div>
           
-          <UserProfile />
+          <UserProfileComponent />
         </div>
       </main>
       
