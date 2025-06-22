@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Plus, BookOpen, Globe, Loader2, Sparkles, Filter } from 'lucide-react';
@@ -69,9 +70,21 @@ const DiscoveryPage: React.FC = () => {
           updated_at: word.updated_at,
           morpheme_breakdown: word.morpheme_breakdown || { root: { text: word.word, meaning: 'Root meaning to be analyzed' } },
           etymology: word.etymology || {},
-          definitions: word.definitions || { primary: word.word + ' definition to be researched' },
-          word_forms: word.word_forms || {},
-          analysis: word.analysis || {}
+          definitions: {
+            primary: word.definitions?.primary,
+            standard: word.definitions?.standard || [],
+            extended: word.definitions?.extended || [],
+            contextual: word.definitions?.contextual?.[0] || '',
+            specialized: word.definitions?.specialized?.[0] || ''
+          },
+          word_forms: {
+            ...word.word_forms,
+            other_inflections: word.word_forms?.other_inflections?.[0] || ''
+          },
+          analysis: {
+            ...word.analysis,
+            common_collocations: word.analysis?.collocations?.join(', ') || ''
+          }
         })
       );
       
@@ -221,7 +234,13 @@ const DiscoveryPage: React.FC = () => {
           word: entry.word,
           morpheme_breakdown: entry.morpheme_breakdown,
           etymology: entry.etymology,
-          definitions: entry.definitions,
+          definitions: {
+            primary: entry.definitions.primary,
+            standard: entry.definitions.standard,
+            extended: entry.definitions.extended,
+            contextual: entry.definitions.contextual?.[0] || '',
+            specialized: entry.definitions.specialized?.[0] || ''
+          },
           word_forms: entry.word_forms,
           analysis: entry.analysis
         };

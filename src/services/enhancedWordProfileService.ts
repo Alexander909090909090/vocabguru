@@ -3,7 +3,6 @@ import { EnhancedWordProfile } from "@/types/enhancedWordProfile";
 import { WordProfile } from "@/types/wordProfile";
 import { Word } from "@/data/words";
 import { WordProfileService } from "./wordProfileService";
-import { useWords } from "@/context/WordsContext";
 
 export class EnhancedWordProfileService {
   // Convert WordProfile to EnhancedWordProfile
@@ -18,6 +17,11 @@ export class EnhancedWordProfileService {
       console.error("Error parsing synonyms_antonyms:", error);
     }
 
+    // Ensure morpheme breakdown is properly structured
+    const morphemeBreakdown = profile.morpheme_breakdown || {
+      root: { text: profile.word, meaning: 'Root meaning not available' }
+    };
+
     return {
       id: profile.id,
       word: profile.word,
@@ -26,16 +30,29 @@ export class EnhancedWordProfileService {
       partOfSpeech: profile.analysis?.parts_of_speech || 'unknown',
       languageOrigin: profile.etymology?.language_of_origin || 'Unknown',
       description: profile.definitions?.primary || 'No description available',
-      morpheme_breakdown: profile.morpheme_breakdown || {
-        root: { text: profile.word, meaning: 'Root meaning not available' }
-      },
+      morpheme_breakdown: morphemeBreakdown,
+      morphemeBreakdown: morphemeBreakdown, // Legacy compatibility
       etymology: {
         ...profile.etymology,
         first_documented_usage: profile.etymology?.historical_origins
       },
-      definitions: profile.definitions || {},
-      word_forms: profile.word_forms || {},
-      analysis: profile.analysis || {},
+      definitions: {
+        primary: profile.definitions?.primary,
+        standard: profile.definitions?.standard || [],
+        extended: profile.definitions?.extended || [],
+        contextual: profile.definitions?.contextual ? [profile.definitions.contextual] : [],
+        specialized: profile.definitions?.specialized ? [profile.definitions.specialized] : []
+      },
+      word_forms: {
+        ...profile.word_forms,
+        other_inflections: profile.word_forms?.other_inflections ? 
+          [profile.word_forms.other_inflections] : []
+      },
+      analysis: {
+        ...profile.analysis,
+        common_collocations: profile.analysis?.common_collocations ? 
+          profile.analysis.common_collocations.split(',').map(s => s.trim()) : []
+      },
       synonymsAntonyms,
       usage: {
         commonCollocations: profile.analysis?.common_collocations ? 
@@ -66,7 +83,13 @@ export class EnhancedWordProfileService {
       description: word.description,
       featured: word.featured,
       morpheme_breakdown: word.morphemeBreakdown,
-      etymology: word.etymology,
+      morphemeBreakdown: word.morphemeBreakdown, // Legacy compatibility
+      etymology: {
+        historical_origins: word.etymology.origin,
+        language_of_origin: word.languageOrigin,
+        word_evolution: word.etymology.evolution,
+        cultural_regional_variations: word.etymology.culturalVariations
+      },
       definitions: {
         primary: word.definitions.find(d => d.type === 'primary')?.text,
         standard: word.definitions.filter(d => d.type === 'standard').map(d => d.text),
@@ -77,13 +100,14 @@ export class EnhancedWordProfileService {
         noun_forms: word.forms.noun ? { singular: word.forms.noun } : undefined,
         verb_tenses: word.forms.verb ? { present: word.forms.verb } : undefined,
         adjective_forms: word.forms.adjective ? { positive: word.forms.adjective } : undefined,
-        adverb_form: word.forms.adverb
+        adverb_form: word.forms.adverb,
+        other_inflections: []
       },
       analysis: {
         parts_of_speech: word.partOfSpeech,
         contextual_usage: word.usage.contextualUsage,
         sentence_structure: word.usage.sentenceStructure,
-        common_collocations: word.usage.commonCollocations?.join(', '),
+        common_collocations: word.usage.commonCollocations || [],
         example: word.usage.exampleSentence,
         synonyms_antonyms: JSON.stringify(word.synonymsAntonyms)
       },

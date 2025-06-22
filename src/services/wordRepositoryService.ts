@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface WordRepositoryEntry {
@@ -6,25 +5,25 @@ export interface WordRepositoryEntry {
   word: string;
   phonetic?: string;
   audio_url?: string;
-  morpheme_data: {
-    prefix?: { text: string; meaning: string };
-    root: { text: string; meaning: string };
-    suffix?: { text: string; meaning: string };
+  morpheme_breakdown: {
+    prefix?: { text: string; meaning: string; origin?: string };
+    root: { text: string; meaning: string; origin?: string };
+    suffix?: { text: string; meaning: string; origin?: string };
   };
-  etymology_data: {
+  etymology: {
     historical_origins?: string;
     language_of_origin?: string;
     word_evolution?: string;
     cultural_variations?: string;
   };
-  definitions_data: {
+  definitions: {
     primary?: string;
     standard?: string[];
     extended?: string[];
-    contextual?: string;
-    specialized?: string;
+    contextual?: string[];
+    specialized?: string[];
   };
-  word_forms_data: {
+  word_forms: {
     base_form?: string;
     verb_tenses?: {
       present?: string;
@@ -43,8 +42,9 @@ export interface WordRepositoryEntry {
       superlative?: string;
     };
     adverb_form?: string;
+    other_inflections?: string[];
   };
-  analysis_data: {
+  analysis: {
     parts_of_speech?: string;
     usage_examples?: string[];
     synonyms?: string[];
@@ -77,37 +77,47 @@ const convertWordProfileToEntry = (profile: any): WordRepositoryEntry => {
     word: profile.word,
     phonetic: profile.morpheme_breakdown?.phonetic || '',
     audio_url: profile.morpheme_breakdown?.audio_url || '',
-    morpheme_data: {
-      prefix: profile.morpheme_breakdown?.prefix || { text: '', meaning: '' },
+    morpheme_breakdown: {
+      prefix: profile.morpheme_breakdown?.prefix || undefined,
       root: profile.morpheme_breakdown?.root || { text: profile.word, meaning: '' },
-      suffix: profile.morpheme_breakdown?.suffix || { text: '', meaning: '' }
+      suffix: profile.morpheme_breakdown?.suffix || undefined
     },
-    etymology_data: {
+    etymology: {
       historical_origins: profile.etymology?.historical_origins || '',
       language_of_origin: profile.etymology?.language_of_origin || '',
       word_evolution: profile.etymology?.word_evolution || '',
       cultural_variations: profile.etymology?.cultural_variations || ''
     },
-    definitions_data: {
+    definitions: {
       primary: profile.definitions?.primary || '',
       standard: profile.definitions?.standard || [],
       extended: profile.definitions?.extended || [],
-      contextual: profile.definitions?.contextual || '',
-      specialized: profile.definitions?.specialized || ''
+      contextual: Array.isArray(profile.definitions?.contextual) ? 
+        profile.definitions.contextual : 
+        (profile.definitions?.contextual ? [profile.definitions.contextual] : []),
+      specialized: Array.isArray(profile.definitions?.specialized) ?
+        profile.definitions.specialized :
+        (profile.definitions?.specialized ? [profile.definitions.specialized] : [])
     },
-    word_forms_data: {
+    word_forms: {
       base_form: profile.word_forms?.base_form || profile.word,
       verb_tenses: profile.word_forms?.verb_tenses || {},
       noun_forms: profile.word_forms?.noun_forms || {},
       adjective_forms: profile.word_forms?.adjective_forms || {},
-      adverb_form: profile.word_forms?.adverb_form || ''
+      adverb_form: profile.word_forms?.adverb_form || '',
+      other_inflections: Array.isArray(profile.word_forms?.other_inflections) ?
+        profile.word_forms.other_inflections :
+        (profile.word_forms?.other_inflections ? [profile.word_forms.other_inflections] : [])
     },
-    analysis_data: {
+    analysis: {
       parts_of_speech: profile.analysis?.parts_of_speech || '',
       usage_examples: profile.analysis?.usage_examples || [],
       synonyms: profile.analysis?.synonyms || [],
       antonyms: profile.analysis?.antonyms || [],
-      collocations: profile.analysis?.collocations || [],
+      collocations: Array.isArray(profile.analysis?.common_collocations) ?
+        profile.analysis.common_collocations :
+        (profile.analysis?.common_collocations ? 
+          profile.analysis.common_collocations.split(',').map((s: string) => s.trim()) : []),
       cultural_significance: profile.analysis?.cultural_significance || '',
       example_sentence: profile.analysis?.example_sentence || ''
     },

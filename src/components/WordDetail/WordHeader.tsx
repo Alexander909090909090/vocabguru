@@ -1,12 +1,12 @@
 
-import { Word } from "@/data/words";
+import { EnhancedWordProfile } from "@/types/enhancedWordProfile";
 import { Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 
 interface WordHeaderProps {
-  word: Word;
+  word: EnhancedWordProfile;
   getGradient: (id: string) => string;
   isLoading: boolean;
 }

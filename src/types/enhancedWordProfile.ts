@@ -12,8 +12,27 @@ export interface EnhancedWordProfile {
   description: string;
   featured?: boolean;
   
-  // Morpheme breakdown with origins
+  // Morpheme breakdown with origins (legacy compatibility)
   morpheme_breakdown: {
+    prefix?: {
+      text: string;
+      meaning: string;
+      origin?: string;
+    };
+    root: {
+      text: string;
+      meaning: string;
+      origin?: string;
+    };
+    suffix?: {
+      text: string;
+      meaning: string;
+      origin?: string;
+    };
+  };
+  
+  // Legacy morpheme breakdown for backward compatibility
+  morphemeBreakdown: {
     prefix?: {
       text: string;
       meaning: string;
@@ -38,6 +57,10 @@ export interface EnhancedWordProfile {
     word_evolution?: string;
     cultural_regional_variations?: string;
     first_documented_usage?: string;
+    // Legacy compatibility
+    origin?: string;
+    evolution?: string;
+    culturalVariations?: string;
   };
   
   // Multiple definition types
