@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface WordRepositoryEntry {
@@ -121,7 +122,7 @@ const convertWordProfileToEntry = (profile: any): WordRepositoryEntry => {
       cultural_significance: profile.analysis?.cultural_significance || '',
       example_sentence: profile.analysis?.example_sentence || ''
     },
-    source_apis: ['word_profiles'], // Temporary until we have the new table
+    source_apis: ['word_profiles'],
     frequency_score: 0,
     difficulty_level: 'medium',
     created_at: profile.created_at,
@@ -194,7 +195,6 @@ export class WordRepositoryService {
   // Temporary methods until we have the new user_word_library table
   static async addToUserLibrary(wordId: string, notes?: string): Promise<void> {
     console.log('Add to library functionality will be available after database migration');
-    // This will be implemented once the user_word_library table is created
   }
 
   static async getUserLibrary(userId: string): Promise<UserWordLibrary[]> {

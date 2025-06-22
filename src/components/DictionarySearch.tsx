@@ -102,45 +102,45 @@ export function DictionarySearch({ onWordAdded, useMerriamWebster = false }: Dic
         const contextWord = {
           id: wordEntry.id,
           word: wordEntry.word,
-          description: wordEntry.definitions_data.primary || "No description available",
+          description: wordEntry.definitions.primary || "No description available",
           pronunciation: wordEntry.phonetic || "",
-          partOfSpeech: wordEntry.analysis_data.parts_of_speech || "unknown",
-          languageOrigin: wordEntry.etymology_data.language_of_origin || "Unknown",
+          partOfSpeech: wordEntry.analysis.parts_of_speech || "unknown",
+          languageOrigin: wordEntry.etymology.language_of_origin || "Unknown",
           featured: false,
           definitions: [
             {
               type: "primary" as const,
-              text: wordEntry.definitions_data.primary || "No definition available"
+              text: wordEntry.definitions.primary || "No definition available"
             },
-            ...(wordEntry.definitions_data.standard || []).map((def: string, index: number) => ({
+            ...(wordEntry.definitions.standard || []).map((def: string, index: number) => ({
               type: "standard" as const,
               text: def
             }))
           ],
           morphemeBreakdown: {
-            prefix: wordEntry.morpheme_data.prefix || undefined,
-            root: wordEntry.morpheme_data.root,
-            suffix: wordEntry.morpheme_data.suffix || undefined
+            prefix: wordEntry.morpheme_breakdown.prefix || undefined,
+            root: wordEntry.morpheme_breakdown.root,
+            suffix: wordEntry.morpheme_breakdown.suffix || undefined
           },
           etymology: {
-            origin: wordEntry.etymology_data.historical_origins || "",
-            evolution: wordEntry.etymology_data.word_evolution || "",
-            culturalVariations: wordEntry.etymology_data.cultural_variations || ""
+            origin: wordEntry.etymology.historical_origins || "",
+            evolution: wordEntry.etymology.word_evolution || "",
+            culturalVariations: wordEntry.etymology.cultural_variations || ""
           },
           forms: {
-            noun: wordEntry.word_forms_data.noun_forms?.singular,
-            verb: wordEntry.word_forms_data.base_form,
-            adjective: wordEntry.word_forms_data.adjective_forms?.positive,
-            adverb: wordEntry.word_forms_data.adverb_form
+            noun: wordEntry.word_forms.noun_forms?.singular,
+            verb: wordEntry.word_forms.base_form,
+            adjective: wordEntry.word_forms.adjective_forms?.positive,
+            adverb: wordEntry.word_forms.adverb_form
           },
           usage: {
-            contextualUsage: wordEntry.analysis_data.example_sentence || "",
-            commonCollocations: wordEntry.analysis_data.collocations || [],
-            exampleSentence: wordEntry.analysis_data.usage_examples?.[0] || ""
+            contextualUsage: wordEntry.analysis.example_sentence || "",
+            commonCollocations: wordEntry.analysis.collocations || [],
+            exampleSentence: wordEntry.analysis.usage_examples?.[0] || ""
           },
           synonymsAntonyms: {
-            synonyms: wordEntry.analysis_data.synonyms || [],
-            antonyms: wordEntry.analysis_data.antonyms || []
+            synonyms: wordEntry.analysis.synonyms || [],
+            antonyms: wordEntry.analysis.antonyms || []
           }
         };
         
