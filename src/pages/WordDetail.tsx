@@ -12,147 +12,45 @@ import WordNotFound from "@/components/WordDetail/WordNotFound";
 import EnhancedWordContent from "@/components/WordDetail/EnhancedWordContent";
 import AIAssistantTab from "@/components/WordDetail/AIAssistantTab";
 import { Skeleton } from "@/components/ui/skeleton";
-import { UnifiedWordService } from "@/services/unifiedWordService";
-import { EnhancedWordProfile } from "@/types/enhancedWordProfile";
+import { Word } from "@/data/words";
 
 const WordDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [enhancedWordProfile, setEnhancedWordProfile] = useState<EnhancedWordProfile | null>(null);
+  const [word, setWord] = useState<Word | null>(null);
   const { getWord } = useWords();
-  
-  // Get word data from context for fallback
-  const legacyWord = id ? getWord(id) : undefined;
 
   useEffect(() => {
-    const loadWordProfile = async () => {
+    const loadWord = async () => {
       if (!id) return;
       
       setIsLoading(true);
       
       try {
-        // Try to get enhanced word profile from unified service first
-        let profile = await UnifiedWordService.getWordById(id);
-        
-        // Fallback to legacy word conversion if needed
-        if (!profile && legacyWord) {
-          // Convert legacy word to enhanced profile format
-          profile = {
-            id: legacyWord.id,
-            word: legacyWord.word,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            pronunciation: legacyWord.pronunciation,
-            partOfSpeech: legacyWord.partOfSpeech,
-            languageOrigin: legacyWord.languageOrigin || 'Unknown', // Ensure required property
-            description: legacyWord.description,
-            featured: legacyWord.featured,
-            morpheme_breakdown: legacyWord.morphemeBreakdown,
-            morphemeBreakdown: legacyWord.morphemeBreakdown,
-            etymology: {
-              historical_origins: legacyWord.etymology?.origin,
-              language_of_origin: legacyWord.languageOrigin,
-              word_evolution: legacyWord.etymology?.evolution,
-              cultural_regional_variations: legacyWord.etymology?.culturalVariations,
-              origin: legacyWord.etymology?.origin,
-              evolution: legacyWord.etymology?.evolution,
-              culturalVariations: legacyWord.etymology?.culturalVariations
-            },
-            definitions: {
-              primary: legacyWord.description,
-              standard: [],
-              extended: [],
-              contextual: [],
-              specialized: []
-            },
-            word_forms: {
-              base_form: legacyWord.word,
-              other_inflections: []
-            },
-            analysis: {
-              parts_of_speech: legacyWord.partOfSpeech,
-              example: legacyWord.usage?.exampleSentence
-            },
-            images: legacyWord.images || [],
-            synonymsAntonyms: legacyWord.synonymsAntonyms || { synonyms: [], antonyms: [] },
-            usage: legacyWord.usage || {
-              commonCollocations: [],
-              contextualUsage: '',
-              sentenceStructure: '',
-              exampleSentence: ''
-            },
-            forms: legacyWord.forms || {}
+        const foundWord = getWord(id);
+        if (foundWord) {
+          // Ensure required properties are present
+          const completeWord: Word = {
+            ...foundWord,
+            languageOrigin: foundWord.languageOrigin || 'Unknown'
           };
+          setWord(completeWord);
         }
-        
-        setEnhancedWordProfile(profile);
       } catch (error) {
-        console.error("Error loading word profile:", error);
-        
-        // Final fallback to legacy word with required properties
-        if (legacyWord) {
-          const profile: EnhancedWordProfile = {
-            id: legacyWord.id,
-            word: legacyWord.word,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            pronunciation: legacyWord.pronunciation,
-            partOfSpeech: legacyWord.partOfSpeech,
-            languageOrigin: legacyWord.languageOrigin || 'Unknown', // Ensure required property
-            description: legacyWord.description,
-            featured: legacyWord.featured,
-            morpheme_breakdown: legacyWord.morphemeBreakdown,
-            morphemeBreakdown: legacyWord.morphemeBreakdown,
-            etymology: {
-              historical_origins: legacyWord.etymology?.origin,
-              language_of_origin: legacyWord.languageOrigin || 'Unknown',
-              word_evolution: legacyWord.etymology?.evolution,
-              cultural_regional_variations: legacyWord.etymology?.culturalVariations,
-              origin: legacyWord.etymology?.origin,
-              evolution: legacyWord.etymology?.evolution,
-              culturalVariations: legacyWord.etymology?.culturalVariations
-            },
-            definitions: {
-              primary: legacyWord.description,
-              standard: [],
-              extended: [],
-              contextual: [],
-              specialized: []
-            },
-            word_forms: {
-              base_form: legacyWord.word,
-              other_inflections: []
-            },
-            analysis: {
-              parts_of_speech: legacyWord.partOfSpeech,
-              example: legacyWord.usage?.exampleSentence
-            },
-            images: legacyWord.images || [],
-            synonymsAntonyms: legacyWord.synonymsAntonyms || { synonyms: [], antonyms: [] },
-            usage: legacyWord.usage || {
-              commonCollocations: [],
-              contextualUsage: '',
-              sentenceStructure: '',
-              exampleSentence: ''
-            },
-            forms: legacyWord.forms || {}
-          };
-          setEnhancedWordProfile(profile);
-        }
+        console.error("Error loading word:", error);
       } finally {
-        // Simulate loading for smooth transitions
         setTimeout(() => {
           setIsLoading(false);
         }, 300);
       }
     };
 
-    loadWordProfile();
-  }, [id, legacyWord]);
+    loadWord();
+  }, [id, getWord]);
 
   // Handle word not found
-  if (!isLoading && !enhancedWordProfile) {
+  if (!isLoading && !word) {
     return <WordNotFound />;
   }
 
@@ -199,17 +97,17 @@ const WordDetail = () => {
               <Skeleton className="h-64 w-full" />
             </div>
           </>
-        ) : enhancedWordProfile ? (
+        ) : word ? (
           <>
             {/* Word Header */}
             <WordHeader 
-              word={enhancedWordProfile} 
+              word={word} 
               getGradient={getGradient} 
               isLoading={isLoading} 
             />
             
             {/* Morpheme Breakdown */}
-            <MorphemeBreakdown breakdown={enhancedWordProfile.morpheme_breakdown} />
+            <MorphemeBreakdown breakdown={word.morphemeBreakdown} />
             
             {/* Main Word Content */}
             <div className="mt-8">
@@ -220,11 +118,11 @@ const WordDetail = () => {
                 </TabsList>
                 
                 <TabsContent value="details">
-                  <EnhancedWordContent wordProfile={enhancedWordProfile} />
+                  <EnhancedWordContent wordProfile={word} />
                 </TabsContent>
                 
                 <TabsContent value="ai-assist">
-                  <AIAssistantTab word={enhancedWordProfile} />
+                  <AIAssistantTab word={word} />
                 </TabsContent>
               </Tabs>
             </div>

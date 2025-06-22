@@ -59,7 +59,10 @@ const AIAssistantTab = ({ word }: AIAssistantTabProps) => {
           <div className="space-y-2">
             <div 
               className="text-xs bg-primary/10 p-2 rounded-lg cursor-pointer hover:bg-primary/20 transition-colors"
-              onClick={() => document.getElementById('message-input')?.setAttribute('value', getMorphemePrompt())}
+              onClick={() => {
+                const input = document.getElementById('message-input') as HTMLInputElement;
+                if (input) input.value = getMorphemePrompt();
+              }}
             >
               <MessageSquare className="h-3 w-3 text-primary inline mr-1" />
               <span>"{getMorphemePrompt()}"</span>
@@ -67,7 +70,10 @@ const AIAssistantTab = ({ word }: AIAssistantTabProps) => {
             
             <div 
               className="text-xs bg-primary/10 p-2 rounded-lg cursor-pointer hover:bg-primary/20 transition-colors"
-              onClick={() => document.getElementById('message-input')?.setAttribute('value', getComprehensivePrompt())}
+              onClick={() => {
+                const input = document.getElementById('message-input') as HTMLInputElement;
+                if (input) input.value = getComprehensivePrompt();
+              }}
             >
               <MessageSquare className="h-3 w-3 text-primary inline mr-1" />
               <span>"Give me a comprehensive morphological analysis of this word"</span>
@@ -75,7 +81,10 @@ const AIAssistantTab = ({ word }: AIAssistantTabProps) => {
             
             <div 
               className="text-xs bg-primary/10 p-2 rounded-lg cursor-pointer hover:bg-primary/20 transition-colors"
-              onClick={() => document.getElementById('message-input')?.setAttribute('value', `What other words contain the root "${word.morphemeBreakdown.root.text}"?`)}
+              onClick={() => {
+                const input = document.getElementById('message-input') as HTMLInputElement;
+                if (input) input.value = `What other words contain the root "${word.morphemeBreakdown.root.text}"?`;
+              }}
             >
               <MessageSquare className="h-3 w-3 text-primary inline mr-1" />
               <span>"What other words contain the root "{word.morphemeBreakdown.root.text}"?"</span>

@@ -10,5 +10,10 @@
     "moduleResolution": "node",
     "target": "es2020",
     "module": "esnext"
-  }
+  },
+  "exclude": [
+    "ai-word-analysis/**/*",
+    "populate-word-repository/**/*",
+    "smart-search/**/*"
+  ]
 }
