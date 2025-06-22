@@ -38,6 +38,10 @@ const WordDetail = () => {
         // Fallback to legacy word conversion
         if (!profile && legacyWord) {
           profile = EnhancedWordProfileService.convertLegacyWord(legacyWord);
+          // Ensure required properties are present
+          if (profile) {
+            profile.languageOrigin = profile.languageOrigin || legacyWord.languageOrigin || 'Unknown';
+          }
         }
         
         setEnhancedWordProfile(profile);
@@ -47,6 +51,10 @@ const WordDetail = () => {
         // Final fallback to legacy word
         if (legacyWord) {
           const profile = EnhancedWordProfileService.convertLegacyWord(legacyWord);
+          // Ensure required properties are present
+          if (profile) {
+            profile.languageOrigin = profile.languageOrigin || legacyWord.languageOrigin || 'Unknown';
+          }
           setEnhancedWordProfile(profile);
         }
       } finally {
@@ -99,12 +107,10 @@ const WordDetail = () => {
               <div className="h-4 w-full bg-white/20 rounded"></div>
             </div>
             
-            {/* Loading skeleton for morpheme breakdown */}
             <div className="mb-8">
               <Skeleton className="h-40 w-full" />
             </div>
             
-            {/* Loading skeleton for tabs */}
             <div className="mb-8">
               <Skeleton className="h-10 w-full mb-4" />
               <Skeleton className="h-64 w-full" />

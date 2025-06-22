@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Plus, BookOpen, Globe, Loader2, Sparkles, Filter } from 'lucide-react';
@@ -12,7 +11,7 @@ import { WordProfile } from '@/types/wordProfile';
 import { SemanticSearchService, SemanticSearchResult } from '@/services/semanticSearchService';
 import AIChatInterface from '@/components/AIChatInterface';
 import { EnhancedWordProfile } from '@/types/enhancedWordProfile';
-import { WordRepositoryService } from '@/services/wordRepositoryService';
+import { WordRepositoryService, WordRepositoryEntry } from '@/services/wordRepositoryService';
 import { EnhancedWordProfileService } from '@/services/enhancedWordProfileService';
 import EnhancedWordCard from '@/components/Discovery/EnhancedWordCard';
 
@@ -74,16 +73,20 @@ const DiscoveryPage: React.FC = () => {
             primary: word.definitions?.primary,
             standard: word.definitions?.standard || [],
             extended: word.definitions?.extended || [],
-            contextual: Array.isArray(word.definitions?.contextual) ? word.definitions.contextual[0] : word.definitions?.contextual || '',
-            specialized: Array.isArray(word.definitions?.specialized) ? word.definitions.specialized[0] : word.definitions?.specialized || ''
+            contextual: word.definitions?.contextual?.[0] || '',
+            specialized: word.definitions?.specialized?.[0] || ''
           },
           word_forms: {
             ...word.word_forms,
-            other_inflections: Array.isArray(word.word_forms?.other_inflections) ? word.word_forms.other_inflections[0] : word.word_forms?.other_inflections || ''
+            other_inflections: Array.isArray(word.word_forms?.other_inflections) ? 
+              word.word_forms.other_inflections[0] || '' : 
+              word.word_forms?.other_inflections || ''
           },
           analysis: {
             ...word.analysis,
-            common_collocations: Array.isArray(word.analysis?.collocations) ? word.analysis.collocations.join(', ') : word.analysis?.collocations || ''
+            common_collocations: Array.isArray(word.analysis?.collocations) ? 
+              word.analysis.collocations.join(', ') : 
+              word.analysis?.collocations || ''
           }
         })
       );
@@ -238,11 +241,25 @@ const DiscoveryPage: React.FC = () => {
             primary: entry.definitions.primary,
             standard: entry.definitions.standard,
             extended: entry.definitions.extended,
-            contextual: Array.isArray(entry.definitions.contextual) ? entry.definitions.contextual[0] : entry.definitions.contextual || '',
-            specialized: Array.isArray(entry.definitions.specialized) ? entry.definitions.specialized[0] : entry.definitions.specialized || ''
+            contextual: Array.isArray(entry.definitions.contextual) ? 
+              entry.definitions.contextual[0] : 
+              entry.definitions.contextual || '',
+            specialized: Array.isArray(entry.definitions.specialized) ? 
+              entry.definitions.specialized[0] : 
+              entry.definitions.specialized || ''
           },
-          word_forms: entry.word_forms,
-          analysis: entry.analysis
+          word_forms: {
+            ...entry.word_forms,
+            other_inflections: Array.isArray(entry.word_forms?.other_inflections) ? 
+              entry.word_forms.other_inflections[0] || '' : 
+              entry.word_forms?.other_inflections || ''
+          },
+          analysis: {
+            ...entry.analysis,
+            common_collocations: Array.isArray(entry.analysis?.common_collocations) ? 
+              entry.analysis.common_collocations.join(', ') : 
+              entry.analysis?.common_collocations || ''
+          }
         };
         await WordProfileService.createWordProfile(basicProfile);
       }

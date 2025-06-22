@@ -1,0 +1,320 @@
+
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle, XCircle, RotateCcw, Volume2, BookOpen, Brain, Target } from "lucide-react";
+import { WordRepositoryEntry } from "@/services/wordRepositoryService";
+import { UnifiedWordService } from "@/services/unifiedWordService";
+import { toast } from "sonner";
+
+interface StudySessionProps {
+  words: WordRepositoryEntry[];
+  onComplete: (results: StudyResults) => void;
+  onExit: () => void;
+  sessionType?: 'quick' | 'focused' | 'challenge';
+}
+
+interface StudyResults {
+  totalWords: number;
+  correctAnswers: number;
+  timeSpent: number;
+  wordsStudied: string[];
+  difficultyAreas: string[];
+  sessionType?: string;
+}
+
+type StudyMode = 'definition' | 'etymology' | 'usage' | 'morphemes';
+
+export function OptimizedStudySession({ words, onComplete, onExit, sessionType = 'quick' }: StudySessionProps) {
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
+  const [studyMode, setStudyMode] = useState<StudyMode>('definition');
+  const [showAnswer, setShowAnswer] = useState(false);
+  const [userResponses, setUserResponses] = useState<('correct' | 'incorrect' | null)[]>(new Array(words.length).fill(null));
+  const [startTime] = useState(Date.now());
+  const [sessionStats, setSessionStats] = useState({
+    correct: 0,
+    incorrect: 0,
+    skipped: 0
+  });
+
+  const currentWord = words[currentWordIndex];
+  const progress = ((currentWordIndex + 1) / words.length) * 100;
+
+  // Memoized study modes for performance
+  const studyModes = useMemo(() => [
+    { key: 'definition' as const, label: 'Definition', icon: BookOpen },
+    { key: 'etymology' as const, label: 'Etymology', icon: RotateCcw },
+    { key: 'usage' as const, label: 'Usage', icon: Volume2 },
+    { key: 'morphemes' as const, label: 'Word Parts', icon: Brain },
+  ], []);
+
+  // Optimized audio playback
+  const playAudio = useCallback((audioUrl?: string) => {
+    if (audioUrl) {
+      const audio = new Audio(audioUrl);
+      audio.play().catch(e => console.log('Audio playback failed:', e));
+    } else {
+      // Fallback to speech synthesis
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(currentWord.word);
+        utterance.lang = 'en-US';
+        speechSynthesis.speak(utterance);
+      }
+    }
+  }, [currentWord?.word]);
+
+  const handleResponse = useCallback((isCorrect: boolean) => {
+    const newResponses = [...userResponses];
+    newResponses[currentWordIndex] = isCorrect ? 'correct' : 'incorrect';
+    setUserResponses(newResponses);
+
+    setSessionStats(prev => ({
+      ...prev,
+      correct: prev.correct + (isCorrect ? 1 : 0),
+      incorrect: prev.incorrect + (isCorrect ? 0 : 1)
+    }));
+
+    setShowAnswer(true);
+    
+    setTimeout(() => {
+      nextWord();
+    }, 1500); // Reduced delay for better UX
+  }, [currentWordIndex, userResponses]);
+
+  const nextWord = useCallback(() => {
+    if (currentWordIndex < words.length - 1) {
+      setCurrentWordIndex(prev => prev + 1);
+      setShowAnswer(false);
+    } else {
+      completeSession();
+    }
+  }, [currentWordIndex, words.length]);
+
+  const completeSession = useCallback(() => {
+    const timeSpent = Date.now() - startTime;
+    const results: StudyResults = {
+      totalWords: words.length,
+      correctAnswers: sessionStats.correct,
+      timeSpent: Math.floor(timeSpent / 1000),
+      wordsStudied: words.map(w => w.word),
+      difficultyAreas: words
+        .filter((_, index) => userResponses[index] === 'incorrect')
+        .map(w => w.word),
+      sessionType
+    };
+
+    onComplete(results);
+  }, [startTime, words, sessionStats, userResponses, sessionType, onComplete]);
+
+  // Optimized study content generation
+  const getStudyContent = useMemo(() => {
+    if (!currentWord) return { question: '', answer: '', hint: '' };
+
+    switch (studyMode) {
+      case 'definition':
+        return {
+          question: `What does "${currentWord.word}" mean?`,
+          answer: currentWord.definitions.primary || 'No definition available',
+          hint: `Part of speech: ${currentWord.analysis.parts_of_speech || 'Unknown'}`
+        };
+      case 'etymology':
+        return {
+          question: `What is the origin of "${currentWord.word}"?`,
+          answer: currentWord.etymology.historical_origins || 'Origin unknown',
+          hint: `Language of origin: ${currentWord.etymology.language_of_origin || 'Unknown'}`
+        };
+      case 'usage':
+        return {
+          question: `How would you use "${currentWord.word}" in a sentence?`,
+          answer: currentWord.analysis.example_sentence || 'No example available',
+          hint: `Context: ${currentWord.definitions.contextual?.[0] || 'General usage'}`
+        };
+      case 'morphemes':
+        return {
+          question: `Break down the word parts of "${currentWord.word}"`,
+          answer: `Root: ${currentWord.morpheme_breakdown.root.text} (${currentWord.morpheme_breakdown.root.meaning})${
+            currentWord.morpheme_breakdown.prefix ? `\nPrefix: ${currentWord.morpheme_breakdown.prefix.text} (${currentWord.morpheme_breakdown.prefix.meaning})` : ''
+          }${
+            currentWord.morpheme_breakdown.suffix ? `\nSuffix: ${currentWord.morpheme_breakdown.suffix.text} (${currentWord.morpheme_breakdown.suffix.meaning})` : ''
+          }`,
+          hint: 'Think about prefixes, roots, and suffixes'
+        };
+      default:
+        return { question: '', answer: '', hint: '' };
+    }
+  }, [currentWord, studyMode]);
+
+  // Keyboard shortcuts for better UX
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (showAnswer) {
+        if (e.key === '1' || e.key === 'ArrowLeft') {
+          handleResponse(false);
+        } else if (e.key === '2' || e.key === 'ArrowRight') {
+          handleResponse(true);
+        }
+      } else if (e.key === ' ' || e.key === 'Enter') {
+        setShowAnswer(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [showAnswer, handleResponse]);
+
+  if (!currentWord) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p>No words available for study session.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Session Header with Performance Indicators */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <CardTitle className="text-lg">
+                {sessionType === 'challenge' ? 'Challenge Mode' : 
+                 sessionType === 'focused' ? 'Focused Study' : 'Quick Review'}
+              </CardTitle>
+              <Badge variant="outline" className="gap-1">
+                <Target className="h-3 w-3" />
+                {Math.round((sessionStats.correct / Math.max(currentWordIndex, 1)) * 100)}% accuracy
+              </Badge>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-muted-foreground">
+                {currentWordIndex + 1} of {words.length}
+              </div>
+              <Button variant="outline" size="sm" onClick={onExit}>
+                Exit Session
+              </Button>
+            </div>
+          </div>
+          <Progress value={progress} className="h-2" />
+        </CardHeader>
+      </Card>
+
+      {/* Study Mode Selector */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap gap-2">
+            {studyModes.map(mode => {
+              const Icon = mode.icon;
+              return (
+                <Button
+                  key={mode.key}
+                  variant={studyMode === mode.key ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setStudyMode(mode.key)}
+                  className="gap-2"
+                >
+                  <Icon className="h-4 w-4" />
+                  {mode.label}
+                </Button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Main Study Card */}
+      <Card className="min-h-[400px]">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-bold">{currentWord.word}</h2>
+              {currentWord.phonetic && (
+                <Badge variant="secondary">{currentWord.phonetic}</Badge>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => playAudio(currentWord.audio_url)}
+              >
+                <Volume2 className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex gap-2 text-sm">
+              <Badge variant="outline" className="text-green-600">
+                ✓ {sessionStats.correct}
+              </Badge>
+              <Badge variant="outline" className="text-red-600">
+                ✗ {sessionStats.incorrect}
+              </Badge>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="text-center space-y-4">
+            <h3 className="text-lg font-semibold">{getStudyContent.question}</h3>
+            
+            {!showAnswer && (
+              <div className="space-y-4">
+                <p className="text-muted-foreground italic">
+                  {getStudyContent.hint}
+                </p>
+                <div className="flex justify-center gap-4">
+                  <Button onClick={() => setShowAnswer(true)}>
+                    Show Answer
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Press Space or Enter to reveal answer
+                </p>
+              </div>
+            )}
+
+            {showAnswer && (
+              <div className="space-y-4">
+                <Card className="bg-secondary/50">
+                  <CardContent className="p-4">
+                    <p className="whitespace-pre-line">{getStudyContent.answer}</p>
+                  </CardContent>
+                </Card>
+                
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">How well did you know this?</p>
+                  <div className="flex justify-center gap-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => handleResponse(false)}
+                      className="gap-2 text-red-600 border-red-200 hover:bg-red-50"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      Need Practice (1)
+                    </Button>
+                    <Button
+                      onClick={() => handleResponse(true)}
+                      className="gap-2 bg-green-600 hover:bg-green-700"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      Got It! (2)
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Navigation */}
+      {showAnswer && (
+        <div className="flex justify-center">
+          <Button onClick={nextWord} size="lg">
+            {currentWordIndex < words.length - 1 ? 'Next Word' : 'Complete Session'}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default OptimizedStudySession;
