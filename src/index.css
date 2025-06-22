@@ -43,16 +43,39 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    background: radial-gradient(ellipse at top, rgba(120, 119, 198, 0.03), transparent 70%);
   }
 }
 
 @layer components {
   .glass-card {
-    @apply bg-card/90 backdrop-blur-sm border border-white/10 shadow-xl;
+    @apply bg-card/80 backdrop-blur-xl border border-white/10 shadow-2xl;
+    background: linear-gradient(145deg, 
+      rgba(255, 255, 255, 0.05) 0%, 
+      rgba(255, 255, 255, 0.02) 100%
+    );
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.02);
+  }
+  
+  .glass-card:hover {
+    box-shadow: 
+      0 12px 40px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+    transform: translateY(-2px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
   .chip {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm;
+    background: linear-gradient(145deg, 
+      rgba(255, 255, 255, 0.1) 0%, 
+      rgba(255, 255, 255, 0.05) 100%
+    );
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .section-title {
@@ -68,11 +91,11 @@
   }
 
   .container-inner {
-    @apply max-w-3xl mx-auto;
+    @apply max-w-3xl mx-auto px-4;
   }
 }
 
-/* Custom scrollbar */
+/* Enhanced scrollbar with purple accent */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -80,25 +103,29 @@
 
 ::-webkit-scrollbar-track {
   background: hsl(var(--background));
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted));
+  background: linear-gradient(45deg, hsl(var(--primary)), hsl(262 80% 70%));
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground));
+  background: linear-gradient(45deg, hsl(var(--primary)), hsl(262 90% 75%));
 }
 
-/* Card hover effects */
+/* Enhanced card hover effects with purple glow */
 .hover-card {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .hover-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(162, 130, 246, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 /* Image lazy loading with blur */
@@ -111,7 +138,7 @@
   filter: blur(0);
 }
 
-/* Smooth page transitions */
+/* Smooth page transitions with purple accent */
 .page-enter {
   opacity: 0;
   transform: scale(0.98);
@@ -120,7 +147,7 @@
 .page-enter-active {
   opacity: 1;
   transform: scale(1);
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition: opacity 0.4s ease, transform 0.4s ease;
 }
 
 .page-exit {
@@ -131,5 +158,32 @@
 .page-exit-active {
   opacity: 0;
   transform: scale(0.98);
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+/* Purple gradient animations */
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.gradient-animate {
+  background-size: 200% 200%;
+  animation: gradient-shift 6s ease infinite;
+}
+
+/* Enhanced mobile drawer backdrop */
+.mobile-backdrop {
+  backdrop-filter: blur(8px);
+  background: linear-gradient(135deg, 
+    rgba(0, 0, 0, 0.2) 0%, 
+    rgba(120, 119, 198, 0.1) 100%
+  );
 }
