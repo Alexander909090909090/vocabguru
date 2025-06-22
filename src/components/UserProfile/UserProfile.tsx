@@ -10,11 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Trophy, BookOpen, Target, Calendar } from "lucide-react";
 import { toast } from "sonner";
-import { UserProfileService, UserProfile } from "@/services/userProfileService";
+import { UserProfileService, type UserProfile as UserProfileType } from "@/services/userProfileService";
 
 export function UserProfile() {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<UserProfileType | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editForm, setEditForm] = useState({
