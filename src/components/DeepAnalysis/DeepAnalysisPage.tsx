@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -6,10 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Brain, Network, BookOpen, Lightbulb, Loader2 } from "lucide-react";
+import { ArrowLeft, Brain, Network, BookOpen, Lightbulb, Loader2, Volume2, Search, Compare } from "lucide-react";
 import { AIWordAnalysisService, AIWordAnalysis } from "@/services/aiWordAnalysisService";
 import { toast } from "sonner";
 import Header from "@/components/Header";
+import { AdvancedCollocationsPanel } from "./AdvancedCollocationsPanel";
+import { UsagePatternsSection } from "./UsagePatternsSection";
+import { PhoneticAnalysisTab } from "./PhoneticAnalysisTab";
+import { Input } from "@/components/ui/input";
 
 export function DeepAnalysisPage() {
   const { word } = useParams<{ word: string }>();
@@ -18,6 +21,9 @@ export function DeepAnalysisPage() {
   const [semanticMap, setSemanticMap] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('morphology');
+  const [searchWord, setSearchWord] = useState('');
+  const [compareWord, setCompareWord] = useState('');
+  const [comparison, setComparison] = useState<any>(null);
 
   useEffect(() => {
     if (word) {
@@ -46,6 +52,26 @@ export function DeepAnalysisPage() {
     }
   };
 
+  const handleSearchNewWord = () => {
+    if (searchWord.trim()) {
+      navigate(`/deep-analysis/${encodeURIComponent(searchWord.trim())}`);
+    }
+  };
+
+  const handleCompareWords = async () => {
+    if (!compareWord.trim() || !word) return;
+    
+    try {
+      const result = await AIWordAnalysisService.compareWords(word, compareWord.trim());
+      setComparison(result);
+      setActiveTab('comparison');
+      toast.success(`Comparison ready: "${word}" vs "${compareWord}"`);
+    } catch (error) {
+      console.error('Error comparing words:', error);
+      toast.error('Failed to compare words');
+    }
+  };
+
   if (!word) {
     return <div>Word not specified</div>;
   }
@@ -70,14 +96,46 @@ export function DeepAnalysisPage() {
             <Brain className="h-8 w-8 text-primary" />
             <h1 className="text-4xl font-bold text-white">Deep Analysis</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mb-4">
             <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">
               AI-Powered Insights
             </Badge>
             <Badge variant="outline" className="bg-white/10 text-white border-white/20">
-              Morphological Analysis
+              Comprehensive Linguistics
             </Badge>
           </div>
+
+          {/* Search and Compare Tools */}
+          <Card className="bg-white/10 backdrop-blur-md border-white/20 mb-6">
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Search another word..."
+                    value={searchWord}
+                    onChange={(e) => setSearchWord(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSearchNewWord()}
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                  />
+                  <Button onClick={handleSearchNewWord} size="sm">
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Compare with another word..."
+                    value={compareWord}
+                    onChange={(e) => setCompareWord(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleCompareWords()}
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                  />
+                  <Button onClick={handleCompareWords} size="sm">
+                    <Compare className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {loading ? (
@@ -85,7 +143,7 @@ export function DeepAnalysisPage() {
             <CardContent className="p-8 text-center">
               <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
               <p className="text-white/80">Calvarn is analyzing "{word}"...</p>
-              <p className="text-white/60 text-sm mt-2">Generating deep linguistic insights</p>
+              <p className="text-white/60 text-sm mt-2">Generating comprehensive linguistic insights</p>
             </CardContent>
           </Card>
         ) : analysis ? (
@@ -107,23 +165,39 @@ export function DeepAnalysisPage() {
             </Card>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mb-8">
-              <TabsList className="grid w-full grid-cols-4 bg-white/10 backdrop-blur-md border-white/20">
-                <TabsTrigger value="morphology" className="text-white data-[state=active]:bg-primary data-[state=active]:text-white">
-                  <BookOpen className="h-4 w-4 mr-2" />
+              <TabsList className="grid w-full grid-cols-7 bg-white/10 backdrop-blur-md border-white/20">
+                <TabsTrigger value="morphology" className="text-white data-[state=active]:bg-primary data-[state=active]:text-white text-xs">
+                  <BookOpen className="h-4 w-4 mr-1" />
                   Morphology
                 </TabsTrigger>
-                <TabsTrigger value="etymology" className="text-white data-[state=active]:bg-primary data-[state=active]:text-white">
-                  <Network className="h-4 w-4 mr-2" />
+                <TabsTrigger value="etymology" className="text-white data-[state=active]:bg-primary data-[state=active]:text-white text-xs">
+                  <Network className="h-4 w-4 mr-1" />
                   Etymology
                 </TabsTrigger>
-                <TabsTrigger value="semantic" className="text-white data-[state=active]:bg-primary data-[state=active]:text-white">
-                  <Brain className="h-4 w-4 mr-2" />
-                  Semantic Map
+                <TabsTrigger value="semantic" className="text-white data-[state=active]:bg-primary data-[state=active]:text-white text-xs">
+                  <Brain className="h-4 w-4 mr-1" />
+                  Semantic
                 </TabsTrigger>
-                <TabsTrigger value="learning" className="text-white data-[state=active]:bg-primary data-[state=active]:text-white">
-                  <Lightbulb className="h-4 w-4 mr-2" />
+                <TabsTrigger value="phonetic" className="text-white data-[state=active]:bg-primary data-[state=active]:text-white text-xs">
+                  <Volume2 className="h-4 w-4 mr-1" />
+                  Phonetic
+                </TabsTrigger>
+                <TabsTrigger value="collocations" className="text-white data-[state=active]:bg-primary data-[state=active]:text-white text-xs">
+                  Collocations
+                </TabsTrigger>
+                <TabsTrigger value="usage" className="text-white data-[state=active]:bg-primary data-[state=active]:text-white text-xs">
+                  Usage
+                </TabsTrigger>
+                <TabsTrigger value="learning" className="text-white data-[state=active]:bg-primary data-[state=active]:text-white text-xs">
+                  <Lightbulb className="h-4 w-4 mr-1" />
                   Learning
                 </TabsTrigger>
+                {comparison && (
+                  <TabsTrigger value="comparison" className="text-white data-[state=active]:bg-primary data-[state=active]:text-white text-xs">
+                    <Compare className="h-4 w-4 mr-1" />
+                    Compare
+                  </TabsTrigger>
+                )}
               </TabsList>
 
               <TabsContent value="morphology" className="mt-6">
@@ -280,6 +354,21 @@ export function DeepAnalysisPage() {
                 </Card>
               </TabsContent>
 
+              <TabsContent value="phonetic" className="mt-6">
+                <PhoneticAnalysisTab 
+                  word={analysis.word} 
+                  analysis={analysis.phonetic_analysis}
+                />
+              </TabsContent>
+
+              <TabsContent value="collocations" className="mt-6">
+                <AdvancedCollocationsPanel word={analysis.word} />
+              </TabsContent>
+
+              <TabsContent value="usage" className="mt-6">
+                <UsagePatternsSection word={analysis.word} />
+              </TabsContent>
+
               <TabsContent value="learning" className="mt-6">
                 <Card className="bg-white/10 backdrop-blur-md border-white/20">
                   <CardHeader>
@@ -344,6 +433,82 @@ export function DeepAnalysisPage() {
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              {comparison && (
+                <TabsContent value="comparison" className="mt-6">
+                  <Card className="bg-white/10 backdrop-blur-md border-white/20">
+                    <CardHeader>
+                      <CardTitle className="text-white">
+                        Word Comparison: "{word}" vs "{compareWord}"
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div>
+                        <h3 className="text-white font-semibold mb-3">Similarities</h3>
+                        <div className="space-y-2">
+                          {comparison.similarities.map((similarity: string, index: number) => (
+                            <div key={index} className="p-3 bg-green-500/20 rounded-lg">
+                              <p className="text-white/90">{similarity}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <Separator className="bg-white/20" />
+
+                      <div>
+                        <h3 className="text-white font-semibold mb-3">Key Differences</h3>
+                        <div className="space-y-2">
+                          {comparison.differences.map((difference: string, index: number) => (
+                            <div key={index} className="p-3 bg-red-500/20 rounded-lg">
+                              <p className="text-white/90">{difference}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <Separator className="bg-white/20" />
+
+                      <div>
+                        <h3 className="text-white font-semibold mb-3">Usage Preferences</h3>
+                        <div className="space-y-2">
+                          {comparison.usage_preferences.map((preference: string, index: number) => (
+                            <div key={index} className="p-3 bg-blue-500/20 rounded-lg">
+                              <p className="text-white/90">{preference}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {comparison.examples.length > 0 && (
+                        <>
+                          <Separator className="bg-white/20" />
+                          <div>
+                            <h3 className="text-white font-semibold mb-3">Comparative Examples</h3>
+                            <div className="space-y-4">
+                              {comparison.examples.map((example: any, index: number) => (
+                                <div key={index} className="p-4 bg-white/5 rounded-lg space-y-2">
+                                  <div className="text-white/70 font-medium">{example.context}</div>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="p-2 bg-green-500/20 rounded">
+                                      <div className="text-green-100 text-sm font-medium">{word}:</div>
+                                      <div className="text-white/90 italic">"{example.word1_example}"</div>
+                                    </div>
+                                    <div className="p-2 bg-blue-500/20 rounded">
+                                      <div className="text-blue-100 text-sm font-medium">{compareWord}:</div>
+                                      <div className="text-white/90 italic">"{example.word2_example}"</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              )}
             </Tabs>
           </>
         ) : (

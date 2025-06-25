@@ -15,24 +15,65 @@ serve(async (req) => {
   }
 
   try {
-    const { word } = await req.json();
+    const { word, includeAdvanced = false } = await req.json();
 
     if (!openAIApiKey) {
       throw new Error('OpenAI API key not configured');
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `You are Calvarn, an advanced AI morphological linguist specializing in deep word analysis. Provide comprehensive analysis of words including morphological breakdown, semantic analysis, etymology, and learning insights. Return your response as a JSON object with the following structure:
+    const model = includeAdvanced ? 'gpt-4o-mini' : 'gpt-4o-mini';
+    const systemPrompt = includeAdvanced ? 
+      `You are Calvarn, an advanced AI morphological linguist specializing in comprehensive word analysis. Provide exhaustive analysis including phonetic, syntactic, and comparative elements. Return JSON with this structure:
+
+{
+  "word": "string",
+  "morphological_breakdown": {
+    "prefix": {"text": "string", "meaning": "string", "origin": "string"} | null,
+    "root": {"text": "string", "meaning": "string", "origin": "string"},
+    "suffix": {"text": "string", "meaning": "string", "origin": "string"} | null
+  },
+  "semantic_analysis": {
+    "core_meaning": "string",
+    "conceptual_metaphors": ["string"],
+    "semantic_field": "string",
+    "related_concepts": ["string"]
+  },
+  "etymology_deep_dive": {
+    "historical_development": "string",
+    "language_family": "string",
+    "cognates": [{"language": "string", "word": "string", "meaning": "string"}],
+    "semantic_evolution": "string"
+  },
+  "contextual_usage": {
+    "register_levels": ["string"],
+    "discourse_patterns": ["string"],
+    "collocational_strength": [{"word": "string", "score": number}],
+    "pragmatic_functions": ["string"]
+  },
+  "learning_insights": {
+    "difficulty_factors": ["string"],
+    "memory_anchors": ["string"],
+    "learning_strategies": ["string"],
+    "common_errors": ["string"]
+  },
+  "phonetic_analysis": {
+    "ipa_transcription": "string",
+    "stress_pattern": "string",
+    "syllable_count": number,
+    "rhyme_scheme": "string"
+  },
+  "syntactic_behavior": {
+    "argument_structure": ["string"],
+    "subcategorization": ["string"],
+    "syntactic_positions": ["string"]
+  },
+  "comparative_analysis": {
+    "synonyms": [{"word": "string", "similarity": number, "differences": "string"}],
+    "antonyms": [{"word": "string", "opposition_type": "string"}],
+    "near_synonyms": [{"word": "string", "nuances": "string"}]
+  }
+}` :
+      `You are Calvarn, an advanced AI morphological linguist specializing in deep word analysis. Provide comprehensive analysis of words including morphological breakdown, semantic analysis, etymology, and learning insights. Return your response as a JSON object with the following structure:
 
 {
   "word": "string",
@@ -65,11 +106,24 @@ serve(async (req) => {
     "learning_strategies": ["string"],
     "common_errors": ["string"]
   }
-}`
+}`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt
           },
           {
             role: 'user',
-            content: `Analyze the word "${word}" providing deep morphological, semantic, and etymological insights. Focus on educational value and learning strategies.`
+            content: `Analyze the word "${word}" providing ${includeAdvanced ? 'comprehensive advanced' : 'deep'} morphological, semantic, and etymological insights. Focus on educational value and learning strategies.`
           }
         ],
         temperature: 0.7,

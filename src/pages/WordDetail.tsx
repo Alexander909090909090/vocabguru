@@ -1,8 +1,9 @@
+
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import MorphemeBreakdown from "@/components/MorphemeBreakdown";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWords } from "@/context/WordsContext"; 
@@ -103,6 +104,12 @@ const WordDetail = () => {
     loadWord();
   }, [id, getWord]);
 
+  const handleDeepAnalysis = () => {
+    if (word) {
+      navigate(`/deep-analysis/${encodeURIComponent(word.word)}`);
+    }
+  };
+
   if (!isLoading && !word) {
     return <WordNotFound />;
   }
@@ -121,15 +128,28 @@ const WordDetail = () => {
       <main className="page-container pt-24 page-transition">
         <Breadcrumbs />
         
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="mb-6 group text-white/80 hover:text-white hover:bg-white/10" 
-          onClick={() => navigate("/")}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-          Back to Words
-        </Button>
+        <div className="flex items-center justify-between mb-6">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="group text-white/80 hover:text-white hover:bg-white/10" 
+            onClick={() => navigate("/")}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+            Back to Words
+          </Button>
+
+          {word && (
+            <Button 
+              onClick={handleDeepAnalysis}
+              className="bg-primary/20 border-primary/30 text-primary hover:bg-primary/30"
+              variant="outline"
+            >
+              <Brain className="h-4 w-4 mr-2" />
+              Deep Analysis
+            </Button>
+          )}
+        </div>
         
         {isLoading ? (
           <>
