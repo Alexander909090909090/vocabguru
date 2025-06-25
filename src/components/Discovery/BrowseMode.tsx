@@ -1,18 +1,18 @@
 
 import { useEffect } from 'react';
 import { BookOpen, Loader2 } from 'lucide-react';
-import { UnifiedWord } from '@/types/unifiedWord';
+import { Word } from '@/types/word';
 import { AIRecommendations } from './AIRecommendations';
 import EnhancedWordCard from './EnhancedWordCard';
 
 interface BrowseModeProps {
-  enhancedWords: UnifiedWord[];
+  enhancedWords: Word[];
   isLoadingMore: boolean;
   hasMore: boolean;
   page: number;
   loadEnhancedWords: (pageNum?: number, reset?: boolean) => Promise<void>;
-  onWordSelect: (word: UnifiedWord) => void;
-  onAddToCollection: (word: UnifiedWord) => void;
+  onWordSelect: (word: Word) => void;
+  onAddToCollection: (word: Word) => void;
 }
 
 export function BrowseMode({
@@ -59,7 +59,7 @@ export function BrowseMode({
         {enhancedWords.length > 0 ? (
           <>
             <div className="grid gap-6 md:grid-cols-2">
-              {enhancedWords.map((word, index) => (
+              {enhancedWords.map((word) => (
                 <EnhancedWordCard 
                   key={word.id} 
                   wordProfile={word}
@@ -93,7 +93,7 @@ export function BrowseMode({
             <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-500 mb-2">No words available</h3>
             <p className="text-gray-400">
-              The word repository is empty. Visit Settings to populate it with words.
+              The word repository is empty. The database will initialize automatically.
             </p>
           </div>
         )}

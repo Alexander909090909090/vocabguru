@@ -1,29 +1,14 @@
 
 import { useState, useCallback, useEffect } from 'react';
-import { UnifiedWord } from '@/types/unifiedWord';
-import { UnifiedWordService } from '@/services/unifiedWordService';
+import { Word, DictionaryEntry } from '@/types/word';
+import { WordService } from '@/services/wordService';
 import { UserWordLibraryService } from '@/services/userWordLibraryService';
 import { toast } from '@/hooks/use-toast';
 
-interface DictionaryEntry {
-  word: string;
-  phonetic?: string;
-  meanings: Array<{
-    partOfSpeech: string;
-    definitions: Array<{
-      definition: string;
-      example?: string;
-      synonyms?: string[];
-      antonyms?: string[];
-    }>;
-  }>;
-  origin?: string;
-}
-
 export const useDiscoveryData = () => {
   const [searchResults, setSearchResults] = useState<DictionaryEntry[]>([]);
-  const [enhancedWords, setEnhancedWords] = useState<UnifiedWord[]>([]);
-  const [filteredWords, setFilteredWords] = useState<UnifiedWord[]>([]);
+  const [enhancedWords, setEnhancedWords] = useState<Word[]>([]);
+  const [filteredWords, setFilteredWords] = useState<Word[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isAdding, setIsAdding] = useState<string | null>(null);
@@ -32,7 +17,7 @@ export const useDiscoveryData = () => {
 
   // Initialize database on first load
   useEffect(() => {
-    UnifiedWordService.initializeDatabase();
+    WordService.initializeDatabase();
   }, []);
 
   // Load words with pagination
@@ -40,7 +25,7 @@ export const useDiscoveryData = () => {
     setIsLoadingMore(true);
     
     try {
-      const { words: newWords, hasMore: moreAvailable } = await UnifiedWordService.getWords(
+      const { words: newWords, hasMore: moreAvailable } = await WordService.getWords(
         pageNum,
         20
       );
@@ -65,65 +50,25 @@ export const useDiscoveryData = () => {
     }
   }, []);
 
-  const addWordToCollection = async (entry: DictionaryEntry | UnifiedWord) => {
+  const addWordToCollection = async (entry: DictionaryEntry | Word) => {
     const wordToAdd = entry.word;
     setIsAdding(wordToAdd);
     
     try {
       // Check if word already exists in our database
-      const existingWord = await UnifiedWordService.getWordByName(wordToAdd);
+      const existingWord = await WordService.getWordByName(wordToAdd);
       
-      let wordToAddToLibrary: UnifiedWord;
+      let wordToAddToLibrary: Word;
       
       if (existingWord) {
         wordToAddToLibrary = existingWord;
       } else {
         // Create new word profile
-        if ('morpheme_breakdown' in entry) {
-          // It's already a UnifiedWord
-          const newWord = await UnifiedWordService.createWord(entry);
-          if (!newWord) {
-            throw new Error('Failed to create word profile');
-          }
-          wordToAddToLibrary = newWord;
-        } else {
-          // It's a DictionaryEntry, convert it
-          const primaryMeaning = entry.meanings[0]?.definitions[0];
-          const newWordData: Partial<UnifiedWord> = {
-            word: entry.word,
-            morpheme_breakdown: {
-              root: {
-                text: entry.word,
-                meaning: primaryMeaning?.definition || 'Definition not available'
-              }
-            },
-            etymology: {
-              language_of_origin: 'English',
-              historical_origins: entry.origin || 'Etymology not available'
-            },
-            definitions: {
-              primary: primaryMeaning?.definition || 'Definition not available',
-              standard: entry.meanings.slice(0, 3).map(m => 
-                m.definitions[0]?.definition || ''
-              ).filter(Boolean)
-            },
-            word_forms: {
-              base_form: entry.word
-            },
-            analysis: {
-              parts_of_speech: entry.meanings[0]?.partOfSpeech || 'unknown',
-              synonyms: primaryMeaning?.synonyms || [],
-              antonyms: primaryMeaning?.antonyms || [],
-              example_sentence: primaryMeaning?.example || 'No example available'
-            }
-          };
-
-          const newWord = await UnifiedWordService.createWord(newWordData);
-          if (!newWord) {
-            throw new Error('Failed to create word profile');
-          }
-          wordToAddToLibrary = newWord;
+        const newWord = await WordService.createWord(entry);
+        if (!newWord) {
+          throw new Error('Failed to create word profile');
         }
+        wordToAddToLibrary = newWord;
       }
 
       // Add to user's personal library

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Globe } from 'lucide-react';
 import AIChatInterface from '@/components/AIChatInterface';
-import { UnifiedWord } from '@/types/unifiedWord';
+import { Word } from '@/types/word';
 import { FloatingActionButton } from '@/components/Discovery/FloatingActionButton';
 import { WordDetailDialog } from '@/components/Discovery/WordDetailDialog';
 import { SearchModeToggle } from '@/components/Discovery/SearchModeToggle';
@@ -19,7 +19,7 @@ const pageVariants = {
 
 const DiscoveryPage: React.FC = () => {
   const [searchMode, setSearchMode] = useState<'smart' | 'browse'>('browse');
-  const [selectedWord, setSelectedWord] = useState<UnifiedWord | null>(null);
+  const [selectedWord, setSelectedWord] = useState<Word | null>(null);
   const [isWordDialogOpen, setIsWordDialogOpen] = useState(false);
 
   const {
@@ -36,11 +36,11 @@ const DiscoveryPage: React.FC = () => {
     addWordToCollection
   } = useDiscoveryData();
 
-  const handleSmartSearchResults = (results: UnifiedWord[]) => {
+  const handleSmartSearchResults = (results: Word[]) => {
     setFilteredWords(results);
   };
 
-  const handleWordSelect = (word: UnifiedWord) => {
+  const handleWordSelect = (word: Word) => {
     setSelectedWord(word);
     setIsWordDialogOpen(true);
   };
