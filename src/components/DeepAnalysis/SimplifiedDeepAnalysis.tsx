@@ -6,51 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Brain, Search, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { Calvern3Service } from "@/utils/calvern3Integration";
+import { DictionaryApiService } from "@/services/dictionaryApiService";
 import Header from "@/components/Header";
-
-interface ComprehensiveBreakdown {
-  word: string;
-  morpheme_breakdown: {
-    prefix?: { text: string; meaning: string; origin: string };
-    root: { text: string; meaning: string; origin: string };
-    suffix?: { text: string; meaning: string; origin: string };
-  };
-  etymology: {
-    historical_origins: string;
-    language_of_origin: string;
-    word_evolution: string;
-    cultural_variations?: string;
-  };
-  definitions: {
-    primary: string;
-    standard: string[];
-    extended: string[];
-    contextual: string[];
-    specialized: string[];
-  };
-  word_forms: {
-    noun_forms?: { singular?: string; plural?: string };
-    verb_tenses?: { base?: string; past?: string; present?: string };
-    adjective_forms?: { positive?: string; comparative?: string; superlative?: string };
-    adverb_form?: string;
-  };
-  analysis: {
-    parts_of_speech: string;
-    contextual_usage: string;
-    synonyms_antonyms: {
-      synonyms: string[];
-      antonyms: string[];
-    };
-    common_collocations: string[];
-    cultural_significance?: string;
-    example: string;
-  };
-}
 
 export function SimplifiedDeepAnalysis() {
   const navigate = useNavigate();
   const [searchWord, setSearchWord] = useState('');
-  const [analysis, setAnalysis] = useState<ComprehensiveBreakdown | null>(null);
+  const [analysis, setAnalysis] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
   const handleAnalyze = async () => {
@@ -60,75 +23,75 @@ export function SimplifiedDeepAnalysis() {
     }
 
     setLoading(true);
+    console.log(`Starting comprehensive analysis for: "${searchWord}"`);
+    
     try {
-      // Call Calvern 3.0 API for comprehensive breakdown
-      const response = await fetch('https://calvern-codex.zapier.app/calvern-3-0', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          word: searchWord.trim(),
-          analysis_type: 'comprehensive_breakdown'
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to analyze word');
+      // Get comprehensive breakdown from Calvern 3.0
+      const comprehensiveBreakdown = await Calvern3Service.getComprehensiveBreakdown(searchWord.trim());
+      setAnalysis(comprehensiveBreakdown);
+      
+      // Try to store word data in the background
+      try {
+        await DictionaryApiService.fetchAndStoreWord(searchWord.trim());
+        console.log(`Word "${searchWord}" stored in database successfully`);
+      } catch (dbError) {
+        console.warn('Failed to store word in database:', dbError);
+        // Don't show error to user as the analysis still worked
       }
-
-      const result = await response.json();
-      setAnalysis(result);
+      
       toast.success(`Comprehensive analysis complete for "${searchWord}"`);
     } catch (error) {
       console.error('Error analyzing word:', error);
-      toast.error('Failed to analyze word. Please try again.');
       
-      // Fallback to mock data for demonstration
-      setAnalysis(createMockAnalysis(searchWord));
+      // Fallback to local analysis
+      try {
+        const fallbackAnalysis = Calvern3Service.createFallbackBreakdown(searchWord);
+        setAnalysis(fallbackAnalysis);
+        toast.error('Using fallback analysis - Calvern 3.0 unavailable');
+      } catch (fallbackError) {
+        toast.error('Failed to analyze word. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const createMockAnalysis = (word: string): ComprehensiveBreakdown => ({
-    word: word,
-    morpheme_breakdown: {
-      root: { text: word, meaning: "Core meaning", origin: "Latin" }
-    },
-    etymology: {
-      historical_origins: `The word "${word}" has ancient linguistic roots.`,
-      language_of_origin: "Latin",
-      word_evolution: "Evolved through various linguistic stages.",
-      cultural_variations: "Used across different cultures and contexts."
-    },
-    definitions: {
-      primary: `Primary definition of ${word}`,
-      standard: [`Standard definition 1`, `Standard definition 2`],
-      extended: [`Extended definition 1`],
-      contextual: [`Contextual usage definition`],
-      specialized: [`Specialized technical definition`]
-    },
-    word_forms: {
-      noun_forms: { singular: word, plural: `${word}s` }
-    },
-    analysis: {
-      parts_of_speech: "Noun, Adjective",
-      contextual_usage: `${word} is commonly used in formal and academic contexts.`,
-      synonyms_antonyms: {
-        synonyms: ["similar", "alike", "comparable"],
-        antonyms: ["different", "unlike", "dissimilar"]
-      },
-      common_collocations: [`common ${word}`, `${word} example`, `typical ${word}`],
-      cultural_significance: `${word} holds significance in various cultural contexts.`,
-      example: `This is an example sentence using the word ${word}.`
-    }
-  });
-
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !loading) {
       handleAnalyze();
     }
+  };
+
+  // Function to render markdown-like content as HTML
+  const renderAnalysis = (content: string) => {
+    return content
+      .split('\n')
+      .map((line, index) => {
+        if (line.startsWith('# ')) {
+          return <h1 key={index} className="text-3xl font-bold text-white mb-4">{line.slice(2)}</h1>;
+        } else if (line.startsWith('## ')) {
+          return <h2 key={index} className="text-2xl font-semibold text-white mb-3 mt-6">{line.slice(3)}</h2>;
+        } else if (line.startsWith('### ')) {
+          return <h3 key={index} className="text-xl font-semibold text-white mb-2 mt-4">{line.slice(4)}</h3>;
+        } else if (line.startsWith('* **') && line.includes(':**')) {
+          const [label, ...rest] = line.slice(4).split(':**');
+          const content = rest.join(':**');
+          return (
+            <div key={index} className="mb-3">
+              <span className="font-semibold text-blue-200">{label}:</span>
+              <span className="text-white/80 ml-2">{content}</span>
+            </div>
+          );
+        } else if (line.startsWith('* ')) {
+          return <li key={index} className="text-white/80 mb-1 ml-4">{line.slice(2)}</li>;
+        } else if (line.startsWith('---')) {
+          return <hr key={index} className="border-white/20 my-6" />;
+        } else if (line.trim() === '') {
+          return <br key={index} />;
+        } else {
+          return <p key={index} className="text-white/80 mb-2">{line}</p>;
+        }
+      });
   };
 
   return (
@@ -195,185 +158,13 @@ export function SimplifiedDeepAnalysis() {
         )}
 
         {analysis && !loading && (
-          <div className="space-y-6">
-            {/* Word Header */}
-            <Card className="bg-white/10 backdrop-blur-md border-white/20">
-              <CardHeader>
-                <CardTitle className="text-3xl text-white text-center">
-                  {analysis.word}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-
-            {/* Morpheme Breakdown */}
-            <Card className="bg-white/10 backdrop-blur-md border-white/20">
-              <CardHeader>
-                <CardTitle className="text-white text-xl">Morpheme Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {analysis.morpheme_breakdown.prefix && (
-                  <div className="p-4 bg-blue-500/20 rounded-lg">
-                    <h4 className="text-blue-100 font-semibold">Prefix: {analysis.morpheme_breakdown.prefix.text}</h4>
-                    <p className="text-white/80">{analysis.morpheme_breakdown.prefix.meaning}</p>
-                    <p className="text-white/60 text-sm">Origin: {analysis.morpheme_breakdown.prefix.origin}</p>
-                  </div>
-                )}
-                
-                <div className="p-4 bg-green-500/20 rounded-lg">
-                  <h4 className="text-green-100 font-semibold">Root Word: {analysis.morpheme_breakdown.root.text}</h4>
-                  <p className="text-white/80">{analysis.morpheme_breakdown.root.meaning}</p>
-                  <p className="text-white/60 text-sm">Origin: {analysis.morpheme_breakdown.root.origin}</p>
-                </div>
-
-                {analysis.morpheme_breakdown.suffix && (
-                  <div className="p-4 bg-purple-500/20 rounded-lg">
-                    <h4 className="text-purple-100 font-semibold">Suffix: {analysis.morpheme_breakdown.suffix.text}</h4>
-                    <p className="text-white/80">{analysis.morpheme_breakdown.suffix.meaning}</p>
-                    <p className="text-white/60 text-sm">Origin: {analysis.morpheme_breakdown.suffix.origin}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Etymology */}
-            <Card className="bg-white/10 backdrop-blur-md border-white/20">
-              <CardHeader>
-                <CardTitle className="text-white text-xl">Etymology</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h4 className="text-white/90 font-semibold mb-2">Historical Origins</h4>
-                  <p className="text-white/80">{analysis.etymology.historical_origins}</p>
-                </div>
-                <div>
-                  <h4 className="text-white/90 font-semibold mb-2">Language of Origin</h4>
-                  <p className="text-white/80">{analysis.etymology.language_of_origin}</p>
-                </div>
-                <div>
-                  <h4 className="text-white/90 font-semibold mb-2">Word Evolution</h4>
-                  <p className="text-white/80">{analysis.etymology.word_evolution}</p>
-                </div>
-                {analysis.etymology.cultural_variations && (
-                  <div>
-                    <h4 className="text-white/90 font-semibold mb-2">Cultural & Regional Variations</h4>
-                    <p className="text-white/80">{analysis.etymology.cultural_variations}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Definitions */}
-            <Card className="bg-white/10 backdrop-blur-md border-white/20">
-              <CardHeader>
-                <CardTitle className="text-white text-xl">Definitions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h4 className="text-white/90 font-semibold mb-2">Primary Definition</h4>
-                  <p className="text-white/80">{analysis.definitions.primary}</p>
-                </div>
-                
-                {analysis.definitions.standard.length > 0 && (
-                  <div>
-                    <h4 className="text-white/90 font-semibold mb-2">Standard Definitions</h4>
-                    <ul className="space-y-1">
-                      {analysis.definitions.standard.map((def, index) => (
-                        <li key={index} className="text-white/80">• {def}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {analysis.definitions.extended.length > 0 && (
-                  <div>
-                    <h4 className="text-white/90 font-semibold mb-2">Extended Definitions</h4>
-                    <ul className="space-y-1">
-                      {analysis.definitions.extended.map((def, index) => (
-                        <li key={index} className="text-white/80">• {def}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Word Forms */}
-            <Card className="bg-white/10 backdrop-blur-md border-white/20">
-              <CardHeader>
-                <CardTitle className="text-white text-xl">Word Forms & Inflections</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {analysis.word_forms.noun_forms && (
-                  <div>
-                    <h4 className="text-white/90 font-semibold mb-2">Noun Forms</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      {analysis.word_forms.noun_forms.singular && (
-                        <p className="text-white/80">Singular: {analysis.word_forms.noun_forms.singular}</p>
-                      )}
-                      {analysis.word_forms.noun_forms.plural && (
-                        <p className="text-white/80">Plural: {analysis.word_forms.noun_forms.plural}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {analysis.word_forms.adverb_form && (
-                  <div>
-                    <h4 className="text-white/90 font-semibold mb-2">Adverb Form</h4>
-                    <p className="text-white/80">{analysis.word_forms.adverb_form}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Analysis */}
-            <Card className="bg-white/10 backdrop-blur-md border-white/20">
-              <CardHeader>
-                <CardTitle className="text-white text-xl">Analysis of the Word</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h4 className="text-white/90 font-semibold mb-2">Parts of Speech</h4>
-                  <p className="text-white/80">{analysis.analysis.parts_of_speech}</p>
-                </div>
-                
-                <div>
-                  <h4 className="text-white/90 font-semibold mb-2">Contextual Usage</h4>
-                  <p className="text-white/80">{analysis.analysis.contextual_usage}</p>
-                </div>
-
-                <div>
-                  <h4 className="text-white/90 font-semibold mb-2">Synonyms & Antonyms</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-white/70 text-sm mb-1">Synonyms:</p>
-                      <p className="text-white/80">{analysis.analysis.synonyms_antonyms.synonyms.join(", ")}</p>
-                    </div>
-                    <div>
-                      <p className="text-white/70 text-sm mb-1">Antonyms:</p>
-                      <p className="text-white/80">{analysis.analysis.synonyms_antonyms.antonyms.join(", ")}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-white/90 font-semibold mb-2">Common Collocations</h4>
-                  <p className="text-white/80">{analysis.analysis.common_collocations.join(", ")}</p>
-                </div>
-
-                {analysis.analysis.cultural_significance && (
-                  <div>
-                    <h4 className="text-white/90 font-semibold mb-2">Cultural & Historical Significance</h4>
-                    <p className="text-white/80">{analysis.analysis.cultural_significance}</p>
-                  </div>
-                )}
-
-                <div>
-                  <h4 className="text-white/90 font-semibold mb-2">Example</h4>
-                  <p className="text-white/80 italic">"{analysis.analysis.example}"</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <Card className="bg-white/10 backdrop-blur-md border-white/20">
+            <CardContent className="p-8">
+              <div className="prose prose-invert max-w-none">
+                {renderAnalysis(analysis)}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {!analysis && !loading && (
