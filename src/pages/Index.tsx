@@ -72,6 +72,12 @@ const Index = () => {
       origin: word.etymology?.origin || word.etymology?.historical_origins || '',
       evolution: word.etymology?.evolution || word.etymology?.word_evolution || '',
       culturalVariations: word.etymology?.culturalVariations || word.etymology?.cultural_variations
+    },
+    usage: {
+      commonCollocations: word.usage?.commonCollocations || word.analysis?.collocations || [],
+      contextualUsage: word.usage?.contextualUsage || word.analysis?.contextual_usage || '',
+      sentenceStructure: word.usage?.sentenceStructure || word.analysis?.sentence_structure,
+      exampleSentence: word.usage?.exampleSentence || word.analysis?.example_sentence || word.analysis?.example || ''
     }
   })) || [];
 
