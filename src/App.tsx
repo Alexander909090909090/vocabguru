@@ -18,7 +18,7 @@ import Integrations from "./pages/Integrations";
 import Profile from "./pages/Profile";
 import StudyCenter from "./pages/StudyCenter";
 import NotFound from "./pages/NotFound";
-import { DeepAnalysisPage } from "./components/DeepAnalysis/DeepAnalysisPage";
+import { SimplifiedDeepAnalysis } from "./components/DeepAnalysis/SimplifiedDeepAnalysis";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -56,7 +56,12 @@ const App = () => (
                 } />
                 <Route path="/deep-analysis/:word" element={
                   <ProtectedRoute>
-                    <DeepAnalysisPage />
+                    <SimplifiedDeepAnalysis />
+                  </ProtectedRoute>
+                } />
+                <Route path="/deep-analysis" element={
+                  <ProtectedRoute>
+                    <SimplifiedDeepAnalysis />
                   </ProtectedRoute>
                 } />
                 <Route path="/quiz" element={
