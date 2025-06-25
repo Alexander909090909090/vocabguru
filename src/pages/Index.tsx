@@ -53,6 +53,13 @@ const Index = () => {
     return true;
   })?.map(word => ({
     ...word,
+    definitions: Array.isArray(word.definitions) ? word.definitions : [
+      {
+        meaning: word.definitions?.primary || word.description || '',
+        example: '',
+        partOfSpeech: word.partOfSpeech || 'noun'
+      }
+    ],
     etymology: {
       origin: word.etymology?.origin || word.etymology?.historical_origins || '',
       evolution: word.etymology?.evolution || word.etymology?.word_evolution || '',
