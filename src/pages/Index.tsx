@@ -1,7 +1,9 @@
+
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Header from "@/components/Header";
 import WordSection from "@/components/WordSection";
+import WordCard from "@/components/WordCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Sparkles } from "lucide-react";
@@ -63,23 +65,32 @@ const Index = () => {
         </div>
 
         {searchTerm && searchResults.length > 0 && (
-          <WordSection
-            title={`Search Results for "${searchTerm}"`}
-            words={searchResults}
-          />
+          <WordSection title={`Search Results for "${searchTerm}"`}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {searchResults.map((word, index) => (
+                <WordCard key={word.id} word={word} priority={index < 3} />
+              ))}
+            </div>
+          </WordSection>
         )}
 
         {!searchTerm && (
           <>
-            <WordSection
-              title="Featured Words"
-              words={words.filter(word => word.featured)}
-            />
+            <WordSection title="Featured Words">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {words.filter(word => word.featured).map((word, index) => (
+                  <WordCard key={word.id} word={word} priority={index < 3} />
+                ))}
+              </div>
+            </WordSection>
 
-            <WordSection
-              title="New & Noteworthy"
-              words={words.slice(0, 5)}
-            />
+            <WordSection title="New & Noteworthy">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {words.slice(0, 5).map((word, index) => (
+                  <WordCard key={word.id} word={word} priority={index < 3} />
+                ))}
+              </div>
+            </WordSection>
           </>
         )}
       </main>
