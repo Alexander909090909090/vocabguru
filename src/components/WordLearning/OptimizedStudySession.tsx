@@ -1,319 +1,341 @@
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, RotateCcw, Volume2, BookOpen, Brain, Target } from "lucide-react";
+import { CheckCircle, XCircle, Brain, Target, Timer } from "lucide-react";
 import { WordRepositoryEntry } from "@/services/wordRepositoryService";
-import { UnifiedWordService } from "@/services/unifiedWordService";
+import { UserWordLibraryService } from "@/services/userWordLibraryService";
 import { toast } from "sonner";
 
-interface StudySessionProps {
+interface StudyQuestion {
+  id: string;
+  type: 'definition' | 'morpheme' | 'usage' | 'etymology';
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  explanation: string;
+  word: WordRepositoryEntry;
+}
+
+interface OptimizedStudySessionProps {
   words: WordRepositoryEntry[];
   onComplete: (results: StudyResults) => void;
-  onExit: () => void;
-  sessionType?: 'quick' | 'focused' | 'challenge';
+  adaptiveDifficulty?: boolean;
 }
 
 interface StudyResults {
-  totalWords: number;
+  totalQuestions: number;
   correctAnswers: number;
   timeSpent: number;
   wordsStudied: string[];
-  difficultyAreas: string[];
-  sessionType?: string;
+  difficultyProgression: number[];
 }
 
-type StudyMode = 'definition' | 'etymology' | 'usage' | 'morphemes';
-
-export function OptimizedStudySession({ words, onComplete, onExit, sessionType = 'quick' }: StudySessionProps) {
-  const [currentWordIndex, setCurrentWordIndex] = useState(0);
-  const [studyMode, setStudyMode] = useState<StudyMode>('definition');
-  const [showAnswer, setShowAnswer] = useState(false);
-  const [userResponses, setUserResponses] = useState<('correct' | 'incorrect' | null)[]>(new Array(words.length).fill(null));
-  const [startTime] = useState(Date.now());
-  const [sessionStats, setSessionStats] = useState({
-    correct: 0,
-    incorrect: 0,
-    skipped: 0
+export function OptimizedStudySession({ 
+  words, 
+  onComplete, 
+  adaptiveDifficulty = true 
+}: OptimizedStudySessionProps) {
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [questions, setQuestions] = useState<StudyQuestion[]>([]);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [showExplanation, setShowExplanation] = useState(false);
+  const [results, setResults] = useState<StudyResults>({
+    totalQuestions: 0,
+    correctAnswers: 0,
+    timeSpent: 0,
+    wordsStudied: [],
+    difficultyProgression: []
   });
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [startTime] = useState(Date.now());
+  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
+  const [difficulty, setDifficulty] = useState(1); // 1-3 scale
 
-  const currentWord = words[currentWordIndex];
-  const progress = ((currentWordIndex + 1) / words.length) * 100;
+  useEffect(() => {
+    initializeSession();
+  }, [words]);
 
-  // Memoized study modes for performance
-  const studyModes = useMemo(() => [
-    { key: 'definition' as const, label: 'Definition', icon: BookOpen },
-    { key: 'etymology' as const, label: 'Etymology', icon: RotateCcw },
-    { key: 'usage' as const, label: 'Usage', icon: Volume2 },
-    { key: 'morphemes' as const, label: 'Word Parts', icon: Brain },
-  ], []);
+  const initializeSession = async () => {
+    const id = await UserWordLibraryService.startStudySession('vocabulary');
+    setSessionId(id);
+    
+    const generatedQuestions = generateQuestions(words, difficulty);
+    setQuestions(generatedQuestions);
+    setResults(prev => ({ ...prev, totalQuestions: generatedQuestions.length }));
+    setQuestionStartTime(Date.now());
+  };
 
-  // Optimized audio playback
-  const playAudio = useCallback((audioUrl?: string) => {
-    if (audioUrl) {
-      const audio = new Audio(audioUrl);
-      audio.play().catch(e => console.log('Audio playback failed:', e));
-    } else {
-      // Fallback to speech synthesis
-      if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(currentWord.word);
-        utterance.lang = 'en-US';
-        speechSynthesis.speak(utterance);
+  const generateQuestions = (wordList: WordRepositoryEntry[], difficultyLevel: number): StudyQuestion[] => {
+    const questionTypes: StudyQuestion['type'][] = ['definition', 'morpheme', 'usage', 'etymology'];
+    
+    return wordList.slice(0, 10).map((word, index) => {
+      const type = questionTypes[index % questionTypes.length];
+      
+      switch (type) {
+        case 'definition':
+          return generateDefinitionQuestion(word, wordList, difficultyLevel);
+        case 'morpheme':
+          return generateMorphemeQuestion(word, wordList, difficultyLevel);
+        case 'usage':
+          return generateUsageQuestion(word, wordList, difficultyLevel);
+        case 'etymology':
+          return generateEtymologyQuestion(word, wordList, difficultyLevel);
+        default:
+          return generateDefinitionQuestion(word, wordList, difficultyLevel);
       }
-    }
-  }, [currentWord?.word]);
+    });
+  };
 
-  const handleResponse = useCallback((isCorrect: boolean) => {
-    const newResponses = [...userResponses];
-    newResponses[currentWordIndex] = isCorrect ? 'correct' : 'incorrect';
-    setUserResponses(newResponses);
+  const generateDefinitionQuestion = (
+    word: WordRepositoryEntry, 
+    allWords: WordRepositoryEntry[], 
+    difficultyLevel: number
+  ): StudyQuestion => {
+    const correctDefinition = word.definitions.primary || word.definitions.standard?.[0] || "No definition available";
+    const wrongOptions = allWords
+      .filter(w => w.id !== word.id)
+      .slice(0, 3)
+      .map(w => w.definitions.primary || w.definitions.standard?.[0] || "Definition");
 
-    setSessionStats(prev => ({
+    const options = [correctDefinition, ...wrongOptions].sort(() => Math.random() - 0.5);
+    const correctAnswer = options.indexOf(correctDefinition);
+
+    return {
+      id: `def-${word.id}`,
+      type: 'definition',
+      question: `What does "${word.word}" mean?`,
+      options,
+      correctAnswer,
+      explanation: `"${word.word}" means: ${correctDefinition}`,
+      word
+    };
+  };
+
+  const generateMorphemeQuestion = (
+    word: WordRepositoryEntry, 
+    allWords: WordRepositoryEntry[], 
+    difficultyLevel: number
+  ): StudyQuestion => {
+    const morpheme = word.morpheme_breakdown;
+    const rootMeaning = morpheme.root.meaning || "root meaning";
+    
+    const wrongOptions = allWords
+      .filter(w => w.id !== word.id && w.morpheme_breakdown.root.meaning)
+      .slice(0, 3)
+      .map(w => w.morpheme_breakdown.root.meaning);
+
+    const options = [rootMeaning, ...wrongOptions].sort(() => Math.random() - 0.5);
+    const correctAnswer = options.indexOf(rootMeaning);
+
+    return {
+      id: `morph-${word.id}`,
+      type: 'morpheme',
+      question: `What does the root "${morpheme.root.text}" in "${word.word}" mean?`,
+      options,
+      correctAnswer,
+      explanation: `The root "${morpheme.root.text}" means: ${rootMeaning}`,
+      word
+    };
+  };
+
+  const generateUsageQuestion = (
+    word: WordRepositoryEntry, 
+    allWords: WordRepositoryEntry[], 
+    difficultyLevel: number
+  ): StudyQuestion => {
+    const correctUsage = word.analysis.example_sentence || `The ${word.word} was impressive.`;
+    const wrongOptions = allWords
+      .filter(w => w.id !== word.id && w.analysis.example_sentence)
+      .slice(0, 3)
+      .map(w => w.analysis.example_sentence || `Example with ${w.word}`);
+
+    const options = [correctUsage, ...wrongOptions].sort(() => Math.random() - 0.5);
+    const correctAnswer = options.indexOf(correctUsage);
+
+    return {
+      id: `usage-${word.id}`,
+      type: 'usage',
+      question: `Which sentence correctly uses "${word.word}"?`,
+      options,
+      correctAnswer,
+      explanation: `Correct usage: ${correctUsage}`,
+      word
+    };
+  };
+
+  const generateEtymologyQuestion = (
+    word: WordRepositoryEntry, 
+    allWords: WordRepositoryEntry[], 
+    difficultyLevel: number
+  ): StudyQuestion => {
+    const correctOrigin = word.etymology.language_of_origin || "Unknown";
+    const wrongOptions = ['Latin', 'Greek', 'French', 'German', 'Old English']
+      .filter(lang => lang !== correctOrigin)
+      .slice(0, 3);
+
+    const options = [correctOrigin, ...wrongOptions].sort(() => Math.random() - 0.5);
+    const correctAnswer = options.indexOf(correctOrigin);
+
+    return {
+      id: `etym-${word.id}`,
+      type: 'etymology',
+      question: `What is the language of origin for "${word.word}"?`,
+      options,
+      correctAnswer,
+      explanation: `"${word.word}" originates from ${correctOrigin}`,
+      word
+    };
+  };
+
+  const handleAnswerSelect = (answerIndex: number) => {
+    setSelectedAnswer(answerIndex);
+  };
+
+  const handleNextQuestion = useCallback(() => {
+    if (selectedAnswer === null) return;
+
+    const currentQuestion = questions[currentQuestionIndex];
+    const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
+    const questionTime = Date.now() - questionStartTime;
+
+    // Update results
+    setResults(prev => ({
       ...prev,
-      correct: prev.correct + (isCorrect ? 1 : 0),
-      incorrect: prev.incorrect + (isCorrect ? 0 : 1)
+      correctAnswers: prev.correctAnswers + (isCorrect ? 1 : 0),
+      timeSpent: prev.timeSpent + questionTime,
+      wordsStudied: [...prev.wordsStudied, currentQuestion.word.id],
+      difficultyProgression: [...prev.difficultyProgression, difficulty]
     }));
 
-    setShowAnswer(true);
-    
-    setTimeout(() => {
-      nextWord();
-    }, 1500); // Reduced delay for better UX
-  }, [currentWordIndex, userResponses]);
+    // Adaptive difficulty adjustment
+    if (adaptiveDifficulty) {
+      if (isCorrect && questionTime < 5000) { // Quick correct answer
+        setDifficulty(prev => Math.min(3, prev + 0.1));
+      } else if (!isCorrect) {
+        setDifficulty(prev => Math.max(1, prev - 0.2));
+      }
+    }
 
-  const nextWord = useCallback(() => {
-    if (currentWordIndex < words.length - 1) {
-      setCurrentWordIndex(prev => prev + 1);
-      setShowAnswer(false);
+    // Progress tracking
+    toast.success(isCorrect ? "Correct! Well done!" : "Keep learning!");
+
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+      setSelectedAnswer(null);
+      setShowExplanation(false);
+      setQuestionStartTime(Date.now());
     } else {
       completeSession();
     }
-  }, [currentWordIndex, words.length]);
+  }, [selectedAnswer, currentQuestionIndex, questions, difficulty, adaptiveDifficulty, questionStartTime]);
 
-  const completeSession = useCallback(() => {
-    const timeSpent = Date.now() - startTime;
-    const results: StudyResults = {
-      totalWords: words.length,
-      correctAnswers: sessionStats.correct,
-      timeSpent: Math.floor(timeSpent / 1000),
-      wordsStudied: words.map(w => w.word),
-      difficultyAreas: words
-        .filter((_, index) => userResponses[index] === 'incorrect')
-        .map(w => w.word),
-      sessionType
+  const completeSession = async () => {
+    const finalResults = {
+      ...results,
+      timeSpent: Date.now() - startTime
     };
 
-    onComplete(results);
-  }, [startTime, words, sessionStats, userResponses, sessionType, onComplete]);
-
-  // Optimized study content generation
-  const getStudyContent = useMemo(() => {
-    if (!currentWord) return { question: '', answer: '', hint: '' };
-
-    switch (studyMode) {
-      case 'definition':
-        return {
-          question: `What does "${currentWord.word}" mean?`,
-          answer: currentWord.definitions.primary || 'No definition available',
-          hint: `Part of speech: ${currentWord.analysis.parts_of_speech || 'Unknown'}`
-        };
-      case 'etymology':
-        return {
-          question: `What is the origin of "${currentWord.word}"?`,
-          answer: currentWord.etymology.historical_origins || 'Origin unknown',
-          hint: `Language of origin: ${currentWord.etymology.language_of_origin || 'Unknown'}`
-        };
-      case 'usage':
-        return {
-          question: `How would you use "${currentWord.word}" in a sentence?`,
-          answer: currentWord.analysis.example_sentence || 'No example available',
-          hint: `Context: ${currentWord.definitions.contextual?.[0] || 'General usage'}`
-        };
-      case 'morphemes':
-        return {
-          question: `Break down the word parts of "${currentWord.word}"`,
-          answer: `Root: ${currentWord.morpheme_breakdown.root.text} (${currentWord.morpheme_breakdown.root.meaning})${
-            currentWord.morpheme_breakdown.prefix ? `\nPrefix: ${currentWord.morpheme_breakdown.prefix.text} (${currentWord.morpheme_breakdown.prefix.meaning})` : ''
-          }${
-            currentWord.morpheme_breakdown.suffix ? `\nSuffix: ${currentWord.morpheme_breakdown.suffix.text} (${currentWord.morpheme_breakdown.suffix.meaning})` : ''
-          }`,
-          hint: 'Think about prefixes, roots, and suffixes'
-        };
-      default:
-        return { question: '', answer: '', hint: '' };
+    if (sessionId) {
+      await UserWordLibraryService.completeStudySession(sessionId, {
+        words_studied: finalResults.wordsStudied,
+        correct_answers: finalResults.correctAnswers,
+        total_questions: finalResults.totalQuestions
+      });
     }
-  }, [currentWord, studyMode]);
 
-  // Keyboard shortcuts for better UX
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (showAnswer) {
-        if (e.key === '1' || e.key === 'ArrowLeft') {
-          handleResponse(false);
-        } else if (e.key === '2' || e.key === 'ArrowRight') {
-          handleResponse(true);
-        }
-      } else if (e.key === ' ' || e.key === 'Enter') {
-        setShowAnswer(true);
-      }
-    };
+    onComplete(finalResults);
+  };
 
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [showAnswer, handleResponse]);
+  const currentQuestion = questions[currentQuestionIndex];
+  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
 
-  if (!currentWord) {
+  if (!currentQuestion) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p>No words available for study session.</p>
-      </div>
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardContent className="p-6">
+          <div className="text-center">Loading study session...</div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Session Header with Performance Indicators */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <CardTitle className="text-lg">
-                {sessionType === 'challenge' ? 'Challenge Mode' : 
-                 sessionType === 'focused' ? 'Focused Study' : 'Quick Review'}
-              </CardTitle>
-              <Badge variant="outline" className="gap-1">
-                <Target className="h-3 w-3" />
-                {Math.round((sessionStats.correct / Math.max(currentWordIndex, 1)) * 100)}% accuracy
-              </Badge>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-sm text-muted-foreground">
-                {currentWordIndex + 1} of {words.length}
-              </div>
-              <Button variant="outline" size="sm" onClick={onExit}>
-                Exit Session
-              </Button>
-            </div>
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5" />
+            Study Session
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="flex items-center gap-1">
+              <Target className="h-3 w-3" />
+              Level {Math.round(difficulty)}
+            </Badge>
+            <Badge variant="outline" className="flex items-center gap-1">
+              <Timer className="h-3 w-3" />
+              {currentQuestionIndex + 1}/{questions.length}
+            </Badge>
           </div>
-          <Progress value={progress} className="h-2" />
-        </CardHeader>
-      </Card>
+        </div>
+        <Progress value={progress} className="w-full" />
+      </CardHeader>
 
-      {/* Study Mode Selector */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-wrap gap-2">
-            {studyModes.map(mode => {
-              const Icon = mode.icon;
-              return (
-                <Button
-                  key={mode.key}
-                  variant={studyMode === mode.key ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setStudyMode(mode.key)}
-                  className="gap-2"
-                >
-                  <Icon className="h-4 w-4" />
-                  {mode.label}
-                </Button>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Main Study Card */}
-      <Card className="min-h-[400px]">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-bold">{currentWord.word}</h2>
-              {currentWord.phonetic && (
-                <Badge variant="secondary">{currentWord.phonetic}</Badge>
-              )}
+      <CardContent className="space-y-6">
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">{currentQuestion.question}</h3>
+          
+          <div className="space-y-2">
+            {currentQuestion.options.map((option, index) => (
               <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => playAudio(currentWord.audio_url)}
+                key={index}
+                variant={selectedAnswer === index ? "default" : "outline"}
+                className="w-full text-left justify-start h-auto p-4"
+                onClick={() => handleAnswerSelect(index)}
+                disabled={showExplanation}
               >
-                <Volume2 className="h-4 w-4" />
+                <span className="mr-3 font-mono text-sm">
+                  {String.fromCharCode(65 + index)}.
+                </span>
+                {option}
+                {showExplanation && index === currentQuestion.correctAnswer && (
+                  <CheckCircle className="ml-auto h-4 w-4 text-green-500" />
+                )}
+                {showExplanation && selectedAnswer === index && index !== currentQuestion.correctAnswer && (
+                  <XCircle className="ml-auto h-4 w-4 text-red-500" />
+                )}
               </Button>
-            </div>
-            <div className="flex gap-2 text-sm">
-              <Badge variant="outline" className="text-green-600">
-                ✓ {sessionStats.correct}
-              </Badge>
-              <Badge variant="outline" className="text-red-600">
-                ✗ {sessionStats.incorrect}
-              </Badge>
-            </div>
+            ))}
           </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="text-center space-y-4">
-            <h3 className="text-lg font-semibold">{getStudyContent.question}</h3>
-            
-            {!showAnswer && (
-              <div className="space-y-4">
-                <p className="text-muted-foreground italic">
-                  {getStudyContent.hint}
-                </p>
-                <div className="flex justify-center gap-4">
-                  <Button onClick={() => setShowAnswer(true)}>
-                    Show Answer
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Press Space or Enter to reveal answer
-                </p>
-              </div>
-            )}
+        </div>
 
-            {showAnswer && (
-              <div className="space-y-4">
-                <Card className="bg-secondary/50">
-                  <CardContent className="p-4">
-                    <p className="whitespace-pre-line">{getStudyContent.answer}</p>
-                  </CardContent>
-                </Card>
-                
-                <div className="space-y-3">
-                  <p className="text-sm font-medium">How well did you know this?</p>
-                  <div className="flex justify-center gap-4">
-                    <Button
-                      variant="outline"
-                      onClick={() => handleResponse(false)}
-                      className="gap-2 text-red-600 border-red-200 hover:bg-red-50"
-                    >
-                      <XCircle className="h-4 w-4" />
-                      Need Practice (1)
-                    </Button>
-                    <Button
-                      onClick={() => handleResponse(true)}
-                      className="gap-2 bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                      Got It! (2)
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
+        {showExplanation && (
+          <div className="p-4 bg-secondary/50 rounded-lg">
+            <p className="text-sm">{currentQuestion.explanation}</p>
           </div>
-        </CardContent>
-      </Card>
+        )}
 
-      {/* Navigation */}
-      {showAnswer && (
-        <div className="flex justify-center">
-          <Button onClick={nextWord} size="lg">
-            {currentWordIndex < words.length - 1 ? 'Next Word' : 'Complete Session'}
+        <div className="flex justify-between">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowExplanation(true)}
+            disabled={selectedAnswer === null || showExplanation}
+          >
+            Show Explanation
+          </Button>
+          
+          <Button 
+            onClick={handleNextQuestion}
+            disabled={selectedAnswer === null}
+          >
+            {currentQuestionIndex < questions.length - 1 ? "Next Question" : "Complete Session"}
           </Button>
         </div>
-      )}
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 

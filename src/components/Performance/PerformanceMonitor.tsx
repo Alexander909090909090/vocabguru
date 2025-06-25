@@ -1,115 +1,158 @@
 
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { UnifiedWordService } from '@/services/unifiedWordService';
-import { Activity, Zap, Database, Clock } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Monitor, Zap, Clock, Database } from "lucide-react";
+import { PerformanceOptimizer } from "@/utils/performanceOptimizer";
 
 interface PerformanceMetrics {
+  memoryUsage: { used: number; total: number } | null;
+  renderTime: number;
+  apiCalls: number;
   cacheHitRate: number;
-  averageLoadTime: number;
-  totalRequests: number;
-  errorRate: number;
+  loadTime: number;
 }
 
 export function PerformanceMonitor() {
   const [metrics, setMetrics] = useState<PerformanceMetrics>({
+    memoryUsage: null,
+    renderTime: 0,
+    apiCalls: 0,
     cacheHitRate: 0,
-    averageLoadTime: 0,
-    totalRequests: 0,
-    errorRate: 0
+    loadTime: 0
   });
-  const [cacheStats, setCacheStats] = useState({ size: 0, keys: [] as string[] });
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const updateStats = () => {
-      const stats = UnifiedWordService.getCacheStats();
-      setCacheStats(stats);
+    // Only show in development or when explicitly enabled
+    const showMonitor = process.env.NODE_ENV === 'development' || 
+                       localStorage.getItem('vocabguru-show-performance') === 'true';
+    setIsVisible(showMonitor);
 
-      // Simulate performance metrics (in a real app, these would come from actual monitoring)
-      setMetrics({
-        cacheHitRate: Math.min(95, 60 + (stats.size * 2)),
-        averageLoadTime: Math.max(50, 200 - (stats.size * 3)),
-        totalRequests: stats.size * 5,
-        errorRate: Math.max(0, 5 - stats.size * 0.1)
-      });
+    if (!showMonitor) return;
+
+    const updateMetrics = () => {
+      const memory = PerformanceOptimizer.getMemoryUsage();
+      const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+      
+      setMetrics(prev => ({
+        ...prev,
+        memoryUsage: memory,
+        loadTime: navigation ? navigation.loadEventEnd - navigation.fetchStart : 0,
+        renderTime: performance.now()
+      }));
     };
 
-    updateStats();
-    const interval = setInterval(updateStats, 5000);
+    // Update metrics every 5 seconds
+    const interval = setInterval(updateMetrics, 5000);
+    updateMetrics(); // Initial update
 
     return () => clearInterval(interval);
   }, []);
 
-  const clearCache = () => {
-    UnifiedWordService.clearCache();
-    setCacheStats({ size: 0, keys: [] });
+  const getPerformanceColor = (value: number, type: 'memory' | 'time' | 'rate') => {
+    switch (type) {
+      case 'memory':
+        return value > 80 ? 'destructive' : value > 60 ? 'secondary' : 'default';
+      case 'time':
+        return value > 3000 ? 'destructive' : value > 1000 ? 'secondary' : 'default';
+      case 'rate':
+        return value < 60 ? 'destructive' : value < 80 ? 'secondary' : 'default';
+      default:
+        return 'default';
+    }
   };
 
+  if (!isVisible) return null;
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Zap className="h-4 w-4 text-yellow-500" />
-            Cache Hit Rate
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{metrics.cacheHitRate.toFixed(1)}%</div>
-          <Badge variant={metrics.cacheHitRate > 80 ? "default" : "secondary"} className="mt-2">
-            {metrics.cacheHitRate > 80 ? "Excellent" : "Good"}
-          </Badge>
-        </CardContent>
-      </Card>
+    <Card className="fixed bottom-4 right-4 w-80 z-50 bg-background/95 backdrop-blur">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <Monitor className="h-4 w-4" />
+          Performance Monitor
+        </CardTitle>
+      </CardHeader>
+      
+      <CardContent className="space-y-3">
+        {/* Memory Usage */}
+        {metrics.memoryUsage && (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-1">
+                <Database className="h-3 w-3" />
+                Memory
+              </span>
+              <Badge 
+                variant={getPerformanceColor(
+                  (metrics.memoryUsage.used / metrics.memoryUsage.total) * 100, 
+                  'memory'
+                )}
+                className="text-xs"
+              >
+                {metrics.memoryUsage.used}MB
+              </Badge>
+            </div>
+            <Progress 
+              value={(metrics.memoryUsage.used / metrics.memoryUsage.total) * 100} 
+              className="h-1"
+            />
+          </div>
+        )}
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Clock className="h-4 w-4 text-blue-500" />
-            Avg Load Time
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{metrics.averageLoadTime}ms</div>
-          <Badge variant={metrics.averageLoadTime < 100 ? "default" : "secondary"} className="mt-2">
-            {metrics.averageLoadTime < 100 ? "Fast" : "Normal"}
-          </Badge>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Database className="h-4 w-4 text-green-500" />
-            Cache Size
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{cacheStats.size}</div>
-          <button 
-            onClick={clearCache}
-            className="text-xs text-muted-foreground hover:text-foreground mt-2"
+        {/* Load Time */}
+        <div className="flex items-center justify-between text-xs">
+          <span className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            Load Time
+          </span>
+          <Badge 
+            variant={getPerformanceColor(metrics.loadTime, 'time')}
+            className="text-xs"
           >
-            Clear Cache
-          </button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Activity className="h-4 w-4 text-red-500" />
-            Error Rate
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{metrics.errorRate.toFixed(1)}%</div>
-          <Badge variant={metrics.errorRate < 2 ? "default" : "destructive"} className="mt-2">
-            {metrics.errorRate < 2 ? "Healthy" : "Warning"}
+            {Math.round(metrics.loadTime)}ms
           </Badge>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+
+        {/* Render Performance */}
+        <div className="flex items-center justify-between text-xs">
+          <span className="flex items-center gap-1">
+            <Zap className="h-3 w-3" />
+            Render Time
+          </span>
+          <Badge 
+            variant={getPerformanceColor(metrics.renderTime, 'time')}
+            className="text-xs"
+          >
+            {Math.round(metrics.renderTime)}ms
+          </Badge>
+        </div>
+
+        {/* API Calls */}
+        <div className="flex items-center justify-between text-xs">
+          <span>API Calls</span>
+          <Badge variant="outline" className="text-xs">
+            {metrics.apiCalls}
+          </Badge>
+        </div>
+
+        {/* Cache Hit Rate */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs">
+            <span>Cache Hit Rate</span>
+            <Badge 
+              variant={getPerformanceColor(metrics.cacheHitRate, 'rate')}
+              className="text-xs"
+            >
+              {metrics.cacheHitRate}%
+            </Badge>
+          </div>
+          <Progress value={metrics.cacheHitRate} className="h-1" />
+        </div>
+      </CardContent>
+    </Card>
   );
 }
+
+export default PerformanceMonitor;
