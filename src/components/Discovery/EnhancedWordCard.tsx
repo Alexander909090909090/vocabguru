@@ -1,5 +1,5 @@
 
-import { EnhancedWordProfile } from "@/types/enhancedWordProfile";
+import { UnifiedWord } from "@/types/unifiedWord";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Plus, BookOpen } from "lucide-react";
 
 interface EnhancedWordCardProps {
-  wordProfile: EnhancedWordProfile;
-  onAddToCollection?: (word: EnhancedWordProfile) => void;
+  wordProfile: UnifiedWord;
+  onAddToCollection?: (word: UnifiedWord) => void;
   showAddButton?: boolean;
 }
 
