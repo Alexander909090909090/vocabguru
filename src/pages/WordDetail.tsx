@@ -1,7 +1,6 @@
-
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import Header from "@/components/Header";
+import { Header } from "@/components/Header";
 import MorphemeBreakdown from "@/components/MorphemeBreakdown";
 import { ArrowLeft, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";

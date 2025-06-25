@@ -3,9 +3,9 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthContextProvider } from "./context/AuthContext";
-import { WordsContextProvider } from "./context/WordsContext";
-import { QuizContextProvider } from "./context/QuizContext";
+import { AuthProvider } from "./context/AuthContext";
+import { WordsProvider } from "./context/WordsContext";
+import { QuizProvider } from "./context/QuizContext";
 import Index from "./pages/Index";
 import WordDetail from "./pages/WordDetail";
 import Quiz from "./pages/Quiz";
@@ -25,9 +25,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AuthContextProvider>
-          <WordsContextProvider>
-            <QuizContextProvider>
+        <AuthProvider>
+          <WordsProvider>
+            <QuizProvider>
               <Toaster />
               <BrowserRouter>
                 <div className="min-h-screen flex flex-col">
@@ -49,9 +49,9 @@ function App() {
                   </main>
                 </div>
               </BrowserRouter>
-            </QuizContextProvider>
-          </WordsContextProvider>
-        </AuthContextProvider>
+            </QuizProvider>
+          </WordsProvider>
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

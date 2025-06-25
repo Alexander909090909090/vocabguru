@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -26,6 +27,21 @@ const Header = () => {
   const handleSignOut = async () => {
     await signOut();
     navigate('/');
+  };
+
+  // Get user display information
+  const getUserDisplayName = () => {
+    if (!user) return "User";
+    return user.user_metadata?.full_name || 
+           user.user_metadata?.name || 
+           user.email?.split('@')[0] || 
+           "User";
+  };
+
+  const getUserAvatar = () => {
+    return user?.user_metadata?.avatar_url || 
+           user?.user_metadata?.picture || 
+           undefined;
   };
 
   return (
@@ -71,13 +87,13 @@ const Header = () => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="h-8 w-8 p-0">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={user.photoURL || undefined} alt={user.displayName || "Avatar"} />
-                      <AvatarFallback>{user.displayName?.charAt(0) || "U"}</AvatarFallback>
+                      <AvatarImage src={getUserAvatar()} alt={getUserDisplayName()} />
+                      <AvatarFallback>{getUserDisplayName().charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>{user.displayName}</DropdownMenuLabel>
+                  <DropdownMenuLabel>{getUserDisplayName()}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate('/profile')}>Profile</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate('/settings')}>Settings</DropdownMenuItem>
