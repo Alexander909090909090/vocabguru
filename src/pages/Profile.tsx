@@ -1,30 +1,27 @@
 
-import Header from "@/components/Header";
-import UserProfileComponent from "@/components/UserProfile/UserProfileComponent";
+import { PersonalizedDashboard } from "@/components/PersonalizedDashboard/PersonalizedDashboard";
+import { UserProfileComponent } from "@/components/UserProfile/UserProfileComponent";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Profile = () => {
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">Your Profile</h1>
       
-      <main className="page-container pt-24">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Your Profile</h1>
-            <p className="text-muted-foreground">
-              Track your progress and customize your learning experience
-            </p>
-          </div>
-          
+      <Tabs defaultValue="dashboard" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="profile">Profile Settings</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="dashboard" className="mt-6">
+          <PersonalizedDashboard />
+        </TabsContent>
+        
+        <TabsContent value="profile" className="mt-6">
           <UserProfileComponent />
-        </div>
-      </main>
-      
-      <footer className="border-t border-white/10 mt-12 py-6">
-        <div className="container-inner text-center text-sm text-muted-foreground">
-          <p>© 2024 VocabGuru. All rights reserved.</p>
-        </div>
-      </footer>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

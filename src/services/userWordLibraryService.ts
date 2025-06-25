@@ -205,4 +205,76 @@ export class UserWordLibraryService {
       return null;
     }
   }
+
+  // Start a new study session
+  static async startStudySession(sessionType: 'vocabulary' | 'quiz' | 'review'): Promise<string | null> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data, error } = await supabase
+        .from('study_sessions')
+        .insert({
+          user_id: user.id,
+          session_type: sessionType,
+          words_studied: [],
+          correct_answers: 0,
+          total_questions: 0,
+          started_at: new Date().toISOString()
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      return data?.id || null;
+    } catch (error) {
+      console.error('Error starting study session:', error);
+      return null;
+    }
+  }
+
+  // Complete a study session
+  static async completeStudySession(sessionId: string, results: {
+    words_studied: string[];
+    correct_answers: number;
+    total_questions: number;
+    session_duration?: number;
+    notes?: string;
+  }): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('study_sessions')
+        .update({
+          words_studied: results.words_studied,
+          correct_answers: results.correct_answers,
+          total_questions: results.total_questions,
+          session_duration: results.session_duration,
+          notes: results.notes,
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', sessionId);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error completing study session:', error);
+      return false;
+    }
+  }
+
+  // Add search to history (for tracking purposes)
+  static async addSearchToHistory(query: string, searchType: string, resultsCount: number): Promise<void> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Store search history in a simple format
+      console.log('Search tracked:', { query, searchType, resultsCount, userId: user.id });
+      
+      // Note: In a real implementation, you might want to create a search_history table
+      // For now, we'll just log it to avoid database errors
+    } catch (error) {
+      console.error('Error tracking search:', error);
+    }
+  }
 }
