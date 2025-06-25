@@ -1,19 +1,18 @@
 
 import { useEffect } from 'react';
 import { BookOpen, Loader2 } from 'lucide-react';
-import { EnhancedWordProfile } from '@/types/enhancedWordProfile';
-import { WordRepositoryEntry } from '@/services/wordRepositoryService';
+import { UnifiedWord } from '@/types/unifiedWord';
 import { AIRecommendations } from './AIRecommendations';
 import EnhancedWordCard from './EnhancedWordCard';
 
 interface BrowseModeProps {
-  enhancedWords: EnhancedWordProfile[];
+  enhancedWords: UnifiedWord[];
   isLoadingMore: boolean;
   hasMore: boolean;
   page: number;
   loadEnhancedWords: (pageNum?: number, reset?: boolean) => Promise<void>;
-  onWordSelect: (word: WordRepositoryEntry | EnhancedWordProfile) => void;
-  onAddToCollection: (word: EnhancedWordProfile | WordRepositoryEntry) => void;
+  onWordSelect: (word: UnifiedWord) => void;
+  onAddToCollection: (word: UnifiedWord) => void;
 }
 
 export function BrowseMode({
@@ -60,10 +59,10 @@ export function BrowseMode({
         {enhancedWords.length > 0 ? (
           <>
             <div className="grid gap-6 md:grid-cols-2">
-              {enhancedWords.map((wordProfile, index) => (
+              {enhancedWords.map((word, index) => (
                 <EnhancedWordCard 
-                  key={wordProfile.id} 
-                  wordProfile={wordProfile}
+                  key={word.id} 
+                  wordProfile={word}
                   onAddToCollection={onAddToCollection}
                   showAddButton={true}
                 />

@@ -3,18 +3,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Loader2 } from 'lucide-react';
-import { WordRepositoryEntry } from '@/services/wordRepositoryService';
+import { UnifiedWord } from '@/types/unifiedWord';
 import { EnhancedSmartSearch } from '@/components/SmartSearch/EnhancedSmartSearch';
 import { AIRecommendations } from './AIRecommendations';
 
 interface SmartSearchModeProps {
-  filteredWords: WordRepositoryEntry[];
+  filteredWords: UnifiedWord[];
   isSearching: boolean;
   isAdding: string | null;
-  onResults: (results: WordRepositoryEntry[]) => void;
+  onResults: (results: UnifiedWord[]) => void;
   onLoading: (loading: boolean) => void;
-  onWordSelect: (word: WordRepositoryEntry) => void;
-  onAddToCollection: (word: WordRepositoryEntry) => void;
+  onWordSelect: (word: UnifiedWord) => void;
+  onAddToCollection: (word: UnifiedWord) => void;
 }
 
 export function SmartSearchMode({

@@ -3,8 +3,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Globe } from 'lucide-react';
 import AIChatInterface from '@/components/AIChatInterface';
-import { EnhancedWordProfile } from '@/types/enhancedWordProfile';
-import { WordRepositoryEntry } from '@/services/wordRepositoryService';
+import { UnifiedWord } from '@/types/unifiedWord';
 import { FloatingActionButton } from '@/components/Discovery/FloatingActionButton';
 import { WordDetailDialog } from '@/components/Discovery/WordDetailDialog';
 import { SearchModeToggle } from '@/components/Discovery/SearchModeToggle';
@@ -20,7 +19,7 @@ const pageVariants = {
 
 const DiscoveryPage: React.FC = () => {
   const [searchMode, setSearchMode] = useState<'smart' | 'browse'>('browse');
-  const [selectedWord, setSelectedWord] = useState<WordRepositoryEntry | null>(null);
+  const [selectedWord, setSelectedWord] = useState<UnifiedWord | null>(null);
   const [isWordDialogOpen, setIsWordDialogOpen] = useState(false);
 
   const {
@@ -37,34 +36,12 @@ const DiscoveryPage: React.FC = () => {
     addWordToCollection
   } = useDiscoveryData();
 
-  const handleSmartSearchResults = (results: WordRepositoryEntry[]) => {
+  const handleSmartSearchResults = (results: UnifiedWord[]) => {
     setFilteredWords(results);
   };
 
-  const handleWordSelect = (word: WordRepositoryEntry | EnhancedWordProfile) => {
-    // Convert EnhancedWordProfile to WordRepositoryEntry if needed
-    let wordEntry: WordRepositoryEntry;
-    
-    if ('morpheme_breakdown' in word && word.morpheme_breakdown) {
-      wordEntry = {
-        id: word.id,
-        word: word.word,
-        morpheme_breakdown: word.morpheme_breakdown,
-        etymology: word.etymology,
-        definitions: word.definitions,
-        word_forms: word.word_forms,
-        analysis: word.analysis,
-        source_apis: ['word_profiles'],
-        frequency_score: 75,
-        difficulty_level: 'intermediate',
-        created_at: word.created_at || new Date().toISOString(),
-        updated_at: word.updated_at || new Date().toISOString()
-      };
-    } else {
-      wordEntry = word as WordRepositoryEntry;
-    }
-
-    setSelectedWord(wordEntry);
+  const handleWordSelect = (word: UnifiedWord) => {
+    setSelectedWord(word);
     setIsWordDialogOpen(true);
   };
 

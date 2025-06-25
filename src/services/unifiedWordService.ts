@@ -1,149 +1,197 @@
 
-import { WordRepositoryEntry, WordRepositoryService } from './wordRepositoryService';
-import { EnhancedWordProfile } from '@/types/enhancedWordProfile';
-import { EnhancedWordProfileService } from './enhancedWordProfileService';
-import { WordProfile } from '@/types/wordProfile';
-import { WordProfileService } from './wordProfileService';
+import { supabase } from "@/integrations/supabase/client";
+import { UnifiedWord, WordTypeConverter } from "@/types/unifiedWord";
+import { toast } from "sonner";
 
-// Unified service for all word operations - Phase 2/3/4 consolidation
+// Unified Word Service - Single source of truth for all word operations
 export class UnifiedWordService {
-  private static cache = new Map<string, any>();
-  private static cacheTimeout = 5 * 60 * 1000; // 5 minutes
-
-  // Phase 2: Enhanced search with caching
-  static async searchWords(query: string, options: {
-    includeDefinitions?: boolean;
-    includeMorphemes?: boolean;
-    limit?: number;
-  } = {}): Promise<WordRepositoryEntry[]> {
-    const cacheKey = `search_${query}_${JSON.stringify(options)}`;
-    
-    if (this.cache.has(cacheKey)) {
-      const cached = this.cache.get(cacheKey);
-      if (Date.now() - cached.timestamp < this.cacheTimeout) {
-        return cached.data;
-      }
-    }
-
+  // Get all words with pagination
+  static async getWords(
+    page: number = 0,
+    limit: number = 20,
+    searchQuery?: string
+  ): Promise<{ words: UnifiedWord[]; hasMore: boolean }> {
     try {
-      const results = await WordRepositoryService.searchWords(query);
-      
-      // Cache results
-      this.cache.set(cacheKey, {
-        data: results,
-        timestamp: Date.now()
-      });
+      let query = supabase
+        .from('word_profiles')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(page * limit, (page + 1) * limit - 1);
 
-      return results.slice(0, options.limit || 50);
+      if (searchQuery) {
+        query = query.or(`word.ilike.%${searchQuery}%,definitions->>primary.ilike.%${searchQuery}%`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      const words = (data || []).map(WordTypeConverter.toUnifiedWord);
+
+      return {
+        words,
+        hasMore: words.length === limit
+      };
     } catch (error) {
-      console.error('Search error:', error);
+      console.error('Error fetching words:', error);
+      return { words: [], hasMore: false };
+    }
+  }
+
+  // Search words
+  static async searchWords(query: string): Promise<UnifiedWord[]> {
+    try {
+      const { data, error } = await supabase
+        .from('word_profiles')
+        .select('*')
+        .or(`word.ilike.%${query}%,definitions->>primary.ilike.%${query}%`)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+
+      return (data || []).map(WordTypeConverter.toUnifiedWord);
+    } catch (error) {
+      console.error('Error searching words:', error);
       return [];
     }
   }
 
-  // Phase 2: Get word with performance optimization
-  static async getWordById(id: string): Promise<EnhancedWordProfile | null> {
-    const cacheKey = `word_${id}`;
-    
-    if (this.cache.has(cacheKey)) {
-      const cached = this.cache.get(cacheKey);
-      if (Date.now() - cached.timestamp < this.cacheTimeout) {
-        return cached.data;
-      }
-    }
-
+  // Get word by name
+  static async getWordByName(word: string): Promise<UnifiedWord | null> {
     try {
-      const word = await EnhancedWordProfileService.getEnhancedWordProfile(id);
-      
-      if (word) {
-        this.cache.set(cacheKey, {
-          data: word,
-          timestamp: Date.now()
-        });
-      }
+      const { data, error } = await supabase
+        .from('word_profiles')
+        .select('*')
+        .eq('word', word.toLowerCase())
+        .maybeSingle();
 
-      return word;
+      if (error) throw error;
+
+      return data ? WordTypeConverter.toUnifiedWord(data) : null;
     } catch (error) {
       console.error('Error fetching word:', error);
       return null;
     }
   }
 
-  // Phase 3: Study-optimized word fetching
-  static async getWordsForStudy(criteria: {
-    difficultyLevel?: string;
-    partOfSpeech?: string;
-    limit?: number;
-    excludeIds?: string[];
-  } = {}): Promise<WordRepositoryEntry[]> {
+  // Create new word profile
+  static async createWord(word: Partial<UnifiedWord>): Promise<UnifiedWord | null> {
     try {
-      const { words } = await WordRepositoryService.getWordsWithPagination(
-        0,
-        criteria.limit || 20
-      );
+      const { data, error } = await supabase
+        .from('word_profiles')
+        .insert({
+          word: word.word,
+          morpheme_breakdown: word.morpheme_breakdown || {},
+          etymology: word.etymology || {},
+          definitions: word.definitions || {},
+          word_forms: word.word_forms || {},
+          analysis: word.analysis || {}
+        })
+        .select()
+        .single();
 
-      let filteredWords = words;
+      if (error) throw error;
 
-      // Filter by difficulty if specified
-      if (criteria.difficultyLevel) {
-        filteredWords = filteredWords.filter(word => 
-          word.difficulty_level === criteria.difficultyLevel
-        );
-      }
-
-      // Filter by part of speech if specified
-      if (criteria.partOfSpeech) {
-        filteredWords = filteredWords.filter(word => 
-          word.analysis.parts_of_speech === criteria.partOfSpeech
-        );
-      }
-
-      // Exclude specified IDs
-      if (criteria.excludeIds) {
-        filteredWords = filteredWords.filter(word => 
-          !criteria.excludeIds!.includes(word.id)
-        );
-      }
-
-      return filteredWords;
+      return WordTypeConverter.toUnifiedWord(data);
     } catch (error) {
-      console.error('Error fetching study words:', error);
-      return [];
+      console.error('Error creating word:', error);
+      toast.error('Failed to create word');
+      return null;
     }
   }
 
-  // Phase 3: Bulk operations for performance
-  static async getMultipleWords(ids: string[]): Promise<EnhancedWordProfile[]> {
-    const promises = ids.map(id => this.getWordById(id));
-    const results = await Promise.allSettled(promises);
-    
-    return results
-      .filter((result): result is PromiseFulfilledResult<EnhancedWordProfile> => 
-        result.status === 'fulfilled' && result.value !== null
-      )
-      .map(result => result.value);
-  }
-
-  // Phase 4: Cache management
-  static clearCache(): void {
-    this.cache.clear();
-  }
-
-  static getCacheStats(): { size: number; keys: string[] } {
-    return {
-      size: this.cache.size,
-      keys: Array.from(this.cache.keys())
-    };
-  }
-
-  // Phase 4: Health check
-  static async healthCheck(): Promise<boolean> {
+  // Initialize database with sample words if empty
+  static async initializeDatabase(): Promise<void> {
     try {
-      const { words } = await WordRepositoryService.getWordsWithPagination(0, 1);
-      return words.length >= 0;
+      // Check if database is empty
+      const { count, error: countError } = await supabase
+        .from('word_profiles')
+        .select('*', { count: 'exact', head: true });
+
+      if (countError) throw countError;
+
+      if (count === 0) {
+        console.log('Database is empty, initializing with sample words...');
+        await this.seedSampleWords();
+      }
     } catch (error) {
-      console.error('Health check failed:', error);
-      return false;
+      console.error('Error checking database status:', error);
     }
+  }
+
+  // Seed sample words
+  private static async seedSampleWords(): Promise<void> {
+    const sampleWords = [
+      {
+        word: 'metamorphosis',
+        morpheme_breakdown: {
+          prefix: { text: 'meta', meaning: 'change, beyond' },
+          root: { text: 'morph', meaning: 'form, shape' },
+          suffix: { text: 'osis', meaning: 'process, condition' }
+        },
+        etymology: {
+          language_of_origin: 'Greek',
+          historical_origins: 'From Greek metamorphōsis, from metamorphoun (to transform)'
+        },
+        definitions: {
+          primary: 'A change of the form or nature of a thing or person into a completely different one',
+          standard: [
+            'A transformation',
+            'A biological process of change in form'
+          ]
+        },
+        word_forms: {
+          base_form: 'metamorphosis',
+          verb_tenses: { present: 'metamorphose', past: 'metamorphosed' },
+          noun_forms: { singular: 'metamorphosis', plural: 'metamorphoses' }
+        },
+        analysis: {
+          parts_of_speech: 'noun',
+          synonyms: ['transformation', 'change', 'evolution'],
+          collocations: ['complete metamorphosis', 'undergo metamorphosis'],
+          example_sentence: 'The caterpillar undergoes metamorphosis to become a butterfly.'
+        }
+      },
+      {
+        word: 'serendipity',
+        morpheme_breakdown: {
+          root: { text: 'serendipity', meaning: 'pleasant surprise' }
+        },
+        etymology: {
+          language_of_origin: 'English',
+          historical_origins: 'Coined by Horace Walpole in 1754 from the Persian fairy tale "The Three Princes of Serendip"'
+        },
+        definitions: {
+          primary: 'The occurrence and development of events by chance in a happy or beneficial way',
+          standard: [
+            'A pleasant surprise',
+            'Fortunate accident'
+          ]
+        },
+        word_forms: {
+          base_form: 'serendipity',
+          adjective_forms: { positive: 'serendipitous' },
+          adverb_form: 'serendipitously'
+        },
+        analysis: {
+          parts_of_speech: 'noun',
+          synonyms: ['chance', 'fortune', 'luck'],
+          collocations: ['pure serendipity', 'moment of serendipity'],
+          example_sentence: 'Meeting my future business partner at that coffee shop was pure serendipity.'
+        }
+      }
+    ];
+
+    for (const word of sampleWords) {
+      try {
+        await this.createWord(word);
+        console.log(`Seeded word: ${word.word}`);
+      } catch (error) {
+        console.error(`Failed to seed word ${word.word}:`, error);
+      }
+    }
+
+    toast.success('Database initialized with sample words!');
   }
 }
