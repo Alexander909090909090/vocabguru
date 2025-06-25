@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/context/AuthContext";
 import { WordsProvider } from "@/context/WordsContext";
 import { QuizProvider } from "@/context/QuizContext";
-import { Header } from "@/components/Header";
+import Header from "@/components/Header";
 import Index from "@/pages/Index";
 import WordDetail from "@/pages/WordDetail";
 import Quiz from "@/pages/Quiz";
