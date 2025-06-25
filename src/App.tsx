@@ -38,8 +38,8 @@ function App() {
                 <Header />
                 <main className="pt-16">
                   <Routes>
-                    <Route path="/" element={<Discovery />} />
-                    <Route path="/index" element={<Index />} />
+                    <Route path="/" element={<Index />} />
+                    <Route path="/discovery" element={<Discovery />} />
                     <Route path="/word/:word" element={<WordDetail />} />
                     <Route path="/quiz" element={<Quiz />} />
                     <Route path="/profile" element={<Profile />} />

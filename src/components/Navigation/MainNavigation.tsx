@@ -2,10 +2,11 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Brain, BookOpen, Search, User, Settings, BarChart3 } from 'lucide-react';
+import { Brain, BookOpen, Search, User, Settings, BarChart3, Home, Globe } from 'lucide-react';
 
 const navigationItems = [
-  { href: '/', label: 'Discovery', icon: Search },
+  { href: '/', label: 'Home', icon: Home },
+  { href: '/discovery', label: 'Discovery', icon: Globe },
   { href: '/linguistic-analysis', label: 'Linguistic Analysis', icon: Brain },
   { href: '/calvern', label: 'Calvern AI', icon: BookOpen },
   { href: '/quiz', label: 'Quiz', icon: BarChart3 },
