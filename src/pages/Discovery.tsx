@@ -94,7 +94,7 @@ const DiscoveryPage: React.FC = () => {
             ...word.analysis,
             common_collocations: Array.isArray(word.analysis?.collocations) ? 
               word.analysis.collocations.join(', ') : 
-              word.analysis?.collocations?.join(', ') || ''
+              (typeof word.analysis?.collocations === 'string' ? word.analysis.collocations : '')
           }
         })
       );
@@ -214,9 +214,9 @@ const DiscoveryPage: React.FC = () => {
           },
           analysis: {
             ...entry.analysis,
-            common_collocations: Array.isArray(entry.analysis?.common_collocations) ? 
-              entry.analysis.common_collocations.join(', ') : 
-              entry.analysis?.common_collocations || ''
+            common_collocations: Array.isArray(entry.analysis?.collocations) ? 
+              entry.analysis.collocations.join(', ') : 
+              entry.analysis?.collocations?.join(', ') || ''
           }
         };
         await WordProfileService.createWordProfile(basicProfile);
