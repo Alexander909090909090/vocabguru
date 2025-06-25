@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Settings, Database, Shield, Bell, User } from 'lucide-react';
+import { Settings as SettingsIcon, Database, Shield, Bell, User } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DatabaseMonitor } from '@/components/DatabaseMonitor';
 import { SeedingControl } from '@/components/DatabaseSeeding/SeedingControl';
@@ -12,7 +12,7 @@ const pageVariants = {
   exit: { opacity: 0, y: -20 }
 };
 
-const Settings: React.FC = () => {
+const SettingsPage: React.FC = () => {
   return (
     <motion.div
       initial="initial"
@@ -23,7 +23,7 @@ const Settings: React.FC = () => {
       className="container mx-auto py-8 px-4"
     >
       <div className="flex items-center gap-3 mb-6">
-        <Settings className="h-8 w-8 text-primary" />
+        <SettingsIcon className="h-8 w-8 text-primary" />
         <h1 className="text-3xl font-semibold">Settings</h1>
       </div>
       
@@ -111,4 +111,4 @@ const Settings: React.FC = () => {
   );
 };
 
-export default Settings;
+export default SettingsPage;
