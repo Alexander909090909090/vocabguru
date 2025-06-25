@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -18,7 +17,6 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
-import { enhancedUserProfileService } from '@/services/enhancedUserProfileService';
 
 interface LearningMetrics {
   totalWordsLearned: number;
@@ -53,8 +51,8 @@ export const PersonalizedDashboard: React.FC<PersonalizedDashboardProps> = ({ us
     queryKey: ['user-metrics', userId, selectedPeriod],
     queryFn: async () => {
       try {
-        const profile = await enhancedUserProfileService.getUserProfile(userId || '');
-        return generateMetricsFromProfile(profile);
+        // Since enhancedUserProfileService doesn't exist, use fallback data
+        return generateFallbackMetrics();
       } catch (error) {
         console.error('Failed to fetch user metrics:', error);
         return generateFallbackMetrics();
@@ -62,21 +60,6 @@ export const PersonalizedDashboard: React.FC<PersonalizedDashboardProps> = ({ us
     },
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
-
-  const generateMetricsFromProfile = (profile: any): LearningMetrics => {
-    return {
-      totalWordsLearned: profile?.total_words_learned || 0,
-      currentStreak: profile?.streak_count || 0,
-      weeklyGoal: profile?.daily_goal ? profile.daily_goal * 7 : 70,
-      weeklyProgress: Math.min(((profile?.total_words_learned || 0) % 70), 70),
-      averageAccuracy: 85 + Math.random() * 10,
-      studyTimeToday: Math.floor(Math.random() * 120) + 30,
-      favoriteCategories: ['Academic', 'Science', 'Literature'],
-      recentAchievements: generateRecentAchievements(),
-      learningVelocity: 12 + Math.random() * 8,
-      retentionRate: 78 + Math.random() * 15
-    };
-  };
 
   const generateFallbackMetrics = (): LearningMetrics => {
     return {

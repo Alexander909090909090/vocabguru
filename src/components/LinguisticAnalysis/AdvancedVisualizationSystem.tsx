@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,8 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { 
   Network, 
   TreePine, 
-  Waveform, 
-  Timeline, 
+  Radio, 
+  History, 
   Layers, 
   ZoomIn,
   Download,
@@ -418,7 +417,7 @@ export const AdvancedVisualizationSystem: React.FC<AdvancedVisualizationSystemPr
                 Morphology
               </TabsTrigger>
               <TabsTrigger value="etymology" className="flex items-center gap-2">
-                <Timeline className="h-4 w-4" />
+                <History className="h-4 w-4" />
                 Etymology
               </TabsTrigger>
               <TabsTrigger value="semantic" className="flex items-center gap-2">
@@ -426,7 +425,7 @@ export const AdvancedVisualizationSystem: React.FC<AdvancedVisualizationSystemPr
                 Semantic
               </TabsTrigger>
               <TabsTrigger value="phonetic" className="flex items-center gap-2">
-                <Waveform className="h-4 w-4" />
+                <Radio className="h-4 w-4" />
                 Phonetic
               </TabsTrigger>
             </TabsList>

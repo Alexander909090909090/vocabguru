@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -80,24 +81,6 @@ export const ExternalAPIIntegrationHub: React.FC<ExternalAPIIntegrationHubProps>
       description: 'Contemporary usage patterns and collocations'
     }
   ];
-
-  const { data: enrichmentData, isLoading: isEnriching } = useQuery({
-    queryKey: ['external-enrichment', word, selectedAPIs],
-    queryFn: async () => {
-      if (!word) return null;
-      
-      const result = await ComprehensiveLinguisticService.enrichWordWithExternalAPIs(word);
-      setEnrichmentProgress(100);
-      return result;
-    },
-    enabled: false, // Manual trigger
-    onSuccess: (data) => {
-      if (data?.success) {
-        onEnrichmentComplete(data.analysis);
-        toast.success('Word enrichment completed successfully!');
-      }
-    }
-  });
 
   const enrichmentMutation = useMutation({
     mutationFn: async (apis: string[]) => {
@@ -277,7 +260,7 @@ export const ExternalAPIIntegrationHub: React.FC<ExternalAPIIntegrationHubProps>
       )}
 
       {/* Enrichment Results */}
-      {enrichmentData?.success && (
+      {enrichmentMutation.isSuccess && enrichmentMutation.data?.success && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -298,28 +281,28 @@ export const ExternalAPIIntegrationHub: React.FC<ExternalAPIIntegrationHubProps>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-blue-600">
-                      {enrichmentData.metadata?.confidence_score ? 
-                        Math.round(enrichmentData.metadata.confidence_score * 100) : 92}%
+                      {enrichmentMutation.data.metadata?.confidence_score ? 
+                        Math.round(enrichmentMutation.data.metadata.confidence_score * 100) : 92}%
                     </div>
                     <div className="text-sm text-muted-foreground">Confidence</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-green-600">
-                      {enrichmentData.metadata?.completeness_score ? 
-                        Math.round(enrichmentData.metadata.completeness_score * 100) : 88}%
+                      {enrichmentMutation.data.metadata?.completeness_score ? 
+                        Math.round(enrichmentMutation.data.metadata.completeness_score * 100) : 88}%
                     </div>
                     <div className="text-sm text-muted-foreground">Completeness</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-purple-600">
-                      {enrichmentData.metadata?.models_used?.length || 4}
+                      {enrichmentMutation.data.metadata?.models_used?.length || 4}
                     </div>
                     <div className="text-sm text-muted-foreground">Sources</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-orange-600">
-                      {enrichmentData.metadata?.processing_time_ms ? 
-                        `${Math.round(enrichmentData.metadata.processing_time_ms / 1000)}s` : '3.2s'}
+                      {enrichmentMutation.data.metadata?.processing_time_ms ? 
+                        `${Math.round(enrichmentMutation.data.metadata.processing_time_ms / 1000)}s` : '3.2s'}
                     </div>
                     <div className="text-sm text-muted-foreground">Process Time</div>
                   </div>

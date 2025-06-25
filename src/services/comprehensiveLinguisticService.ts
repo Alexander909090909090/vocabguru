@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { LinguisticAnalysisResult, LinguisticAnalysisRequest, ComprehensiveLinguisticAnalysis } from "@/types/linguisticAnalysis";
 
@@ -221,7 +220,7 @@ export class ComprehensiveLinguisticService {
             enrichedAnalysis.semantic_relationships = [{
               semantic_field: 'frequency_analysis',
               frequency_score: data.frequency_data?.overall_frequency || 0,
-              register_level: 'general',
+              register_level: 'formal',
               difficulty_level: 'intermediate',
               social_associations: []
             }];

@@ -43,7 +43,7 @@ const Index = () => {
     { id: 'dictionary', label: 'Dictionary', icon: Search },
   ];
 
-  // Convert words to compatible format
+  // Convert words to compatible format with proper type handling
   const filteredWords = words?.filter(word => {
     if (selectedFilter === 'all') return true;
     if (selectedFilter === 'prefix') return word.word.length > 4;
@@ -53,9 +53,17 @@ const Index = () => {
     return true;
   })?.map(word => ({
     ...word,
-    definitions: Array.isArray(word.definitions) ? word.definitions : [
+    definitions: Array.isArray(word.definitions) ? word.definitions.map(def => ({
+      type: 'primary' as const,
+      text: typeof def === 'string' ? def : def.meaning || def.primary || '',
+      example: typeof def === 'object' && 'example' in def ? def.example : '',
+      partOfSpeech: typeof def === 'object' && 'partOfSpeech' in def ? def.partOfSpeech : word.partOfSpeech || 'noun'
+    })) : [
       {
-        meaning: word.definitions?.primary || word.description || '',
+        type: 'primary' as const,
+        text: typeof word.definitions === 'object' && word.definitions && 'primary' in word.definitions 
+          ? word.definitions.primary 
+          : word.description || '',
         example: '',
         partOfSpeech: word.partOfSpeech || 'noun'
       }
