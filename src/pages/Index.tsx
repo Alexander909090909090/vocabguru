@@ -11,6 +11,8 @@ import { searchDictionaryWord } from "@/lib/dictionaryApi";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
+import { QuickActions } from "@/components/Navigation/QuickActions";
+import { NextSteps } from "@/components/Navigation/NextSteps";
 
 type FilterCategory = "all" | "prefix" | "root" | "suffix" | "origin" | "dictionary";
 type ViewMode = "cards" | "grid";
@@ -393,8 +395,26 @@ const Index = () => {
               <WordGrid words={displayWords} />
             )}
           </section>
+
+          {displayWords.length > 0 && (
+            <section className="mt-12">
+              <NextSteps 
+                context="discovery" 
+                data={{ suggestedWords: displayWords.slice(0, 3).map(w => w.word) }}
+              />
+            </section>
+          )}
         </main>
       </div>
+      
+      <QuickActions 
+        currentPage="home"
+        userProgress={{
+          wordsStudied: words.length,
+          quizzesCompleted: 0,
+          currentStreak: 1
+        }}
+      />
       
       <footer className="border-t border-white/10 mt-12 py-6">
         <div className="container-inner text-center text-sm text-muted-foreground">

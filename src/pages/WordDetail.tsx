@@ -1,4 +1,3 @@
-
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Header from "@/components/Header";
@@ -14,6 +13,9 @@ import AIAssistantTab from "@/components/WordDetail/AIAssistantTab";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Word } from "@/data/words";
 import { EnhancedWordProfile } from "@/types/enhancedWordProfile";
+import { Breadcrumbs } from "@/components/Navigation/Breadcrumbs";
+import { NextSteps } from "@/components/Navigation/NextSteps";
+import { QuickActions } from "@/components/Navigation/QuickActions";
 
 const WordDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -117,6 +119,8 @@ const WordDetail = () => {
       <Header />
       
       <main className="page-container pt-24 page-transition">
+        <Breadcrumbs />
+        
         <Button 
           variant="ghost" 
           size="sm" 
@@ -175,9 +179,22 @@ const WordDetail = () => {
                 </TabsContent>
               </Tabs>
             </div>
+            
+            {word && (
+              <>
+                <div className="mt-8">
+                  <NextSteps 
+                    context="word-detail" 
+                    data={{ wordId: word.id }}
+                  />
+                </div>
+              </>
+            )}
           </>
         ) : null}
       </main>
+      
+      <QuickActions currentPage="word-detail" />
       
       <footer className="border-t border-white/10 mt-12 py-6 bg-black/20 backdrop-blur-md">
         <div className="container-inner text-center text-sm text-white/60">
