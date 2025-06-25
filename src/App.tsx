@@ -8,6 +8,7 @@ import { WordsProvider } from "@/context/WordsContext";
 import { QuizProvider } from "@/context/QuizContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { QuickActions } from "@/components/Navigation/QuickActions";
 import Index from "./pages/Index";
 import Discovery from "./pages/Discovery";
 import WordDetail from "./pages/WordDetail";
@@ -22,7 +23,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
-      cacheTime: 10 * 60 * 1000, // 10 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (renamed from cacheTime)
     },
   },
 });
@@ -81,6 +82,7 @@ const App = () => (
                 } />
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              <QuickActions />
             </div>
           </BrowserRouter>
         </TooltipProvider>
