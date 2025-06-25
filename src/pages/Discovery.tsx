@@ -94,7 +94,7 @@ const DiscoveryPage: React.FC = () => {
             ...word.analysis,
             common_collocations: Array.isArray(word.analysis?.collocations) ? 
               word.analysis.collocations.join(', ') : 
-              word.analysis?.collocations || ''
+              word.analysis?.collocations?.join(', ') || ''
           }
         })
       );
