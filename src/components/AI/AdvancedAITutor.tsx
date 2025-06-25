@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +18,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { personalizedAIService } from '@/services/personalizedAIService';
+import { PersonalizedAIService } from '@/services/personalizedAIService';
 import { toast } from 'sonner';
 
 interface TutorSession {
@@ -82,7 +81,7 @@ export const AdvancedAITutor: React.FC<AdvancedAITutorProps> = ({
     queryKey: ['tutor-session', userId, sessionType, targetWords],
     queryFn: async () => {
       try {
-        return await personalizedAIService.createTutorSession(userId, {
+        return await PersonalizedAIService.createTutorSession(userId, {
           sessionType,
           targetWords,
           adaptiveLevel: 'intermediate', // Will be determined by AI
@@ -100,7 +99,7 @@ export const AdvancedAITutor: React.FC<AdvancedAITutorProps> = ({
   const answerMutation = useMutation({
     mutationFn: async (answerData: { questionId: string; answer: string; timeSpent: number; hintsUsed: number }) => {
       try {
-        return await personalizedAIService.submitTutorAnswer(session!.id, answerData);
+        return await PersonalizedAIService.submitTutorAnswer(session!.id, answerData);
       } catch (error) {
         console.error('Failed to submit answer:', error);
         return generateFallbackFeedback(answerData);

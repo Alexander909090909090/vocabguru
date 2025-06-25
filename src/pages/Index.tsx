@@ -20,7 +20,7 @@ const pageVariants = {
 };
 
 const Index = () => {
-  const { words, isLoading } = useWords();
+  const { words, loading } = useWords();
   const { user } = useAuth();
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -144,14 +144,14 @@ const Index = () => {
               </div>
 
               {/* Word Grid */}
-              <WordGrid words={filteredWords} isLoading={isLoading} />
+              <WordGrid words={filteredWords} isLoading={loading} />
             </TabsContent>
 
             <TabsContent value="recommendations" className="space-y-6 mt-6">
               <EnhancedRecommendationEngine
                 userId={user?.id}
                 onWordSelect={handleWordSelect}
-                currentLevel={user?.learning_level || 'intermediate'}
+                currentLevel={(user as any)?.learning_level || 'intermediate'}
               />
             </TabsContent>
           </Tabs>

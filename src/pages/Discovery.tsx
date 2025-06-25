@@ -9,8 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { EnhancedRecommendationEngine } from '@/components/Discovery/EnhancedRecommendationEngine';
 import { AdvancedSemanticSearch } from '@/components/Search/AdvancedSemanticSearch';
 import { ContextualNavigation } from '@/components/Navigation/ContextualNavigation';
-import { BrowseMode } from '@/components/Discovery/BrowseMode';
-import { SmartSearchMode } from '@/components/Discovery/SmartSearchMode';
 import { useAuth } from '@/context/AuthContext';
 
 const pageVariants = {
@@ -122,7 +120,7 @@ const Discovery = () => {
                 <EnhancedRecommendationEngine
                   userId={user?.id}
                   onWordSelect={handleWordSelect}
-                  currentLevel={user?.learning_level || 'intermediate'}
+                  currentLevel={(user as any)?.learning_level || 'intermediate'}
                 />
               </motion.div>
             )}
@@ -150,7 +148,13 @@ const Discovery = () => {
                     />
                   </CardContent>
                 </Card>
-                <SmartSearchMode />
+                
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <Sparkles className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">Smart search features coming soon!</p>
+                  </CardContent>
+                </Card>
               </motion.div>
             )}
 
@@ -160,7 +164,12 @@ const Discovery = () => {
                 animate={{ opacity: 1 }}
                 key="browse-mode"
               >
-                <BrowseMode />
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <Globe className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">Browse mode coming soon!</p>
+                  </CardContent>
+                </Card>
               </motion.div>
             )}
           </div>
