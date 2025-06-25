@@ -1,8 +1,7 @@
-
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, BookOpen, Compass, MessageSquare, Trophy, Settings, User, Brain } from "lucide-react";
+import { Menu, X, BookOpen, Compass, MessageSquare, Trophy, Settings, User, Brain, Sparkles } from "lucide-react";
 import { UserMenu } from "@/components/UserMenu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -56,83 +55,58 @@ const Header = () => {
   );
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-slate-800/80 backdrop-blur-md border-b border-slate-700">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="flex items-center justify-center bg-primary w-8 h-8 rounded-full">
-              <BookOpen className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="font-bold text-lg sm:text-xl text-white">VocabGuru</span>
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
+      <div className="page-container py-4">
+        <div className="flex items-center justify-between">
+          <Link to="/" className="flex items-center space-x-2">
+            <Sparkles className="h-8 w-8 text-primary" />
+            <span className="text-2xl font-bold bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent">
+              VocabGuru
+            </span>
           </Link>
-
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-1">
-            <NavItems />
+          
+          <nav className="hidden md:flex items-center space-x-6">
+            <Link 
+              to="/" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              Home
+            </Link>
+            <Link 
+              to="/discovery" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              Discovery
+            </Link>
+            <Link 
+              to="/quiz" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              Quiz
+            </Link>
+            <Link 
+              to="/calvern" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              Calvern AI
+            </Link>
+            <Link 
+              to="/study" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              Study
+            </Link>
+            <Link 
+              to="/settings" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              Settings
+            </Link>
           </nav>
-
-          {/* Desktop User Menu */}
-          <div className="hidden lg:flex items-center gap-2">
+          
+          <div className="flex items-center space-x-4">
             <UserMenu />
           </div>
-
-          {/* Mobile/Tablet Navigation */}
-          {isMobile ? (
-            <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-              <SheetTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-white"
-                >
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent 
-                side="right" 
-                className="w-[280px] sm:w-[350px] bg-slate-800/95 backdrop-blur-md border-slate-700"
-              >
-                <SheetHeader>
-                  <SheetTitle className="text-white text-left">Navigation</SheetTitle>
-                </SheetHeader>
-                
-                <nav className="flex flex-col space-y-2 mt-6">
-                  <NavItems mobile onItemClick={() => setIsMenuOpen(false)} />
-                </nav>
-                
-                <div className="mt-8 pt-6 border-t border-slate-700">
-                  <UserMenu />
-                </div>
-              </SheetContent>
-            </Sheet>
-          ) : (
-            // Tablet horizontal menu
-            <div className="flex lg:hidden items-center gap-2">
-              <nav className="flex items-center space-x-1 mr-4">
-                {navigationItems.slice(0, 4).map((item) => {
-                  const Icon = item.icon;
-                  const isActive = location.pathname === item.href;
-                  
-                  return (
-                    <Link
-                      key={item.href}
-                      to={item.href}
-                      className={`flex items-center justify-center p-2 rounded-lg transition-colors ${
-                        isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "text-slate-300 hover:text-white hover:bg-slate-700"
-                      }`}
-                      title={item.label}
-                    >
-                      <Icon className="h-4 w-4" />
-                    </Link>
-                  );
-                })}
-              </nav>
-              <UserMenu />
-            </div>
-          )}
         </div>
       </div>
     </header>

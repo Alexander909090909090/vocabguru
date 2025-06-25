@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Sparkles } from "lucide-react";
 import { useWords } from "@/context/WordsContext";
-import { DatabaseMonitor } from "@/components/DatabaseMonitor";
 
 const Index = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,13 +38,6 @@ const Index = () => {
           <p className="text-xl text-white/80 text-center max-w-2xl mx-auto">
             Unlock the power of language with AI-driven morphological analysis
           </p>
-        </div>
-
-        {/* Debug panel for testing */}
-        <div className="mb-8 flex justify-center">
-          <div className="max-w-md">
-            <DatabaseMonitor />
-          </div>
         </div>
 
         <div className="mb-8">

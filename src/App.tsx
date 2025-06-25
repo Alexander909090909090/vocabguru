@@ -17,6 +17,7 @@ import Calvern from "./pages/Calvern";
 import Integrations from "./pages/Integrations";
 import Profile from "./pages/Profile";
 import StudyCenter from "./pages/StudyCenter";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -78,6 +79,11 @@ const App = () => (
                 <Route path="/study" element={
                   <ProtectedRoute>
                     <StudyCenter />
+                  </ProtectedRoute>
+                } />
+                <Route path="/settings" element={
+                  <ProtectedRoute>
+                    <Settings />
                   </ProtectedRoute>
                 } />
                 <Route path="*" element={<NotFound />} />
