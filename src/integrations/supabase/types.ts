@@ -9,6 +9,318 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      etymology_chains: {
+        Row: {
+          borrowed_from: string | null
+          borrowing_path: Json | null
+          cognates: Json | null
+          created_at: string | null
+          first_attestation_date: string | null
+          historical_forms: Json | null
+          id: string
+          language_family: string | null
+          semantic_evolution: string | null
+          source_language: string | null
+          updated_at: string | null
+          word_profile_id: string | null
+        }
+        Insert: {
+          borrowed_from?: string | null
+          borrowing_path?: Json | null
+          cognates?: Json | null
+          created_at?: string | null
+          first_attestation_date?: string | null
+          historical_forms?: Json | null
+          id?: string
+          language_family?: string | null
+          semantic_evolution?: string | null
+          source_language?: string | null
+          updated_at?: string | null
+          word_profile_id?: string | null
+        }
+        Update: {
+          borrowed_from?: string | null
+          borrowing_path?: Json | null
+          cognates?: Json | null
+          created_at?: string | null
+          first_attestation_date?: string | null
+          historical_forms?: Json | null
+          id?: string
+          language_family?: string | null
+          semantic_evolution?: string | null
+          source_language?: string | null
+          updated_at?: string | null
+          word_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "etymology_chains_word_profile_id_fkey"
+            columns: ["word_profile_id"]
+            isOneToOne: false
+            referencedRelation: "word_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      linguistic_analysis_metadata: {
+        Row: {
+          accuracy_score: number | null
+          analysis_duration_ms: number | null
+          analysis_version: string | null
+          completeness_score: number | null
+          confidence_scores: Json | null
+          created_at: string | null
+          enrichment_source: string | null
+          id: string
+          last_enrichment_date: string | null
+          processing_models: Json | null
+          quality_metrics: Json | null
+          updated_at: string | null
+          word_profile_id: string | null
+        }
+        Insert: {
+          accuracy_score?: number | null
+          analysis_duration_ms?: number | null
+          analysis_version?: string | null
+          completeness_score?: number | null
+          confidence_scores?: Json | null
+          created_at?: string | null
+          enrichment_source?: string | null
+          id?: string
+          last_enrichment_date?: string | null
+          processing_models?: Json | null
+          quality_metrics?: Json | null
+          updated_at?: string | null
+          word_profile_id?: string | null
+        }
+        Update: {
+          accuracy_score?: number | null
+          analysis_duration_ms?: number | null
+          analysis_version?: string | null
+          completeness_score?: number | null
+          confidence_scores?: Json | null
+          created_at?: string | null
+          enrichment_source?: string | null
+          id?: string
+          last_enrichment_date?: string | null
+          processing_models?: Json | null
+          quality_metrics?: Json | null
+          updated_at?: string | null
+          word_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "linguistic_analysis_metadata_word_profile_id_fkey"
+            columns: ["word_profile_id"]
+            isOneToOne: false
+            referencedRelation: "word_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      morphological_components: {
+        Row: {
+          allomorphs: Json | null
+          boundary_position: number | null
+          component_type: string
+          created_at: string | null
+          id: string
+          meaning: string | null
+          origin_language: string | null
+          semantic_function: string | null
+          text: string
+          updated_at: string | null
+          word_profile_id: string | null
+        }
+        Insert: {
+          allomorphs?: Json | null
+          boundary_position?: number | null
+          component_type: string
+          created_at?: string | null
+          id?: string
+          meaning?: string | null
+          origin_language?: string | null
+          semantic_function?: string | null
+          text: string
+          updated_at?: string | null
+          word_profile_id?: string | null
+        }
+        Update: {
+          allomorphs?: Json | null
+          boundary_position?: number | null
+          component_type?: string
+          created_at?: string | null
+          id?: string
+          meaning?: string | null
+          origin_language?: string | null
+          semantic_function?: string | null
+          text?: string
+          updated_at?: string | null
+          word_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "morphological_components_word_profile_id_fkey"
+            columns: ["word_profile_id"]
+            isOneToOne: false
+            referencedRelation: "word_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      phonetic_data: {
+        Row: {
+          created_at: string | null
+          id: string
+          ipa_transcription: string | null
+          phonemes: Json | null
+          regional_pronunciations: Json | null
+          rhyme_scheme: string | null
+          sound_changes: Json | null
+          stress_pattern: string | null
+          syllable_count: number | null
+          syllable_structure: string | null
+          updated_at: string | null
+          word_profile_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          ipa_transcription?: string | null
+          phonemes?: Json | null
+          regional_pronunciations?: Json | null
+          rhyme_scheme?: string | null
+          sound_changes?: Json | null
+          stress_pattern?: string | null
+          syllable_count?: number | null
+          syllable_structure?: string | null
+          updated_at?: string | null
+          word_profile_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          ipa_transcription?: string | null
+          phonemes?: Json | null
+          regional_pronunciations?: Json | null
+          rhyme_scheme?: string | null
+          sound_changes?: Json | null
+          stress_pattern?: string | null
+          syllable_count?: number | null
+          syllable_structure?: string | null
+          updated_at?: string | null
+          word_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phonetic_data_word_profile_id_fkey"
+            columns: ["word_profile_id"]
+            isOneToOne: false
+            referencedRelation: "word_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      semantic_relationships: {
+        Row: {
+          conceptual_domain: string | null
+          connotation: string | null
+          created_at: string | null
+          cultural_context: string | null
+          difficulty_level: string | null
+          frequency_score: number | null
+          id: string
+          register_level: string | null
+          semantic_field: string | null
+          social_associations: Json | null
+          updated_at: string | null
+          word_profile_id: string | null
+        }
+        Insert: {
+          conceptual_domain?: string | null
+          connotation?: string | null
+          created_at?: string | null
+          cultural_context?: string | null
+          difficulty_level?: string | null
+          frequency_score?: number | null
+          id?: string
+          register_level?: string | null
+          semantic_field?: string | null
+          social_associations?: Json | null
+          updated_at?: string | null
+          word_profile_id?: string | null
+        }
+        Update: {
+          conceptual_domain?: string | null
+          connotation?: string | null
+          created_at?: string | null
+          cultural_context?: string | null
+          difficulty_level?: string | null
+          frequency_score?: number | null
+          id?: string
+          register_level?: string | null
+          semantic_field?: string | null
+          social_associations?: Json | null
+          updated_at?: string | null
+          word_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "semantic_relationships_word_profile_id_fkey"
+            columns: ["word_profile_id"]
+            isOneToOne: false
+            referencedRelation: "word_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      usage_contexts: {
+        Row: {
+          context_type: string | null
+          created_at: string | null
+          example_sentence: string
+          explanation: string | null
+          frequency_score: number | null
+          id: string
+          regional_usage: string | null
+          source: string | null
+          time_period: string | null
+          word_profile_id: string | null
+        }
+        Insert: {
+          context_type?: string | null
+          created_at?: string | null
+          example_sentence: string
+          explanation?: string | null
+          frequency_score?: number | null
+          id?: string
+          regional_usage?: string | null
+          source?: string | null
+          time_period?: string | null
+          word_profile_id?: string | null
+        }
+        Update: {
+          context_type?: string | null
+          created_at?: string | null
+          example_sentence?: string
+          explanation?: string | null
+          frequency_score?: number | null
+          id?: string
+          regional_usage?: string | null
+          source?: string | null
+          time_period?: string | null
+          word_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_contexts_word_profile_id_fkey"
+            columns: ["word_profile_id"]
+            isOneToOne: false
+            referencedRelation: "word_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_profiles: {
         Row: {
           achievements: Json | null
@@ -146,11 +458,63 @@ export type Database = {
         }
         Relationships: []
       }
+      word_relationships: {
+        Row: {
+          confidence_score: number | null
+          context: string | null
+          created_at: string | null
+          id: string
+          relationship_type: string
+          source_word_id: string | null
+          strength: number | null
+          target_word_id: string | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          context?: string | null
+          created_at?: string | null
+          id?: string
+          relationship_type: string
+          source_word_id?: string | null
+          strength?: number | null
+          target_word_id?: string | null
+        }
+        Update: {
+          confidence_score?: number | null
+          context?: string | null
+          created_at?: string | null
+          id?: string
+          relationship_type?: string
+          source_word_id?: string | null
+          strength?: number | null
+          target_word_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "word_relationships_source_word_id_fkey"
+            columns: ["source_word_id"]
+            isOneToOne: false
+            referencedRelation: "word_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "word_relationships_target_word_id_fkey"
+            columns: ["target_word_id"]
+            isOneToOne: false
+            referencedRelation: "word_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      get_comprehensive_word_analysis: {
+        Args: { word_id: string }
+        Returns: Json
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["app_role"]
