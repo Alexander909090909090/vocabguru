@@ -128,8 +128,16 @@ export class UserWordLibraryService {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
 
+      // First get current study count to increment it
+      const { data: currentEntry } = await supabase
+        .from('user_word_library')
+        .select('study_count')
+        .eq('user_id', user.id)
+        .eq('word_id', wordId)
+        .single();
+
       const updateData: any = {
-        study_count: supabase.sql`study_count + 1`,
+        study_count: (currentEntry?.study_count || 0) + 1,
         last_studied: new Date().toISOString()
       };
 

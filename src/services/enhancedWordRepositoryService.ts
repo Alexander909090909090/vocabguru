@@ -150,14 +150,8 @@ export class EnhancedWordRepositoryService extends WordRepositoryService {
     }
   }
 
-  // Helper method to convert word profiles (existing in parent class but ensuring it's available)
+  // Helper method to convert word profiles to repository entries
   private static convertWordProfileToEntry(profile: any): WordRepositoryEntry {
-    return super.convertWordProfileToEntry ? 
-      super.convertWordProfileToEntry(profile) : 
-      this.fallbackConversion(profile);
-  }
-
-  private static fallbackConversion(profile: any): WordRepositoryEntry {
     return {
       id: profile.id,
       word: profile.word,
