@@ -22,18 +22,17 @@ export class DictionaryApiService {
   // Free Dictionary API
   static async fetchFromFreeDictionary(word: string): Promise<DictionaryApiResponse | null> {
     try {
-      console.log(`[DictionaryAPI] Fetching word "${word}" from Free Dictionary API`);
+      console.log(`Fetching word "${word}" from Free Dictionary API`);
       const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-      
       if (!response.ok) {
-        console.log(`[DictionaryAPI] Free Dictionary API returned ${response.status} for word "${word}"`);
+        console.log(`Free Dictionary API returned ${response.status} for word "${word}"`);
         return null;
       }
       
       const data = await response.json();
       const entry = data[0];
       
-      console.log(`[DictionaryAPI] Successfully fetched "${word}" from Free Dictionary API`);
+      console.log(`Successfully fetched "${word}" from Free Dictionary API`);
       return {
         word: entry.word,
         phonetic: entry.phonetic,
@@ -42,30 +41,121 @@ export class DictionaryApiService {
         etymology: entry.origin
       };
     } catch (error) {
-      console.error('[DictionaryAPI] Free Dictionary API error:', error);
+      console.error('Free Dictionary API error:', error);
       return null;
     }
   }
 
-  // Store word data in word_profiles table with enhanced logging
-  static async storeWordData(apiResponse: DictionaryApiResponse): Promise<boolean> {
+  // Wiktionary API (simplified)
+  static async fetchFromWiktionary(word: string): Promise<DictionaryApiResponse | null> {
     try {
-      console.log(`[DatabaseStore] Starting to store word data for: "${apiResponse.word}"`);
+      console.log(`Fetching word "${word}" from Wiktionary API`);
+      const response = await fetch(`https://en.wiktionary.org/api/rest_v1/page/definition/${word}`);
+      if (!response.ok) {
+        console.log(`Wiktionary API returned ${response.status} for word "${word}"`);
+        return null;
+      }
+      
+      const data = await response.json();
+      const definitions = data.en || [];
+      
+      console.log(`Successfully fetched "${word}" from Wiktionary API`);
+      return {
+        word,
+        meanings: definitions.map((def: any) => ({
+          partOfSpeech: def.partOfSpeech || 'unknown',
+          definitions: def.definitions?.map((d: any) => ({
+            definition: d.definition || d.text,
+            example: d.examples?.[0]
+          })) || []
+        }))
+      };
+    } catch (error) {
+      console.error('Wiktionary API error:', error);
+      return null;
+    }
+  }
+
+  // Datamuse API
+  static async fetchFromDatamuse(word: string): Promise<DictionaryApiResponse | null> {
+    try {
+      console.log(`Fetching word "${word}" from Datamuse API`);
+      const response = await fetch(`https://api.datamuse.com/words?sp=${word}&md=dpr&max=1`);
+      if (!response.ok) {
+        console.log(`Datamuse API returned ${response.status} for word "${word}"`);
+        return null;
+      }
+      
+      const data = await response.json();
+      const entry = data[0];
+      
+      if (!entry) {
+        console.log(`No data found for "${word}" in Datamuse API`);
+        return null;
+      }
+      
+      console.log(`Successfully fetched "${word}" from Datamuse API`);
+      return {
+        word: entry.word,
+        meanings: entry.defs?.map((def: string) => {
+          const [partOfSpeech, definition] = def.split('\t');
+          return {
+            partOfSpeech: partOfSpeech || 'unknown',
+            definitions: [{ definition: definition || def }]
+          };
+        }) || []
+      };
+    } catch (error) {
+      console.error('Datamuse API error:', error);
+      return null;
+    }
+  }
+
+  // Aggregate data from multiple APIs
+  static async fetchWordData(word: string): Promise<DictionaryApiResponse | null> {
+    console.log(`Starting comprehensive fetch for word: "${word}"`);
+    
+    const apis = [
+      () => this.fetchFromFreeDictionary(word),
+      () => this.fetchFromWiktionary(word),
+      () => this.fetchFromDatamuse(word)
+    ];
+
+    for (const apiFetch of apis) {
+      try {
+        const result = await apiFetch();
+        if (result && result.meanings.length > 0) {
+          console.log(`Successfully found data for "${word}"`);
+          return result;
+        }
+      } catch (error) {
+        console.error('API fetch error:', error);
+        continue;
+      }
+    }
+
+    console.log(`No data found for word "${word}" in any API`);
+    return null;
+  }
+
+  // Store word data in word_profiles table with enhanced logging
+  static async storeWordData(apiResponse: DictionaryApiResponse): Promise<void> {
+    try {
+      console.log(`Storing word data for: "${apiResponse.word}"`);
       
       const wordData = {
         word: apiResponse.word.toLowerCase(),
         morpheme_breakdown: {
           phonetic: apiResponse.phonetic || '',
           audio_url: apiResponse.audio || '',
-          root: { text: apiResponse.word, meaning: 'Core meaning' }
+          root: { text: apiResponse.word, meaning: '' }
         },
         etymology: {
-          historical_origins: apiResponse.etymology || `Etymology for "${apiResponse.word}"`,
-          language_of_origin: 'English',
-          word_evolution: `The word "${apiResponse.word}" has evolved through various linguistic stages.`
+          historical_origins: apiResponse.etymology || '',
+          language_of_origin: 'English'
         },
         definitions: {
-          primary: apiResponse.meanings[0]?.definitions[0]?.definition || `Primary definition of ${apiResponse.word}`,
+          primary: apiResponse.meanings[0]?.definitions[0]?.definition || '',
           standard: apiResponse.meanings.slice(0, 3).map(m => 
             m.definitions[0]?.definition || ''
           ).filter(Boolean)
@@ -74,7 +164,7 @@ export class DictionaryApiService {
           base_form: apiResponse.word
         },
         analysis: {
-          parts_of_speech: apiResponse.meanings.map(m => m.partOfSpeech).join(', ') || 'Unknown',
+          parts_of_speech: apiResponse.meanings.map(m => m.partOfSpeech).join(', '),
           usage_examples: apiResponse.meanings.flatMap(m => 
             m.definitions.map(d => d.example).filter(Boolean)
           ).slice(0, 3),
@@ -87,12 +177,7 @@ export class DictionaryApiService {
         }
       };
 
-      console.log('[DatabaseStore] Prepared word data:', {
-        word: wordData.word,
-        hasDefinitions: wordData.definitions.standard.length > 0,
-        hasEtymology: !!wordData.etymology.historical_origins,
-        partOfSpeech: wordData.analysis.parts_of_speech
-      });
+      console.log('Word data prepared:', JSON.stringify(wordData, null, 2));
 
       const { data, error } = await supabase
         .from('word_profiles')
@@ -100,80 +185,72 @@ export class DictionaryApiService {
         .select();
 
       if (error) {
-        console.error('[DatabaseStore] Supabase error storing word data:', error);
+        console.error('Supabase error storing word data:', error);
         throw error;
       }
 
-      console.log(`[DatabaseStore] Successfully stored word "${apiResponse.word}" in database`);
-      return true;
+      console.log(`Successfully stored word "${apiResponse.word}" in Supabase:`, data);
     } catch (error) {
-      console.error('[DatabaseStore] Error in storeWordData:', error);
-      return false;
+      console.error('Error in storeWordData:', error);
+      throw error;
     }
   }
 
   // Fetch and store word data with comprehensive logging
   static async fetchAndStoreWord(word: string): Promise<boolean> {
     try {
-      console.log(`[WordProcessor] === Starting fetchAndStoreWord for: "${word}" ===`);
+      console.log(`=== Starting fetchAndStoreWord for: "${word}" ===`);
       
       // Check if word already exists
-      const { data: existingWord, error: checkError } = await supabase
+      const { data: existingWord } = await supabase
         .from('word_profiles')
         .select('word')
         .eq('word', word.toLowerCase())
         .maybeSingle();
 
-      if (checkError) {
-        console.error('[WordProcessor] Error checking existing word:', checkError);
-      }
-
       if (existingWord) {
-        console.log(`[WordProcessor] Word "${word}" already exists in database`);
+        console.log(`Word "${word}" already exists in database`);
         return true;
       }
 
-      console.log(`[WordProcessor] Word "${word}" not found in database, fetching from APIs...`);
+      console.log(`Word "${word}" not found in database, fetching from APIs...`);
       
-      const apiResponse = await this.fetchFromFreeDictionary(word);
+      const apiResponse = await this.fetchWordData(word);
       if (apiResponse) {
-        const success = await this.storeWordData(apiResponse);
-        if (success) {
-          console.log(`[WordProcessor] === Successfully processed word: "${word}" ===`);
-          return true;
-        } else {
-          console.error(`[WordProcessor] Failed to store word: "${word}"`);
-          return false;
-        }
+        await this.storeWordData(apiResponse);
+        console.log(`=== Successfully processed word: "${word}" ===`);
+        return true;
       } else {
-        console.log(`[WordProcessor] === Failed to find data for word: "${word}" ===`);
+        console.log(`=== Failed to find data for word: "${word}" ===`);
         return false;
       }
     } catch (error) {
-      console.error(`[WordProcessor] === Error in fetchAndStoreWord for "${word}":`, error);
+      console.error(`=== Error in fetchAndStoreWord for "${word}":`, error);
       return false;
     }
   }
 
-  // Test database connection
-  static async testDatabaseConnection(): Promise<boolean> {
-    try {
-      console.log('[DatabaseTest] Testing database connection...');
-      
-      const { data, error } = await supabase
-        .from('word_profiles')
-        .select('count(*)', { count: 'exact' });
+  // Seed database with common words
+  static async seedCommonWords(): Promise<void> {
+    const commonWords = [
+      'hello', 'world', 'computer', 'science', 'language', 'vocabulary', 'learning',
+      'education', 'knowledge', 'wisdom', 'intelligence', 'artificial', 'natural',
+      'communication', 'information', 'understanding', 'comprehension', 'analysis',
+      'synthesis', 'research', 'study', 'academic', 'professional', 'development'
+    ];
 
-      if (error) {
-        console.error('[DatabaseTest] Database connection failed:', error);
-        return false;
+    console.log(`Starting to seed ${commonWords.length} common words...`);
+
+    for (const word of commonWords) {
+      try {
+        await this.fetchAndStoreWord(word);
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error(`Failed to seed word "${word}":`, error);
       }
-
-      console.log('[DatabaseTest] Database connection successful. Word count:', data);
-      return true;
-    } catch (error) {
-      console.error('[DatabaseTest] Database test error:', error);
-      return false;
     }
+
+    console.log('Completed seeding common words');
   }
 }

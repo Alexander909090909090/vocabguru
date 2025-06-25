@@ -19,8 +19,6 @@ export class Calvern3Service {
 
   static async getComprehensiveBreakdown(word: string): Promise<string> {
     try {
-      console.log(`Calling Calvern 3.0 API for word: "${word}"`);
-      
       const response = await fetch(this.API_URL, {
         method: 'POST',
         headers: {
@@ -33,30 +31,16 @@ export class Calvern3Service {
       });
 
       if (!response.ok) {
-        console.error(`Calvern 3.0 API request failed: ${response.status} ${response.statusText}`);
         throw new Error(`API request failed: ${response.status}`);
       }
 
       const result: Calvern3Response = await response.json();
-      console.log('Calvern 3.0 API response:', result);
       
       if (!result.success) {
-        console.error('Calvern 3.0 API returned error:', result.error);
         throw new Error(result.error || 'Analysis failed');
       }
 
-      // Return the breakdown or formatted response as markdown text
-      const analysis = result.breakdown || result.formatted_response;
-      
-      if (typeof analysis === 'string') {
-        return analysis;
-      } else if (typeof analysis === 'object') {
-        // If it's an object, try to stringify it in a readable format
-        return JSON.stringify(analysis, null, 2);
-      } else {
-        console.warn('Unexpected response format from Calvern 3.0:', typeof analysis);
-        return this.createFallbackBreakdown(word);
-      }
+      return result.breakdown || result.formatted_response;
     } catch (error) {
       console.error('Calvern 3.0 API Error:', error);
       throw error;
@@ -65,8 +49,6 @@ export class Calvern3Service {
 
   static async getChatResponse(message: string, context?: string): Promise<string> {
     try {
-      console.log(`Calling Calvern 3.0 chat for message: "${message}"`);
-      
       const response = await fetch(this.API_URL, {
         method: 'POST',
         headers: {
@@ -80,19 +62,16 @@ export class Calvern3Service {
       });
 
       if (!response.ok) {
-        console.error(`Calvern 3.0 chat request failed: ${response.status}`);
         throw new Error(`API request failed: ${response.status}`);
       }
 
       const result: Calvern3Response = await response.json();
       
       if (!result.success) {
-        console.error('Calvern 3.0 chat error:', result.error);
         throw new Error(result.error || 'Chat response failed');
       }
 
-      const response_text = result.breakdown || result.formatted_response;
-      return typeof response_text === 'string' ? response_text : JSON.stringify(response_text);
+      return result.breakdown || result.formatted_response;
     } catch (error) {
       console.error('Calvern 3.0 Chat Error:', error);
       throw error;
@@ -100,8 +79,6 @@ export class Calvern3Service {
   }
 
   static createFallbackBreakdown(word: string): string {
-    console.log(`Creating fallback breakdown for word: "${word}"`);
-    
     return `# Comprehensive Breakdown of "${word}"
 
 ## Morpheme Breakdown
@@ -131,8 +108,6 @@ export class Calvern3Service {
 
 ---
 
-*Powered by Calvern 3.0 - Advanced Linguistic Intelligence*
-
-*Note: This is a fallback analysis. Please try again for the full Calvern 3.0 experience.*`;
+*Powered by Calvern 3.0 - Advanced Linguistic Intelligence*`;
   }
 }
