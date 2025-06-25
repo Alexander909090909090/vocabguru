@@ -229,17 +229,32 @@ export class PersonalizedAIService {
     return {
       id: entry.word_id,
       word: entry.word?.word || "unknown",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       partOfSpeech: entry.word?.analysis?.parts_of_speech || "noun",
       definitions: {
         primary: entry.word?.definitions?.primary || "Definition not available"
       },
       description: entry.word?.definitions?.primary || "Description not available",
       languageOrigin: entry.word?.etymology?.language_of_origin || "Unknown",
+      morpheme_breakdown: entry.word?.morpheme_breakdown || {},
       morphemeBreakdown: entry.word?.morpheme_breakdown || {},
       etymology: entry.word?.etymology || {},
-      wordForms: entry.word?.word_forms || {},
+      word_forms: entry.word?.word_forms || {},
       analysis: entry.word?.analysis || {},
-      difficulty_level: entry.word?.difficulty_level || "medium"
+      difficulty_level: entry.word?.difficulty_level || "medium",
+      synonymsAntonyms: {
+        synonyms: [],
+        antonyms: []
+      },
+      usage: {
+        commonCollocations: [],
+        contextualUsage: "",
+        exampleSentence: ""
+      },
+      forms: {},
+      source_apis: ['word_profiles'],
+      frequency_score: 0
     };
   }
 
