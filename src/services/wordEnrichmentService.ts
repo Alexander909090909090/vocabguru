@@ -70,7 +70,7 @@ export class WordEnrichmentService {
       }
     }
     
-    // Clean analysis arrays
+    // Clean analysis arrays - updated to use correct property names
     if (cleaned.analysis) {
       if (Array.isArray(cleaned.analysis.synonyms)) {
         cleaned.analysis.synonyms = this.cleanArray(cleaned.analysis.synonyms);
@@ -80,6 +80,9 @@ export class WordEnrichmentService {
       }
       if (Array.isArray(cleaned.analysis.usage_examples)) {
         cleaned.analysis.usage_examples = this.cleanArray(cleaned.analysis.usage_examples);
+      }
+      if (Array.isArray(cleaned.analysis.collocations)) {
+        cleaned.analysis.collocations = this.cleanArray(cleaned.analysis.collocations);
       }
     }
     
@@ -121,9 +124,9 @@ export class WordEnrichmentService {
 
     // Enhanced content (25 points)
     maxScore += 25;
-    if (wordProfile.analysis?.synonyms?.length > 0) score += 8;
-    if (wordProfile.analysis?.usage_examples?.length > 0) score += 8;
-    if (wordProfile.definitions?.standard?.length > 1) score += 9;
+    if (wordProfile.analysis?.synonyms?.length && wordProfile.analysis.synonyms.length > 0) score += 8;
+    if (wordProfile.analysis?.usage_examples?.length && wordProfile.analysis.usage_examples.length > 0) score += 8;
+    if (wordProfile.definitions?.standard?.length && wordProfile.definitions.standard.length > 1) score += 9;
 
     // Etymology richness (10 points)
     maxScore += 10;
