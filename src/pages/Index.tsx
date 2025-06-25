@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
@@ -32,11 +31,40 @@ const Index = () => {
 
   useEffect(() => {
     if (searchQuery) {
-      const filtered = words.filter(word =>
-        word.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (word.definitions && Array.isArray(word.definitions) && 
-         word.definitions.some(def => def.toLowerCase().includes(searchQuery.toLowerCase())))
-      );
+      const filtered = words.filter(word => {
+        // Search in word title
+        if (word.word.toLowerCase().includes(searchQuery.toLowerCase())) {
+          return true;
+        }
+        
+        // Search in description
+        if (word.description && word.description.toLowerCase().includes(searchQuery.toLowerCase())) {
+          return true;
+        }
+        
+        // Search in definitions if they exist and have the expected structure
+        if (word.definitions) {
+          // Handle array of WordDefinition objects
+          if (Array.isArray(word.definitions)) {
+            return word.definitions.some(def => {
+              if (typeof def === 'string') {
+                return def.toLowerCase().includes(searchQuery.toLowerCase());
+              }
+              if (def && typeof def === 'object' && def.text) {
+                return def.text.toLowerCase().includes(searchQuery.toLowerCase());
+              }
+              return false;
+            });
+          }
+          
+          // Handle definitions object with primary property
+          if (typeof word.definitions === 'object' && word.definitions.primary) {
+            return word.definitions.primary.toLowerCase().includes(searchQuery.toLowerCase());
+          }
+        }
+        
+        return false;
+      });
       setFilteredWords(filtered);
     } else {
       setFilteredWords(words);
@@ -69,8 +97,17 @@ const Index = () => {
       if (typeof word.definitions === 'string') {
         return word.definitions.substring(0, 50) + "...";
       }
+      if (typeof word.definitions === 'object' && word.definitions.primary) {
+        return word.definitions.primary.substring(0, 50) + "...";
+      }
       if (Array.isArray(word.definitions) && word.definitions.length > 0) {
-        return word.definitions[0].substring(0, 50) + "...";
+        const firstDef = word.definitions[0];
+        if (typeof firstDef === 'string') {
+          return firstDef.substring(0, 50) + "...";
+        }
+        if (firstDef && typeof firstDef === 'object' && firstDef.text) {
+          return firstDef.text.substring(0, 50) + "...";
+        }
       }
     }
     return "No description available";
