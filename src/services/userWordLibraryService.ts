@@ -193,79 +193,6 @@ export class UserWordLibraryService {
     }
   }
 
-  // Start a new study session
-  static async startStudySession(sessionType: 'vocabulary' | 'quiz' | 'review'): Promise<string | null> {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-
-      const { data, error } = await supabase
-        .from('user_study_sessions')
-        .insert({
-          user_id: user.id,
-          session_type: sessionType,
-          words_studied: [],
-          correct_answers: 0,
-          total_questions: 0,
-          started_at: new Date().toISOString()
-        })
-        .select('id')
-        .single();
-
-      if (error) throw error;
-      return data.id;
-    } catch (error) {
-      console.error('Error starting study session:', error);
-      return null;
-    }
-  }
-
-  // Complete a study session
-  static async completeStudySession(
-    sessionId: string,
-    updates: {
-      words_studied: string[];
-      correct_answers: number;
-      total_questions: number;
-      notes?: string;
-    }
-  ): Promise<boolean> {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return false;
-
-      const startTime = new Date();
-      const { data: session } = await supabase
-        .from('user_study_sessions')
-        .select('started_at')
-        .eq('id', sessionId)
-        .single();
-
-      const sessionDuration = session 
-        ? Math.floor((startTime.getTime() - new Date(session.started_at).getTime()) / 1000)
-        : null;
-
-      const { error } = await supabase
-        .from('user_study_sessions')
-        .update({
-          words_studied: updates.words_studied,
-          correct_answers: updates.correct_answers,
-          total_questions: updates.total_questions,
-          session_duration: sessionDuration,
-          completed_at: new Date().toISOString(),
-          notes: updates.notes
-        })
-        .eq('id', sessionId)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-      return true;
-    } catch (error) {
-      console.error('Error completing study session:', error);
-      return false;
-    }
-  }
-
   // Get user study statistics
   static async getUserStudyStats(): Promise<UserStudyStats | null> {
     try {
@@ -276,52 +203,6 @@ export class UserWordLibraryService {
     } catch (error) {
       console.error('Error fetching user study stats:', error);
       return null;
-    }
-  }
-
-  // Add search to history
-  static async addSearchToHistory(
-    searchQuery: string,
-    searchType: 'word_search' | 'semantic_search' | 'filter_search' = 'word_search',
-    resultsCount: number = 0,
-    clickedWordId?: string
-  ): Promise<void> {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      await supabase
-        .from('search_history')
-        .insert({
-          user_id: user.id,
-          search_query: searchQuery,
-          search_type: searchType,
-          results_count: resultsCount,
-          clicked_word_id: clickedWordId || null
-        });
-    } catch (error) {
-      console.error('Error adding search to history:', error);
-    }
-  }
-
-  // Get recent searches
-  static async getSearchHistory(limit: number = 10): Promise<any[]> {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
-
-      const { data, error } = await supabase
-        .from('search_history')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('searched_at', { ascending: false })
-        .limit(limit);
-
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching search history:', error);
-      return [];
     }
   }
 }

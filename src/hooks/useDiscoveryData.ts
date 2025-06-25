@@ -1,12 +1,11 @@
 
 import { useState, useCallback, useEffect } from 'react';
-import { Word, DictionaryEntry } from '@/types/word';
+import { Word } from '@/types/word';
 import { WordService } from '@/services/wordService';
 import { UserWordLibraryService } from '@/services/userWordLibraryService';
 import { toast } from '@/hooks/use-toast';
 
 export const useDiscoveryData = () => {
-  const [searchResults, setSearchResults] = useState<DictionaryEntry[]>([]);
   const [enhancedWords, setEnhancedWords] = useState<Word[]>([]);
   const [filteredWords, setFilteredWords] = useState<Word[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -50,29 +49,13 @@ export const useDiscoveryData = () => {
     }
   }, []);
 
-  const addWordToCollection = async (entry: DictionaryEntry | Word) => {
-    const wordToAdd = entry.word;
+  const addWordToCollection = async (word: Word) => {
+    const wordToAdd = word.word;
     setIsAdding(wordToAdd);
     
     try {
-      // Check if word already exists in our database
-      const existingWord = await WordService.getWordByName(wordToAdd);
-      
-      let wordToAddToLibrary: Word;
-      
-      if (existingWord) {
-        wordToAddToLibrary = existingWord;
-      } else {
-        // Create new word profile
-        const newWord = await WordService.createWord(entry);
-        if (!newWord) {
-          throw new Error('Failed to create word profile');
-        }
-        wordToAddToLibrary = newWord;
-      }
-
       // Add to user's personal library
-      await UserWordLibraryService.addWordToLibrary(wordToAddToLibrary.id);
+      await UserWordLibraryService.addWordToLibrary(word.id);
       
       toast({
         title: "Word added successfully",
@@ -91,8 +74,6 @@ export const useDiscoveryData = () => {
   };
 
   return {
-    searchResults,
-    setSearchResults,
     enhancedWords,
     setEnhancedWords,
     filteredWords,
