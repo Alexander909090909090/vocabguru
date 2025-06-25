@@ -7,7 +7,6 @@ import { Progress } from '@/components/ui/progress';
 import { Brain, Target, TrendingUp, BookOpen, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
-import { PersonalizedAIService } from '@/services/personalizedAIService';
 import { toast } from 'sonner';
 
 interface RecommendationCard {
@@ -38,16 +37,8 @@ export const EnhancedRecommendationEngine: React.FC<EnhancedRecommendationEngine
     queryKey: ['enhanced-recommendations', userId, currentLevel, selectedCategory],
     queryFn: async () => {
       try {
-        const response = await PersonalizedAIService.getPersonalizedRecommendations(
-          userId || 'anonymous',
-          {
-            level: currentLevel,
-            category: selectedCategory === 'all' ? undefined : selectedCategory,
-            count: recommendationCount,
-            includeReasons: true
-          }
-        );
-        return response.recommendations || [];
+        // For now, generate fallback recommendations
+        return generateFallbackRecommendations();
       } catch (error) {
         console.error('Failed to fetch recommendations:', error);
         return generateFallbackRecommendations();

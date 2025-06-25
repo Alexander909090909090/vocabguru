@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -62,11 +62,15 @@ export const ComprehensiveAnalysisPanel: React.FC<ComprehensiveAnalysisPanelProp
       }
     },
     staleTime: 1000 * 60 * 30, // 30 minutes
-    onSuccess: (data) => {
+  });
+
+  // Update progress as analysis completes
+  useEffect(() => {
+    if (comprehensiveAnalysis) {
       setAnalysisProgress(100);
       toast.success(`Comprehensive analysis completed for "${word}"`);
     }
-  });
+  }, [comprehensiveAnalysis, word]);
 
   const getQualityScore = () => {
     if (!comprehensiveAnalysis?.metadata) return 0;

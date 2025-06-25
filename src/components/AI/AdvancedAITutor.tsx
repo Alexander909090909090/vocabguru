@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,7 +19,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { PersonalizedAIService } from '@/services/personalizedAIService';
 import { toast } from 'sonner';
 
 interface TutorSession {
@@ -76,17 +76,13 @@ export const AdvancedAITutor: React.FC<AdvancedAITutorProps> = ({
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const [streakCount, setStreakCount] = useState(0);
 
-  // Initialize tutoring session
+  // Initialize tutoring session with fallback
   const { data: initialSession, isLoading: sessionLoading } = useQuery({
     queryKey: ['tutor-session', userId, sessionType, targetWords],
     queryFn: async () => {
       try {
-        return await PersonalizedAIService.createTutorSession(userId, {
-          sessionType,
-          targetWords,
-          adaptiveLevel: 'intermediate', // Will be determined by AI
-          questionCount: 10
-        });
+        // For now, generate fallback session until AI service is fully implemented
+        return generateFallbackSession();
       } catch (error) {
         console.error('Failed to create tutor session:', error);
         return generateFallbackSession();
@@ -95,11 +91,12 @@ export const AdvancedAITutor: React.FC<AdvancedAITutorProps> = ({
     staleTime: 0,
   });
 
-  // Submit answer mutation
+  // Submit answer mutation with fallback
   const answerMutation = useMutation({
     mutationFn: async (answerData: { questionId: string; answer: string; timeSpent: number; hintsUsed: number }) => {
       try {
-        return await PersonalizedAIService.submitTutorAnswer(session!.id, answerData);
+        // For now, use fallback feedback until AI service is fully implemented
+        return generateFallbackFeedback(answerData);
       } catch (error) {
         console.error('Failed to submit answer:', error);
         return generateFallbackFeedback(answerData);

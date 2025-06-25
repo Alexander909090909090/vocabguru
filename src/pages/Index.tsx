@@ -43,6 +43,7 @@ const Index = () => {
     { id: 'dictionary', label: 'Dictionary', icon: Search },
   ];
 
+  // Convert words to compatible format
   const filteredWords = words?.filter(word => {
     if (selectedFilter === 'all') return true;
     if (selectedFilter === 'prefix') return word.word.length > 4;
@@ -50,7 +51,14 @@ const Index = () => {
     if (selectedFilter === 'origin') return word.word.length > 6;
     if (selectedFilter === 'dictionary') return true;
     return true;
-  }) || [];
+  })?.map(word => ({
+    ...word,
+    etymology: {
+      origin: word.etymology?.origin || word.etymology?.historical_origins || '',
+      evolution: word.etymology?.evolution || word.etymology?.word_evolution || '',
+      culturalVariations: word.etymology?.culturalVariations || word.etymology?.cultural_variations
+    }
+  })) || [];
 
   return (
     <motion.div
