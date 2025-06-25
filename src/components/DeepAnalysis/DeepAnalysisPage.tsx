@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Brain, Network, BookOpen, Lightbulb, Loader2, Volume2, Search, Compare } from "lucide-react";
+import { ArrowLeft, Brain, Network, BookOpen, Lightbulb, Loader2, Volume2, Search, GitCompare } from "lucide-react";
 import { AIWordAnalysisService, AIWordAnalysis } from "@/services/aiWordAnalysisService";
 import { toast } from "sonner";
 import Header from "@/components/Header";
@@ -130,7 +130,7 @@ export function DeepAnalysisPage() {
                     className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
                   />
                   <Button onClick={handleCompareWords} size="sm">
-                    <Compare className="h-4 w-4" />
+                    <GitCompare className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -194,7 +194,7 @@ export function DeepAnalysisPage() {
                 </TabsTrigger>
                 {comparison && (
                   <TabsTrigger value="comparison" className="text-white data-[state=active]:bg-primary data-[state=active]:text-white text-xs">
-                    <Compare className="h-4 w-4 mr-1" />
+                    <GitCompare className="h-4 w-4 mr-1" />
                     Compare
                   </TabsTrigger>
                 )}
