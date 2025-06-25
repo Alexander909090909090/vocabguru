@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Brain, BookOpen, Lightbulb } from 'lucide-react';
@@ -9,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { Header } from '@/components/Header';
 
-interface DeepAnalysisPageParams {
+interface DeepAnalysisPageParams extends Record<string, string> {
   word: string;
 }
 

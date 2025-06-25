@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
@@ -16,15 +17,25 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 const Index = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { words, loading } = useWords();
+  const { words } = useWords();
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredWords, setFilteredWords] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate loading state
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (searchQuery) {
       const filtered = words.filter(word =>
         word.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        word.definitions.primary.toLowerCase().includes(searchQuery.toLowerCase())
+        (word.definitions && Array.isArray(word.definitions) && 
+         word.definitions.some(def => def.toLowerCase().includes(searchQuery.toLowerCase())))
       );
       setFilteredWords(filtered);
     } else {
@@ -48,6 +59,21 @@ const Index = () => {
     return user?.user_metadata?.avatar_url || 
            user?.user_metadata?.picture || 
            undefined;
+  };
+
+  const getWordDescription = (word: any) => {
+    if (word.description) {
+      return word.description.substring(0, 50) + "...";
+    }
+    if (word.definitions) {
+      if (typeof word.definitions === 'string') {
+        return word.definitions.substring(0, 50) + "...";
+      }
+      if (Array.isArray(word.definitions) && word.definitions.length > 0) {
+        return word.definitions[0].substring(0, 50) + "...";
+      }
+    }
+    return "No description available";
   };
 
   return (
@@ -145,13 +171,13 @@ const Index = () => {
                     ) : filteredWords.length > 0 ? (
                       filteredWords.map(word => (
                         <Link to={`/word/${word.id}`} key={word.id} className="block">
-                          <Card variant="ghost" className="hover:bg-muted/50 transition-colors">
+                          <Card className="hover:bg-muted/50 transition-colors">
                             <CardContent className="flex items-center justify-between p-3">
                               <div>
                                 <p className="font-medium">{word.word}</p>
-                                <p className="text-sm text-muted-foreground">{word.definitions.primary.substring(0, 50)}...</p>
+                                <p className="text-sm text-muted-foreground">{getWordDescription(word)}</p>
                               </div>
-                              <Badge variant="secondary">{word.partOfSpeech}</Badge>
+                              <Badge variant="secondary">{word.partOfSpeech || 'Word'}</Badge>
                             </CardContent>
                           </Card>
                         </Link>
