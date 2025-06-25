@@ -1,5 +1,6 @@
+
 import { useState, useRef, useEffect } from "react";
-import { Header } from "@/components/Header";
+import Header from "@/components/Header";
 import { Message } from "@/types/chat";
 import { MessageSquare, Book, ArrowLeft, Sparkles } from "lucide-react";
 import { toast } from "sonner";

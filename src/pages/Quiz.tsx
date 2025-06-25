@@ -1,7 +1,8 @@
+
 import { useEffect } from "react";
 import { useQuiz } from "@/context/QuizContext";
 import { toast } from "@/components/ui/use-toast";
-import { Header } from "@/components/Header";
+import Header from "@/components/Header";
 import QuizComponent from "@/components/Quiz/QuizComponent";
 import QuizGrid from "@/components/Quiz/QuizGrid";
 import { motion } from "framer-motion";

@@ -1,60 +1,95 @@
-
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
-import { WordsProvider } from "./context/WordsContext";
-import { QuizProvider } from "./context/QuizContext";
+import { WordsProvider } from "@/context/WordsContext";
+import { QuizProvider } from "@/context/QuizContext";
+import { AuthProvider } from "@/context/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { QuickActions } from "@/components/Navigation/QuickActions";
 import Index from "./pages/Index";
+import Discovery from "./pages/Discovery";
 import WordDetail from "./pages/WordDetail";
 import Quiz from "./pages/Quiz";
-import Discovery from "./pages/Discovery";
-import StudyCenter from "./pages/StudyCenter";
-import Profile from "./pages/Profile";
-import Settings from "./pages/Settings";
-import Integrations from "./pages/Integrations";
 import Calvern from "./pages/Calvern";
-import VocabularyTable from "./pages/VocabularyTable";
+import Integrations from "./pages/Integrations";
+import Profile from "./pages/Profile";
+import StudyCenter from "./pages/StudyCenter";
 import NotFound from "./pages/NotFound";
-import { Header } from "./components/Header";
+import { SimplifiedDeepAnalysis } from "./components/DeepAnalysis/SimplifiedDeepAnalysis";
+import Settings from "./pages/Settings";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (renamed from cacheTime)
+    },
+  },
+});
 
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AuthProvider>
-          <WordsProvider>
-            <QuizProvider>
-              <Toaster />
-              <BrowserRouter>
-                <div className="min-h-screen flex flex-col">
-                  <Header />
-                  <main className="flex-1">
-                    <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/word/:id" element={<WordDetail />} />
-                      <Route path="/quiz" element={<Quiz />} />
-                      <Route path="/discovery" element={<Discovery />} />
-                      <Route path="/study" element={<StudyCenter />} />
-                      <Route path="/profile" element={<Profile />} />
-                      <Route path="/settings" element={<Settings />} />
-                      <Route path="/integrations" element={<Integrations />} />
-                      <Route path="/calvern" element={<Calvern />} />
-                      <Route path="/vocabulary-table" element={<VocabularyTable />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </main>
-                </div>
-              </BrowserRouter>
-            </QuizProvider>
-          </WordsProvider>
-        </AuthProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
-}
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <WordsProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+              <Routes>
+                <Route path="/" element={
+                  <ProtectedRoute>
+                    <Index />
+                  </ProtectedRoute>
+                } />
+                <Route path="/discovery" element={
+                  <ProtectedRoute>
+                    <Discovery />
+                  </ProtectedRoute>
+                } />
+                <Route path="/word/:id" element={
+                  <ProtectedRoute>
+                    <WordDetail />
+                  </ProtectedRoute>
+                } />
+                <Route path="/quiz" element={
+                  <ProtectedRoute>
+                    <QuizProvider>
+                      <Quiz />
+                    </QuizProvider>
+                  </ProtectedRoute>
+                } />
+                <Route path="/calvern" element={
+                  <ProtectedRoute>
+                    <Calvern />
+                  </ProtectedRoute>
+                } />
+                <Route path="/settings" element={
+                  <ProtectedRoute>
+                    <Settings />
+                  </ProtectedRoute>
+                } />
+                <Route path="/profile" element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/study" element={
+                  <ProtectedRoute>
+                    <StudyCenter />
+                  </ProtectedRoute>
+                } />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              <QuickActions />
+            </div>
+          </BrowserRouter>
+        </TooltipProvider>
+      </WordsProvider>
+    </AuthProvider>
+  </QueryClientProvider>
+);
 
 export default App;
