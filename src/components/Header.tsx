@@ -25,7 +25,7 @@ const Header = () => {
     { href: "/calvern", label: "Calvern AI", icon: MessageSquare },
     { href: "/quiz", label: "Quiz", icon: Trophy },
     { href: "/profile", label: "Profile", icon: User },
-    { href: "/integrations", label: "Settings", icon: Settings },
+    { href: "/settings", label: "Settings", icon: Settings },
   ];
 
   const NavItems = ({ mobile = false, onItemClick }: { mobile?: boolean; onItemClick?: () => void }) => (

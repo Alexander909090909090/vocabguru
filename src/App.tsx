@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,6 +18,7 @@ import Profile from "./pages/Profile";
 import StudyCenter from "./pages/StudyCenter";
 import NotFound from "./pages/NotFound";
 import { SimplifiedDeepAnalysis } from "./components/DeepAnalysis/SimplifiedDeepAnalysis";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -54,16 +54,6 @@ const App = () => (
                     <WordDetail />
                   </ProtectedRoute>
                 } />
-                <Route path="/deep-analysis/:word" element={
-                  <ProtectedRoute>
-                    <SimplifiedDeepAnalysis />
-                  </ProtectedRoute>
-                } />
-                <Route path="/deep-analysis" element={
-                  <ProtectedRoute>
-                    <SimplifiedDeepAnalysis />
-                  </ProtectedRoute>
-                } />
                 <Route path="/quiz" element={
                   <ProtectedRoute>
                     <QuizProvider>
@@ -76,9 +66,9 @@ const App = () => (
                     <Calvern />
                   </ProtectedRoute>
                 } />
-                <Route path="/integrations" element={
+                <Route path="/settings" element={
                   <ProtectedRoute>
-                    <Integrations />
+                    <Settings />
                   </ProtectedRoute>
                 } />
                 <Route path="/profile" element={
