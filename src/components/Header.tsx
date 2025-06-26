@@ -2,10 +2,9 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, BookOpen } from "lucide-react";
+import { Menu, X, BookOpen, Compass, MessageSquare, Trophy, Settings, User, Brain } from "lucide-react";
 import { UserMenu } from "@/components/UserMenu";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { primaryNavigationItems } from "@/config/navigation";
 import {
   Sheet,
   SheetContent,
@@ -19,9 +18,19 @@ const Header = () => {
   const location = useLocation();
   const isMobile = useIsMobile();
 
+  const navigationItems = [
+    { href: "/", label: "Words", icon: BookOpen },
+    { href: "/discovery", label: "Discovery", icon: Compass },
+    { href: "/study", label: "Study Center", icon: Brain },
+    { href: "/calvern", label: "Calvern AI", icon: MessageSquare },
+    { href: "/quiz", label: "Quiz", icon: Trophy },
+    { href: "/profile", label: "Profile", icon: User },
+    { href: "/settings", label: "Settings", icon: Settings },
+  ];
+
   const NavItems = ({ mobile = false, onItemClick }: { mobile?: boolean; onItemClick?: () => void }) => (
     <>
-      {primaryNavigationItems.map((item) => {
+      {navigationItems.map((item) => {
         const Icon = item.icon;
         const isActive = location.pathname === item.href;
         
@@ -101,7 +110,7 @@ const Header = () => {
             // Tablet horizontal menu
             <div className="flex lg:hidden items-center gap-2">
               <nav className="flex items-center space-x-1 mr-4">
-                {primaryNavigationItems.slice(0, 4).map((item) => {
+                {navigationItems.slice(0, 4).map((item) => {
                   const Icon = item.icon;
                   const isActive = location.pathname === item.href;
                   

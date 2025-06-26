@@ -1,48 +1,56 @@
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Brain, 
-  Layers, 
-  Clock, 
-  Volume2, 
-  Network, 
-  Target,
-  CheckCircle,
-  AlertCircle,
-  Download,
-  Share2
-} from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
 import { AdvancedLinguisticProcessor } from '@/services/advancedLinguisticProcessor';
-import { EnhancedMorphologicalEngine } from './EnhancedMorphologicalEngine';
-import { AdvancedEtymologyModule } from './AdvancedEtymologyModule';
-import { ComprehensivePhoneticAnalysis } from './ComprehensivePhoneticAnalysis';
+import { ComprehensiveLinguisticAnalysis, LinguisticAnalysisResult } from '@/types/linguisticAnalysis';
+import { Brain, Clock, Target, Zap, BookOpen, Globe, Volume2, Link2, MessageSquare, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ComprehensiveAnalysisPanelProps {
   word: string;
-  onAnalysisComplete?: (analysis: any) => void;
+  onAnalysisComplete?: (analysis: ComprehensiveLinguisticAnalysis) => void;
 }
 
 export const ComprehensiveAnalysisPanel: React.FC<ComprehensiveAnalysisPanelProps> = ({
   word,
   onAnalysisComplete
 }) => {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [analysis, setAnalysis] = useState<ComprehensiveLinguisticAnalysis | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [metadata, setMetadata] = useState<any>(null);
+  const [currentModel, setCurrentModel] = useState<string>('');
 
-  const { data: comprehensiveAnalysis, isLoading, error } = useQuery({
-    queryKey: ['comprehensive-linguistic-analysis', word],
-    queryFn: async () => {
-      console.log(`Starting comprehensive analysis for: ${word}`);
-      
-      const result = await AdvancedLinguisticProcessor.analyzeWord({
+  useEffect(() => {
+    if (word) {
+      runComprehensiveAnalysis();
+    }
+  }, [word]);
+
+  const runComprehensiveAnalysis = async () => {
+    if (!word) return;
+
+    setIsAnalyzing(true);
+    setAnalysisProgress(0);
+    setCurrentModel('Initializing...');
+
+    try {
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setAnalysisProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 500);
+
+      const result: LinguisticAnalysisResult = await AdvancedLinguisticProcessor.analyzeWord({
         word,
         options: {
           includeMorphological: true,
@@ -54,333 +62,359 @@ export const ComprehensiveAnalysisPanel: React.FC<ComprehensiveAnalysisPanelProp
         }
       });
 
-      if (result.success) {
-        onAnalysisComplete?.(result.analysis);
-        return result;
-      } else {
-        throw new Error(result.error || 'Analysis failed');
-      }
-    },
-    staleTime: 1000 * 60 * 30, // 30 minutes
-  });
-
-  // Update progress as analysis completes
-  useEffect(() => {
-    if (comprehensiveAnalysis) {
+      clearInterval(progressInterval);
       setAnalysisProgress(100);
-      toast.success(`Comprehensive analysis completed for "${word}"`);
-    }
-  }, [comprehensiveAnalysis, word]);
 
-  const getQualityScore = () => {
-    if (!comprehensiveAnalysis?.metadata) return 0;
-    return Math.round(
-      (comprehensiveAnalysis.metadata.confidence_score + 
-       comprehensiveAnalysis.metadata.completeness_score) / 2
-    );
-  };
-
-  const getQualityColor = (score: number) => {
-    if (score >= 90) return 'text-green-600';
-    if (score >= 75) return 'text-blue-600';
-    if (score >= 60) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
-  const exportAnalysis = () => {
-    if (!comprehensiveAnalysis) return;
-    
-    const exportData = {
-      word,
-      timestamp: new Date().toISOString(),
-      analysis: comprehensiveAnalysis.analysis,
-      metadata: comprehensiveAnalysis.metadata
-    };
-    
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-      type: 'application/json'
-    });
-    
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${word}-linguistic-analysis.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    toast.success('Analysis exported successfully!');
-  };
-
-  const shareAnalysis = async () => {
-    if (!comprehensiveAnalysis) return;
-    
-    const shareData = {
-      title: `Linguistic Analysis: ${word}`,
-      text: `Comprehensive linguistic analysis of "${word}" - Generated by VocabGuru AI`,
-      url: window.location.href
-    };
-    
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
+      if (result.success && result.analysis) {
+        setAnalysis(result.analysis);
+        setMetadata(result.metadata);
+        onAnalysisComplete?.(result.analysis);
+        toast.success('Comprehensive linguistic analysis completed!');
       } else {
-        await navigator.clipboard.writeText(shareData.url);
-        toast.success('Analysis link copied to clipboard!');
+        toast.error('Analysis failed: ' + (result.error || 'Unknown error'));
       }
+
     } catch (error) {
-      console.error('Error sharing:', error);
-      toast.error('Unable to share analysis');
+      console.error('Analysis error:', error);
+      toast.error('Failed to complete linguistic analysis');
+    } finally {
+      setIsAnalyzing(false);
+      setCurrentModel('');
     }
   };
 
-  if (isLoading) {
+  const formatScore = (score?: number) => {
+    if (!score) return 'N/A';
+    return `${Math.round(score * 100)}%`;
+  };
+
+  const formatTime = (ms?: number) => {
+    if (!ms) return 'N/A';
+    return `${(ms / 1000).toFixed(2)}s`;
+  };
+
+  if (isAnalyzing) {
     return (
-      <Card>
-        <CardContent className="p-8">
-          <div className="text-center space-y-4">
-            <Brain className="h-16 w-16 mx-auto text-primary animate-pulse" />
-            <h3 className="text-xl font-semibold">Analyzing "{word}"</h3>
-            <p className="text-muted-foreground">
-              Running comprehensive linguistic analysis with multiple AI models...
-            </p>
-            <Progress value={analysisProgress} className="w-full max-w-md mx-auto" />
-            <div className="flex justify-center space-x-4 text-sm text-muted-foreground">
-              <span>• Morphological decomposition</span>
-              <span>• Etymology tracing</span>
-              <span>• Phonetic analysis</span>
-              <span>• Semantic mapping</span>
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5 animate-pulse" />
+            Analyzing "{word}"
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Progress</span>
+              <span>{analysisProgress}%</span>
             </div>
+            <Progress value={analysisProgress} className="w-full" />
           </div>
+          {currentModel && (
+            <p className="text-sm text-muted-foreground">
+              Current model: {currentModel}
+            </p>
+          )}
         </CardContent>
       </Card>
     );
   }
 
-  if (error) {
+  if (!analysis) {
     return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <AlertCircle className="h-16 w-16 mx-auto text-red-500 mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Analysis Failed</h3>
-          <p className="text-muted-foreground mb-4">
-            Unable to complete comprehensive analysis for "{word}"
-          </p>
-          <Button onClick={() => window.location.reload()} variant="outline">
-            Try Again
+      <Card className="w-full">
+        <CardContent className="p-6 text-center">
+          <p className="text-muted-foreground mb-4">No analysis available</p>
+          <Button onClick={runComprehensiveAnalysis}>
+            Start Analysis
           </Button>
         </CardContent>
       </Card>
     );
   }
 
-  const qualityScore = getQualityScore();
-
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="space-y-6"
-    >
-      {/* Analysis Overview Header */}
+    <div className="w-full space-y-6">
+      {/* Analysis Overview */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-3">
-              <Brain className="h-6 w-6 text-primary" />
-              <span>Comprehensive Linguistic Analysis</span>
-              <Badge variant="outline" className="ml-2">
-                {word}
-              </Badge>
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={exportAnalysis}>
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
-              <Button variant="outline" size="sm" onClick={shareAnalysis}>
-                <Share2 className="h-4 w-4 mr-2" />
-                Share
-              </Button>
-            </div>
-          </div>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Brain className="h-5 w-5" />
+              Comprehensive Analysis: "{word}"
+            </span>
+            <Button size="sm" variant="outline" onClick={runComprehensiveAnalysis}>
+              Re-analyze
+            </Button>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-500" />
-                <span className="text-sm font-medium">Analysis Complete</span>
+          {metadata && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <div className="text-center">
+                <Clock className="h-4 w-4 mx-auto mb-1" />
+                <p className="text-sm font-medium">{formatTime(metadata.processing_time_ms)}</p>
+                <p className="text-xs text-muted-foreground">Processing Time</p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Quality Score:</span>
-                <span className={`text-lg font-bold ${getQualityColor(qualityScore)}`}>
-                  {qualityScore}%
-                </span>
+              <div className="text-center">
+                <Target className="h-4 w-4 mx-auto mb-1" />
+                <p className="text-sm font-medium">{formatScore(metadata.confidence_score)}</p>
+                <p className="text-xs text-muted-foreground">Confidence</p>
               </div>
-              {comprehensiveAnalysis?.metadata && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">Processing Time:</span>
-                  <span className="text-sm text-muted-foreground">
-                    {comprehensiveAnalysis.metadata.processing_time_ms}ms
-                  </span>
-                </div>
-              )}
+              <div className="text-center">
+                <BarChart3 className="h-4 w-4 mx-auto mb-1" />
+                <p className="text-sm font-medium">{formatScore(metadata.completeness_score / 100)}</p>
+                <p className="text-xs text-muted-foreground">Completeness</p>
+              </div>
+              <div className="text-center">
+                <Zap className="h-4 w-4 mx-auto mb-1" />
+                <p className="text-sm font-medium">{metadata.models_used?.length || 0}</p>
+                <p className="text-xs text-muted-foreground">Models Used</p>
+              </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Analysis Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="overview" className="flex items-center gap-2">
-            <Target className="h-4 w-4" />
-            Overview
+      {/* Detailed Analysis Tabs */}
+      <Tabs defaultValue="morphology" className="w-full">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="morphology" className="flex items-center gap-1">
+            <BookOpen className="h-3 w-3" />
+            <span className="hidden sm:inline">Morphology</span>
           </TabsTrigger>
-          <TabsTrigger value="morphology" className="flex items-center gap-2">
-            <Layers className="h-4 w-4" />
-            Morphology
+          <TabsTrigger value="etymology" className="flex items-center gap-1">
+            <Globe className="h-3 w-3" />
+            <span className="hidden sm:inline">Etymology</span>
           </TabsTrigger>
-          <TabsTrigger value="etymology" className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            Etymology
+          <TabsTrigger value="phonetics" className="flex items-center gap-1">
+            <Volume2 className="h-3 w-3" />
+            <span className="hidden sm:inline">Phonetics</span>
           </TabsTrigger>
-          <TabsTrigger value="phonetics" className="flex items-center gap-2">
-            <Volume2 className="h-4 w-4" />
-            Phonetics
+          <TabsTrigger value="semantics" className="flex items-center gap-1">
+            <Brain className="h-3 w-3" />
+            <span className="hidden sm:inline">Semantics</span>
           </TabsTrigger>
-          <TabsTrigger value="semantics" className="flex items-center gap-2">
-            <Network className="h-4 w-4" />
-            Semantics
+          <TabsTrigger value="relationships" className="flex items-center gap-1">
+            <Link2 className="h-3 w-3" />
+            <span className="hidden sm:inline">Relations</span>
+          </TabsTrigger>
+          <TabsTrigger value="usage" className="flex items-center gap-1">
+            <MessageSquare className="h-3 w-3" />
+            <span className="hidden sm:inline">Usage</span>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-6 text-center">
-                <Layers className="h-8 w-8 mx-auto mb-2 text-blue-500" />
-                <div className="text-2xl font-bold">
-                  {comprehensiveAnalysis?.analysis?.morphological_components?.length || 0}
-                </div>
-                <div className="text-sm text-muted-foreground">Morphemes</div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-6 text-center">
-                <Clock className="h-8 w-8 mx-auto mb-2 text-green-500" />
-                <div className="text-2xl font-bold">
-                  {comprehensiveAnalysis?.analysis?.etymology_chain?.historical_forms?.length || 0}
-                </div>
-                <div className="text-sm text-muted-foreground">Historical Forms</div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-6 text-center">
-                <Volume2 className="h-8 w-8 mx-auto mb-2 text-purple-500" />
-                <div className="text-2xl font-bold">
-                  {comprehensiveAnalysis?.analysis?.phonetic_data?.phonemes?.length || 0}
-                </div>
-                <div className="text-sm text-muted-foreground">Phonemes</div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-6 text-center">
-                <Network className="h-8 w-8 mx-auto mb-2 text-orange-500" />
-                <div className="text-2xl font-bold">
-                  {comprehensiveAnalysis?.analysis?.word_relationships?.length || 0}
-                </div>
-                <div className="text-sm text-muted-foreground">Related Words</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Quick Summary */}
+        <TabsContent value="morphology" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Analysis Summary</CardTitle>
+              <CardTitle>Morphological Components</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="prose max-w-none">
-                <p className="text-muted-foreground">
-                  The word "<span className="font-semibold text-foreground">{word}</span>" has been 
-                  comprehensively analyzed using advanced linguistic processing. This analysis includes 
-                  morphological decomposition, etymological tracing, phonetic transcription, and 
-                  semantic relationship mapping.
-                </p>
-              </div>
-              
-              {comprehensiveAnalysis?.metadata && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
-                  <div>
-                    <div className="text-sm font-medium">Confidence</div>
-                    <div className="text-lg font-bold text-blue-600">
-                      {Math.round(comprehensiveAnalysis.metadata.confidence_score)}%
+            <CardContent>
+              {analysis.morphological_components?.length ? (
+                <div className="space-y-3">
+                  {analysis.morphological_components.map((component, index) => (
+                    <div key={index} className="border rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="outline">{component.component_type}</Badge>
+                        <span className="font-medium">{component.text}</span>
+                      </div>
+                      {component.meaning && (
+                        <p className="text-sm text-muted-foreground mb-1">
+                          <strong>Meaning:</strong> {component.meaning}
+                        </p>
+                      )}
+                      {component.origin_language && (
+                        <p className="text-sm text-muted-foreground">
+                          <strong>Origin:</strong> {component.origin_language}
+                        </p>
+                      )}
                     </div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">Completeness</div>
-                    <div className="text-lg font-bold text-green-600">
-                      {Math.round(comprehensiveAnalysis.metadata.completeness_score)}%
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">Models Used</div>
-                    <div className="text-lg font-bold text-purple-600">
-                      {comprehensiveAnalysis.metadata.models_used?.length || 0}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">Processing</div>
-                    <div className="text-lg font-bold text-orange-600">
-                      {comprehensiveAnalysis.metadata.processing_time_ms}ms
-                    </div>
-                  </div>
+                  ))}
                 </div>
+              ) : (
+                <p className="text-muted-foreground">No morphological data available</p>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="morphology" className="mt-6">
-          <EnhancedMorphologicalEngine 
-            word={word}
-            onAnalysisComplete={(analysis) => console.log('Morphology completed:', analysis)}
-          />
-        </TabsContent>
-
-        <TabsContent value="etymology" className="mt-6">
-          <AdvancedEtymologyModule 
-            word={word}
-            onTimelineSelect={(period) => console.log('Selected period:', period)}
-          />
-        </TabsContent>
-
-        <TabsContent value="phonetics" className="mt-6">
-          <ComprehensivePhoneticAnalysis 
-            word={word}
-            onPronunciationPlay={(ipa, region) => console.log('Play pronunciation:', ipa, region)}
-          />
-        </TabsContent>
-
-        <TabsContent value="semantics" className="mt-6">
+        <TabsContent value="etymology" className="space-y-4">
           <Card>
-            <CardContent className="p-8 text-center">
-              <Network className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-xl font-semibold mb-2">Semantic Analysis</h3>
-              <p className="text-muted-foreground">
-                Advanced semantic relationship mapping and contextual analysis coming in Phase 3!
-              </p>
+            <CardHeader>
+              <CardTitle>Etymology & Historical Development</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {analysis.etymology_chain ? (
+                <>
+                  {analysis.etymology_chain.language_family && (
+                    <div>
+                      <strong>Language Family:</strong> {analysis.etymology_chain.language_family}
+                    </div>
+                  )}
+                  {analysis.etymology_chain.source_language && (
+                    <div>
+                      <strong>Source Language:</strong> {analysis.etymology_chain.source_language}
+                    </div>
+                  )}
+                  {analysis.etymology_chain.first_attestation_date && (
+                    <div>
+                      <strong>First Attestation:</strong> {analysis.etymology_chain.first_attestation_date}
+                    </div>
+                  )}
+                  {analysis.etymology_chain.semantic_evolution && (
+                    <div>
+                      <strong>Semantic Evolution:</strong> 
+                      <p className="mt-1 text-sm">{analysis.etymology_chain.semantic_evolution}</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-muted-foreground">No etymology data available</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="phonetics" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Phonetic Analysis</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {analysis.phonetic_data ? (
+                <>
+                  {analysis.phonetic_data.ipa_transcription && (
+                    <div>
+                      <strong>IPA Transcription:</strong> /{analysis.phonetic_data.ipa_transcription}/
+                    </div>
+                  )}
+                  {analysis.phonetic_data.syllable_structure && (
+                    <div>
+                      <strong>Syllable Structure:</strong> {analysis.phonetic_data.syllable_structure}
+                    </div>
+                  )}
+                  {analysis.phonetic_data.stress_pattern && (
+                    <div>
+                      <strong>Stress Pattern:</strong> {analysis.phonetic_data.stress_pattern}
+                    </div>
+                  )}
+                  {analysis.phonetic_data.syllable_count && (
+                    <div>
+                      <strong>Syllable Count:</strong> {analysis.phonetic_data.syllable_count}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-muted-foreground">No phonetic data available</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="semantics" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Semantic Analysis</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {analysis.semantic_relationships?.length ? (
+                analysis.semantic_relationships.map((semantic, index) => (
+                  <div key={index} className="border rounded-lg p-3 space-y-2">
+                    {semantic.semantic_field && (
+                      <div>
+                        <strong>Semantic Field:</strong> {semantic.semantic_field}
+                      </div>
+                    )}
+                    {semantic.conceptual_domain && (
+                      <div>
+                        <strong>Conceptual Domain:</strong> {semantic.conceptual_domain}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      {semantic.connotation && (
+                        <Badge variant={semantic.connotation === 'positive' ? 'default' : 
+                                      semantic.connotation === 'negative' ? 'destructive' : 'secondary'}>
+                          {semantic.connotation}
+                        </Badge>
+                      )}
+                      {semantic.register_level && (
+                        <Badge variant="outline">{semantic.register_level}</Badge>
+                      )}
+                      {semantic.difficulty_level && (
+                        <Badge variant="outline">{semantic.difficulty_level}</Badge>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-muted-foreground">No semantic data available</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="relationships" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Word Relationships</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {analysis.word_relationships?.length ? (
+                <div className="space-y-3">
+                  {Object.entries(
+                    analysis.word_relationships.reduce((acc, rel) => {
+                      if (!acc[rel.relationship_type]) acc[rel.relationship_type] = [];
+                      acc[rel.relationship_type].push(rel);
+                      return acc;
+                    }, {} as Record<string, typeof analysis.word_relationships>)
+                  ).map(([type, relationships]) => (
+                    <div key={type} className="border rounded-lg p-3">
+                      <h4 className="font-medium mb-2 capitalize">{type}s</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {relationships.map((rel, index) => (
+                          <Badge key={index} variant="outline">
+                            {rel.target_word}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground">No relationship data available</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="usage" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Usage Contexts</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {analysis.usage_contexts?.length ? (
+                <div className="space-y-3">
+                  {analysis.usage_contexts.map((context, index) => (
+                    <div key={index} className="border rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="outline">{context.context_type}</Badge>
+                      </div>
+                      <p className="text-sm mb-2 italic">"{context.example_sentence}"</p>
+                      {context.explanation && (
+                        <p className="text-xs text-muted-foreground">{context.explanation}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground">No usage context data available</p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-    </motion.div>
+    </div>
   );
 };
