@@ -71,14 +71,19 @@ const Index = () => {
     etymology: {
       origin: word.etymology?.origin || word.etymology?.historical_origins || '',
       evolution: word.etymology?.evolution || word.etymology?.word_evolution || '',
-      culturalVariations: word.etymology?.culturalVariations || word.etymology?.cultural_variations
+      culturalVariations: word.etymology?.culturalVariations || word.etymology?.cultural_variations || ''
     },
     usage: {
       commonCollocations: word.usage?.commonCollocations || word.analysis?.collocations || [],
-      contextualUsage: word.usage?.contextualUsage || word.analysis?.contextual_usage || '',
-      sentenceStructure: word.usage?.sentenceStructure || word.analysis?.sentence_structure,
+      contextualUsage: word.usage?.contextualUsage || word.analysis?.usage_examples?.[0] || '',
+      sentenceStructure: word.usage?.sentenceStructure || '',
       exampleSentence: word.usage?.exampleSentence || word.analysis?.example_sentence || word.analysis?.example || ''
-    }
+    },
+    images: word.images?.map((img, index) => ({
+      id: `${word.id}-img-${index}`,
+      url: img.url,
+      alt: img.alt
+    })) || []
   })) || [];
 
   return (

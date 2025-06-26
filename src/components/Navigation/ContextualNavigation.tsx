@@ -7,28 +7,17 @@ import { Card, CardContent } from '@/components/ui/card';
 import { 
   ArrowLeft, 
   ArrowRight, 
-  Home, 
-  BookOpen, 
-  Brain, 
-  Target,
   Compass,
   Zap
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-interface NavigationAction {
-  icon: React.ReactNode;
-  label: string;
-  href: string;
-  description: string;
-  primary?: boolean;
-}
+import { getContextualNavigation, NavigationItem } from '@/config/navigation';
 
 interface ContextualNavigationProps {
   currentContext?: string;
   previousPage?: { label: string; href: string };
-  nextSteps?: NavigationAction[];
-  quickActions?: NavigationAction[];
+  nextSteps?: NavigationItem[];
+  quickActions?: NavigationItem[];
 }
 
 export const ContextualNavigation: React.FC<ContextualNavigationProps> = ({
@@ -40,166 +29,9 @@ export const ContextualNavigation: React.FC<ContextualNavigationProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
 
-  const getDefaultNavigation = (): { nextSteps: NavigationAction[], quickActions: NavigationAction[] } => {
-    const pathname = location.pathname;
-    
-    if (pathname === '/') {
-      return {
-        nextSteps: [
-          {
-            icon: <Compass className="h-4 w-4" />,
-            label: 'Explore Discovery',
-            href: '/discovery',
-            description: 'Find new words with AI recommendations',
-            primary: true
-          },
-          {
-            icon: <Brain className="h-4 w-4" />,
-            label: 'Ask Calvern AI',
-            href: '/calvern',
-            description: 'Get personalized learning assistance'
-          },
-          {
-            icon: <Target className="h-4 w-4" />,
-            label: 'Take a Quiz',
-            href: '/quiz',
-            description: 'Test your vocabulary knowledge'
-          }
-        ],
-        quickActions: [
-          {
-            icon: <BookOpen className="h-4 w-4" />,
-            label: 'Study Center',
-            href: '/study-center',
-            description: 'Structured learning sessions'
-          },
-          {
-            icon: <Brain className="h-4 w-4" />,
-            label: 'Linguistic Analysis',
-            href: '/linguistic-analysis',
-            description: 'Deep word analysis tools'
-          }
-        ]
-      };
-    }
-
-    if (pathname === '/discovery') {
-      return {
-        nextSteps: [
-          {
-            icon: <BookOpen className="h-4 w-4" />,
-            label: 'Start Study Session',
-            href: '/study-center',
-            description: 'Practice with selected words',
-            primary: true
-          },
-          {
-            icon: <Target className="h-4 w-4" />,
-            label: 'Quick Quiz',
-            href: '/quiz',
-            description: 'Test your knowledge'
-          },
-          {
-            icon: <Brain className="h-4 w-4" />,
-            label: 'Deep Analysis',
-            href: '/linguistic-analysis',
-            description: 'Analyze word structure'
-          }
-        ],
-        quickActions: [
-          {
-            icon: <Home className="h-4 w-4" />,
-            label: 'Home',
-            href: '/',
-            description: 'Return to dashboard'
-          },
-          {
-            icon: <Brain className="h-4 w-4" />,
-            label: 'Ask Calvern',
-            href: '/calvern',
-            description: 'Get AI assistance'
-          }
-        ]
-      };
-    }
-
-    if (pathname.startsWith('/word/')) {
-      return {
-        nextSteps: [
-          {
-            icon: <BookOpen className="h-4 w-4" />,
-            label: 'Add to Study List',
-            href: '/study-center',
-            description: 'Practice this word later',
-            primary: true
-          },
-          {
-            icon: <Compass className="h-4 w-4" />,
-            label: 'Find Similar Words',
-            href: '/discovery',
-            description: 'Discover related vocabulary'
-          },
-          {
-            icon: <Brain className="h-4 w-4" />,
-            label: 'Deep Analysis',
-            href: '/linguistic-analysis',
-            description: 'Comprehensive breakdown'
-          }
-        ],
-        quickActions: [
-          {
-            icon: <Target className="h-4 w-4" />,
-            label: 'Quiz Mode',
-            href: '/quiz',
-            description: 'Test this word'
-          },
-          {
-            icon: <Brain className="h-4 w-4" />,
-            label: 'Ask Calvern',
-            href: '/calvern',
-            description: 'Learn more about this word'
-          }
-        ]
-      };
-    }
-
-    // Default fallback
-    return {
-      nextSteps: [
-        {
-          icon: <Home className="h-4 w-4" />,
-          label: 'Dashboard',
-          href: '/',
-          description: 'View your learning progress',
-          primary: true
-        },
-        {
-          icon: <Compass className="h-4 w-4" />,
-          label: 'Discovery',
-          href: '/discovery',
-          description: 'Find new words to learn'
-        }
-      ],
-      quickActions: [
-        {
-          icon: <Brain className="h-4 w-4" />,
-          label: 'Calvern AI',
-          href: '/calvern',
-          description: 'AI learning assistant'
-        },
-        {
-          icon: <Target className="h-4 w-4" />,
-          label: 'Quiz',
-          href: '/quiz',
-          description: 'Test your knowledge'
-        }
-      ]
-    };
-  };
-
-  const defaultNav = getDefaultNavigation();
-  const effectiveNextSteps = nextSteps || defaultNav.nextSteps;
-  const effectiveQuickActions = quickActions || defaultNav.quickActions;
+  const contextualNav = getContextualNavigation(location.pathname);
+  const effectiveNextSteps = nextSteps || contextualNav.nextSteps;
+  const effectiveQuickActions = quickActions || contextualNav.quickActions;
 
   return (
     <div className="space-y-4">
@@ -268,7 +100,7 @@ export const ContextualNavigation: React.FC<ContextualNavigationProps> = ({
                         className="w-full justify-start h-auto p-3"
                       >
                         <div className="flex items-start gap-3 w-full">
-                          {action.icon}
+                          <action.icon className="h-4 w-4 mt-0.5" />
                           <div className="flex-1 text-left">
                             <div className="font-medium">{action.label}</div>
                             <div className="text-sm opacity-75">{action.description}</div>
@@ -311,7 +143,7 @@ export const ContextualNavigation: React.FC<ContextualNavigationProps> = ({
                         className="w-full justify-start h-auto p-3"
                       >
                         <div className="flex items-center gap-2 w-full">
-                          {action.icon}
+                          <action.icon className="h-4 w-4" />
                           <div className="flex-1 text-left">
                             <div className="font-medium text-sm">{action.label}</div>
                             <div className="text-xs opacity-75">{action.description}</div>
