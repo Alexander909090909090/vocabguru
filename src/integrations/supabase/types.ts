@@ -9,6 +9,126 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      api_source_data: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          id: string
+          raw_data: Json
+          source_name: string
+          word_profile_id: string | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          raw_data: Json
+          source_name: string
+          word_profile_id?: string | null
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          raw_data?: Json
+          source_name?: string
+          word_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_source_data_word_profile_id_fkey"
+            columns: ["word_profile_id"]
+            isOneToOne: false
+            referencedRelation: "word_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_quality_audits: {
+        Row: {
+          audit_type: string
+          created_at: string
+          id: string
+          missing_fields: Json | null
+          quality_score: number
+          suggestions: Json | null
+          validation_errors: Json | null
+          word_profile_id: string | null
+        }
+        Insert: {
+          audit_type: string
+          created_at?: string
+          id?: string
+          missing_fields?: Json | null
+          quality_score: number
+          suggestions?: Json | null
+          validation_errors?: Json | null
+          word_profile_id?: string | null
+        }
+        Update: {
+          audit_type?: string
+          created_at?: string
+          id?: string
+          missing_fields?: Json | null
+          quality_score?: number
+          suggestions?: Json | null
+          validation_errors?: Json | null
+          word_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_quality_audits_word_profile_id_fkey"
+            columns: ["word_profile_id"]
+            isOneToOne: false
+            referencedRelation: "word_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enrichment_queue: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          priority: number | null
+          retry_count: number | null
+          started_at: string | null
+          status: string | null
+          word_profile_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          priority?: number | null
+          retry_count?: number | null
+          started_at?: string | null
+          status?: string | null
+          word_profile_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          priority?: number | null
+          retry_count?: number | null
+          started_at?: string | null
+          status?: string | null
+          word_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrichment_queue_word_profile_id_fkey"
+            columns: ["word_profile_id"]
+            isOneToOne: false
+            referencedRelation: "word_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       etymology_chains: {
         Row: {
           borrowed_from: string | null
@@ -425,33 +545,48 @@ export type Database = {
       word_profiles: {
         Row: {
           analysis: Json | null
+          completeness_score: number | null
           created_at: string
+          data_sources: Json | null
           definitions: Json | null
+          enrichment_status: string | null
           etymology: Json | null
           id: string
+          last_enrichment_at: string | null
           morpheme_breakdown: Json | null
+          quality_score: number | null
           updated_at: string
           word: string
           word_forms: Json | null
         }
         Insert: {
           analysis?: Json | null
+          completeness_score?: number | null
           created_at?: string
+          data_sources?: Json | null
           definitions?: Json | null
+          enrichment_status?: string | null
           etymology?: Json | null
           id?: string
+          last_enrichment_at?: string | null
           morpheme_breakdown?: Json | null
+          quality_score?: number | null
           updated_at?: string
           word: string
           word_forms?: Json | null
         }
         Update: {
           analysis?: Json | null
+          completeness_score?: number | null
           created_at?: string
+          data_sources?: Json | null
           definitions?: Json | null
+          enrichment_status?: string | null
           etymology?: Json | null
           id?: string
+          last_enrichment_at?: string | null
           morpheme_breakdown?: Json | null
+          quality_score?: number | null
           updated_at?: string
           word?: string
           word_forms?: Json | null
@@ -511,6 +646,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_word_completeness: {
+        Args: {
+          word_data: Json
+          definitions_data: Json
+          etymology_data: Json
+          analysis_data: Json
+        }
+        Returns: number
+      }
       get_comprehensive_word_analysis: {
         Args: { word_id: string }
         Returns: Json
@@ -525,6 +669,14 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
         }
         Returns: boolean
+      }
+      identify_missing_fields: {
+        Args: { word_profile_id: string }
+        Returns: Json
+      }
+      queue_word_for_enrichment: {
+        Args: { word_profile_id: string; enrichment_priority?: number }
+        Returns: undefined
       }
     }
     Enums: {
