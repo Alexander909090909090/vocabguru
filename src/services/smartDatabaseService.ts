@@ -35,7 +35,46 @@ export interface ApiSourceData {
   created_at: string;
 }
 
+// Helper function to safely parse JSON fields
+const parseJsonField = <T>(field: any, fallback: T): T => {
+  if (typeof field === 'string') {
+    try {
+      return JSON.parse(field);
+    } catch {
+      return fallback;
+    }
+  }
+  return field || fallback;
+};
+
 export class SmartDatabaseService {
+  // Get word profile by ID
+  static async getWordProfile(wordProfileId: string): Promise<WordProfile | null> {
+    try {
+      const { data, error } = await supabase
+        .from('word_profiles')
+        .select('*')
+        .eq('id', wordProfileId)
+        .single();
+
+      if (error) throw error;
+
+      if (!data) return null;
+
+      return {
+        ...data,
+        morpheme_breakdown: parseJsonField(data.morpheme_breakdown, {}),
+        etymology: parseJsonField(data.etymology, {}),
+        definitions: parseJsonField(data.definitions, {}),
+        word_forms: parseJsonField(data.word_forms, {}),
+        analysis: parseJsonField(data.analysis, {})
+      };
+    } catch (error) {
+      console.error('Error fetching word profile:', error);
+      return null;
+    }
+  }
+
   // Quality Assessment Methods
   static async calculateWordQuality(wordProfileId: string): Promise<number> {
     try {
@@ -203,6 +242,47 @@ export class SmartDatabaseService {
     }
   }
 
+  // Statistics and Analytics
+  static async getQualityStatistics(): Promise<{
+    totalWords: number;
+    highQuality: number;
+    mediumQuality: number;
+    lowQuality: number;
+    averageScore: number;
+  }> {
+    try {
+      const { data, error } = await supabase
+        .from('word_profiles')
+        .select('quality_score');
+
+      if (error) throw error;
+
+      const scores = (data || []).map(row => row.quality_score || 0);
+      const totalWords = scores.length;
+      const highQuality = scores.filter(score => score >= 80).length;
+      const mediumQuality = scores.filter(score => score >= 50 && score < 80).length;
+      const lowQuality = scores.filter(score => score < 50).length;
+      const averageScore = totalWords > 0 ? scores.reduce((sum, score) => sum + score, 0) / totalWords : 0;
+
+      return {
+        totalWords,
+        highQuality,
+        mediumQuality,
+        lowQuality,
+        averageScore: Math.round(averageScore * 100) / 100
+      };
+    } catch (error) {
+      console.error('Error getting quality statistics:', error);
+      return {
+        totalWords: 0,
+        highQuality: 0,
+        mediumQuality: 0,
+        lowQuality: 0,
+        averageScore: 0
+      };
+    }
+  }
+
   // Batch Operations
   static async batchAuditWords(wordProfileIds: string[]): Promise<void> {
     const auditPromises = wordProfileIds.map(id => this.auditWordProfile(id));
@@ -220,7 +300,14 @@ export class SmartDatabaseService {
 
       if (error) throw error;
 
-      return data || [];
+      return (data || []).map(row => ({
+        ...row,
+        morpheme_breakdown: parseJsonField(row.morpheme_breakdown, {}),
+        etymology: parseJsonField(row.etymology, {}),
+        definitions: parseJsonField(row.definitions, {}),
+        word_forms: parseJsonField(row.word_forms, {}),
+        analysis: parseJsonField(row.analysis, {})
+      }));
     } catch (error) {
       console.error('Error fetching words needing enrichment:', error);
       return [];
@@ -241,59 +328,16 @@ export class SmartDatabaseService {
       suggestions.push('Research etymological origins');
     }
     if (missingFields.includes('synonyms')) {
-      suggestions.push('Add relevant synonyms');
+      suggestions.push('Add related synonyms');
     }
     if (missingFields.includes('usage_examples')) {
-      suggestions.push('Include contextual usage examples');
+      suggestions.push('Include usage examples');
     }
 
     if (qualityScore < 50) {
-      suggestions.push('Priority enrichment needed - missing critical data');
-    } else if (qualityScore < 80) {
-      suggestions.push('Moderate enrichment needed - some fields incomplete');
+      suggestions.push('Consider comprehensive enrichment');
     }
 
     return suggestions;
-  }
-
-  static async getQualityStatistics(): Promise<{
-    totalWords: number;
-    highQuality: number;
-    mediumQuality: number;
-    lowQuality: number;
-    averageScore: number;
-  }> {
-    try {
-      const { data, error } = await supabase
-        .from('word_profiles')
-        .select('quality_score')
-        .not('quality_score', 'is', null);
-
-      if (error) throw error;
-
-      const scores = data.map(item => item.quality_score || 0);
-      const totalWords = scores.length;
-      const highQuality = scores.filter(score => score >= 80).length;
-      const mediumQuality = scores.filter(score => score >= 50 && score < 80).length;
-      const lowQuality = scores.filter(score => score < 50).length;
-      const averageScore = scores.reduce((sum, score) => sum + score, 0) / totalWords;
-
-      return {
-        totalWords,
-        highQuality,
-        mediumQuality,
-        lowQuality,
-        averageScore: Math.round(averageScore * 100) / 100
-      };
-    } catch (error) {
-      console.error('Error calculating quality statistics:', error);
-      return {
-        totalWords: 0,
-        highQuality: 0,
-        mediumQuality: 0,
-        lowQuality: 0,
-        averageScore: 0
-      };
-    }
   }
 }
