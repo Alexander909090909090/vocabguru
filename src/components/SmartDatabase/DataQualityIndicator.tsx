@@ -1,73 +1,166 @@
 
-import React from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { useWordQuality } from '@/hooks/useSmartDatabase';
-import { CheckCircle, AlertTriangle, XCircle, Loader2 } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CheckCircle, AlertCircle, XCircle, Info } from "lucide-react";
+import { QualityAssuranceService } from "@/services/qualityAssuranceService";
 
 interface DataQualityIndicatorProps {
   wordProfileId: string;
   showDetails?: boolean;
 }
 
+interface QualityReport {
+  overallScore: number;
+  completenessScore: number;
+  accuracyScore: number;
+  missingFields: string[];
+  suggestions: string[];
+  status: 'excellent' | 'good' | 'fair' | 'poor';
+}
+
 export function DataQualityIndicator({ wordProfileId, showDetails = false }: DataQualityIndicatorProps) {
-  const { qualityScore, missingFields, loading } = useWordQuality(wordProfileId);
+  const [qualityReport, setQualityReport] = useState<QualityReport | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadQualityReport = async () => {
+      if (!wordProfileId) return;
+      
+      try {
+        setLoading(true);
+        const report = await QualityAssuranceService.performQualityAssessment(wordProfileId);
+        setQualityReport(report);
+      } catch (error) {
+        console.error('Error loading quality report:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadQualityReport();
+  }, [wordProfileId]);
 
   if (loading) {
     return (
       <div className="flex items-center gap-2">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm text-muted-foreground">Calculating quality...</span>
+        <div className="w-3 h-3 bg-gray-300 rounded-full animate-pulse"></div>
+        <span className="text-sm text-gray-500">Analyzing quality...</span>
       </div>
     );
   }
 
-  const getQualityLevel = (score: number) => {
-    if (score >= 80) return { level: 'high', color: 'green', icon: CheckCircle };
-    if (score >= 50) return { level: 'medium', color: 'yellow', icon: AlertTriangle };
-    return { level: 'low', color: 'red', icon: XCircle };
+  if (!qualityReport) {
+    return (
+      <div className="flex items-center gap-2">
+        <AlertCircle className="w-4 h-4 text-yellow-500" />
+        <span className="text-sm text-gray-500">Quality data unavailable</span>
+      </div>
+    );
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'excellent':
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'good':
+        return <CheckCircle className="w-4 h-4 text-blue-500" />;
+      case 'fair':
+        return <AlertCircle className="w-4 h-4 text-yellow-500" />;
+      case 'poor':
+        return <XCircle className="w-4 h-4 text-red-500" />;
+      default:
+        return <Info className="w-4 h-4 text-gray-500" />;
+    }
   };
 
-  const quality = getQualityLevel(qualityScore);
-  const QualityIcon = quality.icon;
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'excellent':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'good':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'fair':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'poor':
+        return 'bg-red-100 text-red-800 border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
 
-  return (
-    <div className="space-y-2">
+  if (!showDetails) {
+    return (
       <div className="flex items-center gap-2">
-        <QualityIcon className={`h-4 w-4 text-${quality.color}-500`} />
-        <span className="text-sm font-medium">Quality: {qualityScore.toFixed(1)}%</span>
-        <Badge 
-          variant={quality.level === 'high' ? 'default' : quality.level === 'medium' ? 'secondary' : 'destructive'}
-          className="text-xs"
-        >
-          {quality.level.toUpperCase()}
+        {getStatusIcon(qualityReport.status)}
+        <Badge variant="outline" className={getStatusColor(qualityReport.status)}>
+          {Math.round(qualityReport.overallScore)}% Quality
         </Badge>
       </div>
+    );
+  }
 
-      {showDetails && (
-        <>
-          <Progress value={qualityScore} className="h-2" />
-          
-          {missingFields.length > 0 && (
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Missing fields:</p>
-              <div className="flex flex-wrap gap-1">
-                {missingFields.map(field => (
-                  <Badge key={field} variant="outline" className="text-xs">
-                    {field.replace(/_/g, ' ')}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="text-xs text-muted-foreground">
-            {qualityScore >= 80 && "Excellent data quality - no enrichment needed"}
-            {qualityScore >= 50 && qualityScore < 80 && "Good data quality - minor enrichment recommended"}
-            {qualityScore < 50 && "Low data quality - enrichment required"}
+  return (
+    <Card className="bg-white/5 backdrop-blur-md border-white/10">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-white flex items-center gap-2 text-sm">
+          {getStatusIcon(qualityReport.status)}
+          Data Quality Report
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-white/70">Overall Quality</span>
+            <span className="text-white">{Math.round(qualityReport.overallScore)}%</span>
           </div>
-        </>
-      )}
-    </div>
+          <Progress value={qualityReport.overallScore} className="h-2" />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-white/70">Completeness</span>
+            <span className="text-white">{Math.round(qualityReport.completenessScore)}%</span>
+          </div>
+          <Progress value={qualityReport.completenessScore} className="h-2" />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-white/70">Accuracy</span>
+            <span className="text-white">{Math.round(qualityReport.accuracyScore)}%</span>
+          </div>
+          <Progress value={qualityReport.accuracyScore} className="h-2" />
+        </div>
+
+        {qualityReport.missingFields.length > 0 && (
+          <div>
+            <h4 className="text-sm font-medium text-white mb-2">Missing Fields</h4>
+            <div className="flex flex-wrap gap-1">
+              {qualityReport.missingFields.map((field, index) => (
+                <Badge key={index} variant="outline" className="bg-red-100 text-red-800 border-red-200 text-xs">
+                  {field}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {qualityReport.suggestions.length > 0 && (
+          <div>
+            <h4 className="text-sm font-medium text-white mb-2">Suggestions</h4>
+            <ul className="text-xs text-white/70 space-y-1">
+              {qualityReport.suggestions.slice(0, 3).map((suggestion, index) => (
+                <li key={index} className="flex items-start gap-2">
+                  <span className="text-primary mt-1">•</span>
+                  {suggestion}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

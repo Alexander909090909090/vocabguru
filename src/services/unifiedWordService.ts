@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { UnifiedWord, WordTypeConverter } from "@/types/unifiedWord";
 import { Word } from "@/data/words";
@@ -162,6 +161,41 @@ export class UnifiedWordService {
       console.error('Error deleting word:', error);
       toast.error('Failed to delete word');
       return false;
+    }
+  }
+
+  // Get words for study with filtering criteria
+  static async getWordsForStudy(criteria: {
+    difficultyLevel?: string;
+    partOfSpeech?: string;
+    limit?: number;
+  } = {}): Promise<UnifiedWord[]> {
+    try {
+      const { limit = 20, difficultyLevel, partOfSpeech } = criteria;
+      
+      let query = supabase
+        .from('word_profiles')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      // Add filters if provided
+      if (difficultyLevel) {
+        query = query.eq('analysis->>difficulty_level', difficultyLevel);
+      }
+      
+      if (partOfSpeech) {
+        query = query.eq('analysis->>parts_of_speech', partOfSpeech);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      return (data || []).map(WordTypeConverter.toUnifiedWord);
+    } catch (error) {
+      console.error('Error fetching words for study:', error);
+      return [];
     }
   }
 

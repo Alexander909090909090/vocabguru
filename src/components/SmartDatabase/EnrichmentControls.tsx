@@ -1,180 +1,145 @@
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { useSmartDatabase } from '@/hooks/useSmartDatabase';
-import { 
-  Brain, 
-  Zap, 
-  Database, 
-  RefreshCw, 
-  Target,
-  CheckCircle,
-  AlertCircle,
-  Sparkles
-} from 'lucide-react';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Brain, Zap, RefreshCw, CheckCircle } from "lucide-react";
+import { toast } from "sonner";
+import { ComprehensiveEnrichmentService } from "@/services/comprehensiveEnrichmentService";
 
-export function EnrichmentControls() {
-  const { 
-    isProcessing, 
-    processQueue, 
-    enrichWithCalvarn,
-    getWordsNeedingEnrichment 
-  } = useSmartDatabase();
-  
-  const [selectedWords, setSelectedWords] = useState<string[]>([]);
-  const [loadingWords, setLoadingWords] = useState(false);
+interface EnrichmentControlsProps {
+  wordProfileId: string;
+}
 
-  const handleLoadWordsNeedingEnrichment = async () => {
-    setLoadingWords(true);
-    try {
-      const words = await getWordsNeedingEnrichment(20);
-      setSelectedWords(words.map(w => w.id));
-    } catch (error) {
-      console.error('Error loading words:', error);
-    } finally {
-      setLoadingWords(false);
-    }
-  };
+export function EnrichmentControls({ wordProfileId }: EnrichmentControlsProps) {
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [enrichmentProgress, setEnrichmentProgress] = useState(0);
+  const [enrichmentStatus, setEnrichmentStatus] = useState<string>('ready');
 
-  const handleCalvarnEnrichment = async () => {
-    if (selectedWords.length === 0) {
-      await handleLoadWordsNeedingEnrichment();
+  const handleEnrichWord = async () => {
+    if (!wordProfileId) {
+      toast.error('No word profile selected');
       return;
     }
 
-    for (const wordId of selectedWords.slice(0, 5)) { // Limit to 5 words at a time
-      try {
-        await enrichWithCalvarn(wordId);
-        // Small delay between enrichments
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      } catch (error) {
-        console.error('Error in Calvarn enrichment:', error);
+    try {
+      setIsEnriching(true);
+      setEnrichmentStatus('initializing');
+      setEnrichmentProgress(10);
+
+      toast.info('Starting comprehensive word enrichment...');
+
+      setEnrichmentStatus('processing');
+      setEnrichmentProgress(30);
+
+      // Simulate enrichment process with progress updates
+      const result = await ComprehensiveEnrichmentService.enrichWordProfile(wordProfileId);
+
+      setEnrichmentProgress(70);
+      setEnrichmentStatus('finalizing');
+
+      if (result.success) {
+        setEnrichmentProgress(100);
+        setEnrichmentStatus('completed');
+        
+        toast.success('Word enrichment completed successfully!', {
+          description: `Enhanced with ${result.enhancedFields?.length || 0} new data points`
+        });
+
+        // Reset after a delay
+        setTimeout(() => {
+          setEnrichmentStatus('ready');
+          setEnrichmentProgress(0);
+        }, 3000);
+      } else {
+        throw new Error(result.error || 'Enrichment failed');
       }
+    } catch (error) {
+      console.error('Enrichment error:', error);
+      setEnrichmentStatus('error');
+      toast.error('Failed to enrich word', {
+        description: error instanceof Error ? error.message : 'Unknown error occurred'
+      });
+      
+      setTimeout(() => {
+        setEnrichmentStatus('ready');
+        setEnrichmentProgress(0);
+      }, 3000);
+    } finally {
+      setIsEnriching(false);
+    }
+  };
+
+  const getStatusBadge = () => {
+    switch (enrichmentStatus) {
+      case 'ready':
+        return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">Ready</Badge>;
+      case 'initializing':
+        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">Initializing</Badge>;
+      case 'processing':
+        return <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-200">Processing</Badge>;
+      case 'finalizing':
+        return <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200">Finalizing</Badge>;
+      case 'completed':
+        return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Completed</Badge>;
+      case 'error':
+        return <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">Error</Badge>;
+      default:
+        return <Badge variant="outline">Unknown</Badge>;
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
           <Brain className="h-5 w-5 text-primary" />
-          Advanced Enrichment Controls
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Calvarn AI Enrichment */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-purple-500" />
-              <h3 className="font-medium">Calvarn AI Enhancement</h3>
-              <Badge variant="secondary" className="text-xs">Premium</Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Use your external Calvarn LLM for highest quality enrichment
-            </p>
-            <Button 
-              onClick={handleCalvarnEnrichment}
-              disabled={isProcessing || loadingWords}
-              className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
-            >
-              {isProcessing ? (
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Brain className="h-4 w-4 mr-2" />
-              )}
-              {selectedWords.length === 0 ? 'Load & Enrich with Calvarn' : `Enrich ${Math.min(selectedWords.length, 5)} Words`}
-            </Button>
-          </div>
-
-          {/* Multi-Source Enrichment */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Database className="h-4 w-4 text-blue-500" />
-              <h3 className="font-medium">Multi-Source Enhancement</h3>
-              <Badge variant="outline" className="text-xs">Auto</Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Aggregate from Wiktionary, WordNet, Datamuse and more
-            </p>
-            <Button 
-              onClick={() => processQueue(10)}
-              disabled={isProcessing}
-              variant="outline"
-              className="w-full"
-            >
-              {isProcessing ? (
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Zap className="h-4 w-4 mr-2" />
-              )}
-              Process Queue (10 items)
-            </Button>
-          </div>
-
-          {/* Smart Selection */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Target className="h-4 w-4 text-green-500" />
-              <h3 className="font-medium">Smart Word Selection</h3>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Automatically identify words needing enrichment
-            </p>
-            <Button 
-              onClick={handleLoadWordsNeedingEnrichment}
-              disabled={loadingWords}
-              variant="outline"
-              className="w-full"
-            >
-              {loadingWords ? (
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Target className="h-4 w-4 mr-2" />
-              )}
-              Find Words to Enrich
-            </Button>
-          </div>
-
-          {/* Status Display */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-emerald-500" />
-              <h3 className="font-medium">Enrichment Status</h3>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              {selectedWords.length > 0 ? (
-                <>
-                  <AlertCircle className="h-4 w-4 text-orange-500" />
-                  <span>{selectedWords.length} words selected for enrichment</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span>Ready for enrichment</span>
-                </>
-              )}
-            </div>
-            {isProcessing && (
-              <div className="flex items-center gap-2 text-sm text-primary">
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                <span>Processing enrichment...</span>
-              </div>
-            )}
-          </div>
+          <span className="text-white font-medium">AI Enhancement</span>
         </div>
+        {getStatusBadge()}
+      </div>
 
-        {selectedWords.length > 0 && (
-          <div className="mt-4 p-3 bg-muted rounded-lg">
-            <p className="text-sm font-medium mb-2">Selected Words for Enrichment:</p>
-            <p className="text-xs text-muted-foreground">
-              {selectedWords.length} words queued. Click "Enrich with Calvarn" to process the first 5 words.
-            </p>
+      {isEnriching && (
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-white/70">Progress</span>
+            <span className="text-white">{enrichmentProgress}%</span>
           </div>
+          <Progress value={enrichmentProgress} className="h-2" />
+        </div>
+      )}
+
+      <div className="grid gap-2">
+        <Button
+          onClick={handleEnrichWord}
+          disabled={isEnriching}
+          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+        >
+          {isEnriching ? (
+            <>
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              Enriching...
+            </>
+          ) : enrichmentStatus === 'completed' ? (
+            <>
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Enriched
+            </>
+          ) : (
+            <>
+              <Zap className="h-4 w-4 mr-2" />
+              Enhance with AI
+            </>
+          )}
+        </Button>
+
+        {enrichmentStatus === 'ready' && (
+          <p className="text-xs text-white/60 text-center">
+            Use Calvarn AI to enhance this word with comprehensive linguistic analysis
+          </p>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
