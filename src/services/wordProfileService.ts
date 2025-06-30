@@ -1,7 +1,9 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { WordProfile, WebhookLog } from "@/types/wordProfile";
 import { RoleService } from "./roleService";
+import { PerformanceOptimizationService } from "./performanceOptimizationService";
+import { QualityAssuranceService } from "./qualityAssuranceService";
+import { PersonalizationService } from "./personalizationService";
 import { toast } from "sonner";
 
 // Helper function to safely parse JSON fields
@@ -28,74 +30,63 @@ const convertToWordProfile = (row: any): WordProfile => {
   };
 };
 
-// Helper function to convert database row to WebhookLog
-const convertToWebhookLog = (row: any): WebhookLog => {
-  return {
-    ...row,
-    status: row.status as 'pending' | 'processed' | 'failed',
-    payload: parseJsonField<any>(row.payload, {})
-  };
-};
-
 export class WordProfileService {
   static async getAllWordProfiles(): Promise<WordProfile[]> {
-    const { data, error } = await supabase
-      .from('word_profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
+    try {
+      // Try cache first
+      const cached = PerformanceOptimizationService.getCache<WordProfile[]>('all_word_profiles');
+      if (cached) return cached;
 
-    if (error) {
+      const { data, error } = await supabase
+        .from('word_profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const profiles = (data || []).map(convertToWordProfile);
+      
+      // Cache for 10 minutes
+      PerformanceOptimizationService.setCache('all_word_profiles', profiles, 10);
+      
+      return profiles;
+    } catch (error) {
       console.error('Error fetching word profiles:', error);
       throw error;
     }
-
-    return (data || []).map(convertToWordProfile);
   }
 
   static async getWordProfile(word: string): Promise<WordProfile | null> {
-    const { data, error } = await supabase
-      .from('word_profiles')
-      .select('*')
-      .eq('word', word)
-      .maybeSingle();
-
-    if (error) {
+    try {
+      // Use optimized search
+      const results = await PerformanceOptimizationService.getCachedSearchResults(word, 1);
+      return results.length > 0 ? convertToWordProfile(results[0]) : null;
+    } catch (error) {
       console.error('Error fetching word profile:', error);
       throw error;
     }
-
-    return data ? convertToWordProfile(data) : null;
   }
 
   static async getWordProfileById(id: string): Promise<WordProfile | null> {
-    const { data, error } = await supabase
-      .from('word_profiles')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-
-    if (error) {
+    try {
+      // Use optimized loading
+      const data = await PerformanceOptimizationService.optimizedWordProfileLoad(id);
+      return data ? convertToWordProfile(data) : null;
+    } catch (error) {
       console.error('Error fetching word profile:', error);
       throw error;
     }
-
-    return data ? convertToWordProfile(data) : null;
   }
 
   static async searchWords(query: string): Promise<WordProfile[]> {
-    const { data, error } = await supabase
-      .from('word_profiles')
-      .select('*')
-      .ilike('word', `%${query}%`)
-      .order('word', { ascending: true })
-      .limit(20);
-
-    if (error) {
+    try {
+      // Use cached search
+      const results = await PerformanceOptimizationService.getCachedSearchResults(query, 20);
+      return results.map(convertToWordProfile);
+    } catch (error) {
       console.error('Error searching words:', error);
       throw error;
     }
-
-    return (data || []).map(convertToWordProfile);
   }
 
   static async createWordProfile(profile: Partial<WordProfile>): Promise<WordProfile> {
@@ -105,25 +96,40 @@ export class WordProfileService {
       throw new Error('Insufficient permissions');
     }
 
-    const { data, error } = await supabase
-      .from('word_profiles')
-      .insert({
-        word: profile.word,
-        morpheme_breakdown: profile.morpheme_breakdown || {},
-        etymology: profile.etymology || {},
-        definitions: profile.definitions || {},
-        word_forms: profile.word_forms || {},
-        analysis: profile.analysis || {}
-      })
-      .select()
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('word_profiles')
+        .insert({
+          word: profile.word,
+          morpheme_breakdown: profile.morpheme_breakdown || {},
+          etymology: profile.etymology || {},
+          definitions: profile.definitions || {},
+          word_forms: profile.word_forms || {},
+          analysis: profile.analysis || {}
+        })
+        .select()
+        .single();
 
-    if (error) {
+      if (error) throw error;
+
+      const newProfile = convertToWordProfile(data);
+
+      // Clear relevant caches
+      PerformanceOptimizationService.clearCache('all_word_profiles');
+      PerformanceOptimizationService.clearCache(`search_.*`);
+
+      // Queue for quality assessment
+      PerformanceOptimizationService.addBackgroundTask(
+        'quality_assessment',
+        { wordId: newProfile.id },
+        2
+      );
+
+      return newProfile;
+    } catch (error) {
       console.error('Error creating word profile:', error);
       throw error;
     }
-
-    return convertToWordProfile(data);
   }
 
   static async updateWordProfile(id: string, updates: Partial<WordProfile>): Promise<WordProfile> {
@@ -133,25 +139,41 @@ export class WordProfileService {
       throw new Error('Insufficient permissions');
     }
 
-    const { data, error } = await supabase
-      .from('word_profiles')
-      .update({
-        morpheme_breakdown: updates.morpheme_breakdown,
-        etymology: updates.etymology,
-        definitions: updates.definitions,
-        word_forms: updates.word_forms,
-        analysis: updates.analysis
-      })
-      .eq('id', id)
-      .select()
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('word_profiles')
+        .update({
+          morpheme_breakdown: updates.morpheme_breakdown,
+          etymology: updates.etymology,
+          definitions: updates.definitions,
+          word_forms: updates.word_forms,
+          analysis: updates.analysis
+        })
+        .eq('id', id)
+        .select()
+        .single();
 
-    if (error) {
+      if (error) throw error;
+
+      const updatedProfile = convertToWordProfile(data);
+
+      // Clear relevant caches
+      PerformanceOptimizationService.clearCache(`word_profile_${id}`);
+      PerformanceOptimizationService.clearCache('all_word_profiles');
+      PerformanceOptimizationService.clearCache(`search_.*`);
+
+      // Queue for quality re-assessment
+      PerformanceOptimizationService.addBackgroundTask(
+        'quality_assessment',
+        { wordId: id },
+        2
+      );
+
+      return updatedProfile;
+    } catch (error) {
       console.error('Error updating word profile:', error);
       throw error;
     }
-
-    return convertToWordProfile(data);
   }
 
   static async deleteWordProfile(id: string): Promise<void> {
@@ -161,14 +183,65 @@ export class WordProfileService {
       throw new Error('Insufficient permissions');
     }
 
-    const { error } = await supabase
-      .from('word_profiles')
-      .delete()
-      .eq('id', id);
+    try {
+      const { error } = await supabase
+        .from('word_profiles')
+        .delete()
+        .eq('id', id);
 
-    if (error) {
+      if (error) throw error;
+
+      // Clear relevant caches
+      PerformanceOptimizationService.clearCache(`word_profile_${id}`);
+      PerformanceOptimizationService.clearCache('all_word_profiles');
+      PerformanceOptimizationService.clearCache(`search_.*`);
+    } catch (error) {
       console.error('Error deleting word profile:', error);
       throw error;
+    }
+  }
+
+  static async getPersonalizedWords(userId: string, limit: number = 10): Promise<WordProfile[]> {
+    try {
+      const cacheKey = `personalized_words_${userId}_${limit}`;
+      let cached = PerformanceOptimizationService.getCache<WordProfile[]>(cacheKey);
+      
+      if (!cached) {
+        const recommendations = await PersonalizationService.getPersonalizedRecommendations(userId, limit);
+        const wordIds = recommendations.map(r => r.wordId);
+        
+        const { data, error } = await supabase
+          .from('word_profiles')
+          .select('*')
+          .in('id', wordIds);
+
+        if (error) throw error;
+
+        cached = (data || []).map(convertToWordProfile);
+        PerformanceOptimizationService.setCache(cacheKey, cached, 30); // Cache for 30 minutes
+      }
+
+      return cached;
+    } catch (error) {
+      console.error('Error fetching personalized words:', error);
+      return [];
+    }
+  }
+
+  static async getQualityReport(wordId: string): Promise<any> {
+    try {
+      const cacheKey = `quality_report_${wordId}`;
+      let report = PerformanceOptimizationService.getCache(cacheKey);
+      
+      if (!report) {
+        report = await QualityAssuranceService.performQualityAssessment(wordId);
+        PerformanceOptimizationService.setCache(cacheKey, report, 60); // Cache for 1 hour
+      }
+
+      return report;
+    } catch (error) {
+      console.error('Error getting quality report:', error);
+      return null;
     }
   }
 
@@ -203,6 +276,10 @@ export class WordProfileService {
       throw error;
     }
 
-    return (data || []).map(convertToWebhookLog);
+    return (data || []).map(row => ({
+      ...row,
+      status: row.status as 'pending' | 'processed' | 'failed',
+      payload: parseJsonField<any>(row.payload, {})
+    }));
   }
 }

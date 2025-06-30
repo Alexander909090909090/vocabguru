@@ -17,65 +17,18 @@ import { EnhancedWordProfile } from "@/types/enhancedWordProfile";
 import { Breadcrumbs } from "@/components/Navigation/Breadcrumbs";
 import { NextSteps } from "@/components/Navigation/NextSteps";
 import { QuickActions } from "@/components/Navigation/QuickActions";
+import { WordProfileService } from "@/services/wordProfileService";
+import { EnhancedWordProfileService } from "@/services/enhancedWordProfileService";
+import { DataQualityIndicator } from "@/components/SmartDatabase/DataQualityIndicator";
+import { EnrichmentControls } from "@/components/SmartDatabase/EnrichmentControls";
 
 const WordDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [word, setWord] = useState<Word | null>(null);
+  const [wordProfile, setWordProfile] = useState<EnhancedWordProfile | null>(null);
   const { getWord } = useWords();
-
-  // Convert Word to EnhancedWordProfile
-  const convertToEnhancedProfile = (word: Word): EnhancedWordProfile => {
-    return {
-      id: word.id,
-      word: word.word,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      pronunciation: word.pronunciation,
-      partOfSpeech: word.partOfSpeech,
-      languageOrigin: word.languageOrigin,
-      description: word.description,
-      featured: word.featured,
-      morpheme_breakdown: word.morphemeBreakdown,
-      morphemeBreakdown: word.morphemeBreakdown,
-      etymology: {
-        historical_origins: word.etymology.origin,
-        language_of_origin: word.languageOrigin,
-        word_evolution: word.etymology.evolution,
-        cultural_regional_variations: word.etymology.culturalVariations,
-        origin: word.etymology.origin,
-        evolution: word.etymology.evolution,
-        culturalVariations: word.etymology.culturalVariations
-      },
-      definitions: {
-        primary: word.definitions.find(d => d.type === 'primary')?.text,
-        standard: word.definitions.filter(d => d.type === 'standard').map(d => d.text),
-        extended: word.definitions.filter(d => d.type === 'extended').map(d => d.text),
-        contextual: word.definitions.filter(d => d.type === 'contextual').map(d => d.text),
-        specialized: word.definitions.filter(d => d.type === 'specialized').map(d => d.text)
-      },
-      word_forms: {
-        noun_forms: word.forms.noun ? { singular: word.forms.noun } : undefined,
-        verb_tenses: word.forms.verb ? { present: word.forms.verb } : undefined,
-        adjective_forms: word.forms.adjective ? { positive: word.forms.adjective } : undefined,
-        adverb_form: word.forms.adverb,
-        other_inflections: []
-      },
-      analysis: {
-        parts_of_speech: word.partOfSpeech,
-        contextual_usage: word.usage.contextualUsage,
-        sentence_structure: word.usage.sentenceStructure,
-        common_collocations: word.usage.commonCollocations,
-        cultural_historical_significance: word.etymology.culturalVariations,
-        example: word.usage.exampleSentence
-      },
-      images: word.images,
-      synonymsAntonyms: word.synonymsAntonyms,
-      usage: word.usage,
-      forms: word.forms
-    };
-  };
 
   useEffect(() => {
     const loadWord = async () => {
@@ -84,13 +37,65 @@ const WordDetail = () => {
       setIsLoading(true);
       
       try {
-        const foundWord = getWord(id);
-        if (foundWord) {
-          const completeWord: Word = {
-            ...foundWord,
-            languageOrigin: foundWord.languageOrigin || 'Unknown'
+        // First try to get from database by word name or ID
+        let dbProfile = null;
+        
+        // Check if ID is a UUID (word profile ID) or word name
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+        
+        if (isUUID) {
+          dbProfile = await EnhancedWordProfileService.getEnhancedWordProfile(id);
+        } else {
+          // Try to find by word name in database
+          const searchResults = await EnhancedWordProfileService.searchEnhancedWordProfiles(id);
+          if (searchResults.length > 0) {
+            dbProfile = searchResults[0];
+          }
+        }
+
+        if (dbProfile) {
+          setWordProfile(dbProfile);
+          // Convert to legacy Word format for compatibility
+          const legacyWord: Word = {
+            id: dbProfile.id,
+            word: dbProfile.word,
+            pronunciation: dbProfile.pronunciation,
+            partOfSpeech: dbProfile.partOfSpeech || 'unknown',
+            languageOrigin: dbProfile.languageOrigin || 'Unknown',
+            description: dbProfile.description || '',
+            featured: dbProfile.featured || false,
+            morphemeBreakdown: dbProfile.morpheme_breakdown,
+            etymology: {
+              origin: dbProfile.etymology?.historical_origins || '',
+              evolution: dbProfile.etymology?.word_evolution || '',
+              culturalVariations: dbProfile.etymology?.cultural_regional_variations || ''
+            },
+            definitions: [
+              { type: 'primary', text: dbProfile.definitions?.primary || '' },
+              ...(dbProfile.definitions?.standard?.map(def => ({ type: 'standard' as const, text: def })) || [])
+            ],
+            synonymsAntonyms: dbProfile.synonymsAntonyms || { synonyms: [], antonyms: [] },
+            usage: dbProfile.usage || {
+              commonCollocations: [],
+              contextualUsage: '',
+              sentenceStructure: '',
+              exampleSentence: ''
+            },
+            forms: dbProfile.forms || {},
+            images: dbProfile.images || []
           };
-          setWord(completeWord);
+          setWord(legacyWord);
+        } else {
+          // Fallback to legacy word data
+          const foundWord = getWord(id);
+          if (foundWord) {
+            const completeWord: Word = {
+              ...foundWord,
+              languageOrigin: foundWord.languageOrigin || 'Unknown'
+            };
+            setWord(completeWord);
+            setWordProfile(EnhancedWordProfileService.convertLegacyWord(completeWord));
+          }
         }
       } catch (error) {
         console.error("Error loading word:", error);
@@ -177,6 +182,20 @@ const WordDetail = () => {
               isLoading={isLoading} 
             />
             
+            {/* Quality and Enrichment Controls */}
+            {wordProfile && (
+              <div className="mb-6 grid md:grid-cols-2 gap-4">
+                <div className="bg-white/10 backdrop-blur-md rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-3">Data Quality</h3>
+                  <DataQualityIndicator wordProfileId={wordProfile.id} showDetails={true} />
+                </div>
+                <div className="bg-white/10 backdrop-blur-md rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-3">AI Enhancement</h3>
+                  <EnrichmentControls wordProfileId={wordProfile.id} />
+                </div>
+              </div>
+            )}
+            
             <MorphemeBreakdown breakdown={word.morphemeBreakdown} />
             
             <div className="mt-8">
@@ -191,7 +210,7 @@ const WordDetail = () => {
                 </TabsList>
                 
                 <TabsContent value="details">
-                  <EnhancedWordContent wordProfile={convertToEnhancedProfile(word)} />
+                  {wordProfile && <EnhancedWordContent wordProfile={wordProfile} />}
                 </TabsContent>
                 
                 <TabsContent value="ai-assist">
@@ -201,14 +220,12 @@ const WordDetail = () => {
             </div>
             
             {word && (
-              <>
-                <div className="mt-8">
-                  <NextSteps 
-                    context="word-detail" 
-                    data={{ wordId: word.id }}
-                  />
-                </div>
-              </>
+              <div className="mt-8">
+                <NextSteps 
+                  context="word-detail" 
+                  data={{ wordId: word.id }}
+                />
+              </div>
             )}
           </>
         ) : null}

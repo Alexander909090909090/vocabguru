@@ -1,6 +1,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { UnifiedWord, WordTypeConverter } from "@/types/unifiedWord";
+import { Word } from "@/data/words";
+import { useWords } from "@/context/WordsContext";
 import { toast } from "sonner";
 
 // Unified Word Service - Single source of truth for all word operations
@@ -93,40 +95,7 @@ export class UnifiedWordService {
     }
   }
 
-  // Get words for study
-  static async getWordsForStudy(options?: { 
-    difficultyLevel?: string; 
-    partOfSpeech?: string; 
-    limit?: number; 
-  }): Promise<UnifiedWord[]> {
-    try {
-      let query = supabase
-        .from('word_profiles')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(options?.limit || 20);
-
-      if (options?.difficultyLevel) {
-        // Note: This would need to be implemented in the database schema
-        // For now, we'll return all words
-      }
-
-      if (options?.partOfSpeech) {
-        query = query.eq('analysis->>parts_of_speech', options.partOfSpeech);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      return (data || []).map(WordTypeConverter.toUnifiedWord);
-    } catch (error) {
-      console.error('Error getting words for study:', error);
-      return [];
-    }
-  }
-
-  // Create new word profile
+  // Create new word
   static async createWord(word: Partial<UnifiedWord>): Promise<UnifiedWord | null> {
     try {
       const { data, error } = await supabase
@@ -152,97 +121,69 @@ export class UnifiedWordService {
     }
   }
 
-  // Initialize database with sample words if empty
-  static async initializeDatabase(): Promise<void> {
+  // Update word
+  static async updateWord(id: string, updates: Partial<UnifiedWord>): Promise<UnifiedWord | null> {
     try {
-      // Check if database is empty
-      const { count, error: countError } = await supabase
+      const { data, error } = await supabase
         .from('word_profiles')
-        .select('*', { count: 'exact', head: true });
+        .update({
+          morpheme_breakdown: updates.morpheme_breakdown,
+          etymology: updates.etymology,
+          definitions: updates.definitions,
+          word_forms: updates.word_forms,
+          analysis: updates.analysis
+        })
+        .eq('id', id)
+        .select()
+        .single();
 
-      if (countError) throw countError;
+      if (error) throw error;
 
-      if (count === 0) {
-        console.log('Database is empty, initializing with sample words...');
-        await this.seedSampleWords();
-      }
+      return WordTypeConverter.toUnifiedWord(data);
     } catch (error) {
-      console.error('Error checking database status:', error);
+      console.error('Error updating word:', error);
+      toast.error('Failed to update word');
+      return null;
     }
   }
 
-  // Seed sample words
-  private static async seedSampleWords(): Promise<void> {
-    const sampleWords = [
-      {
-        word: 'metamorphosis',
-        morpheme_breakdown: {
-          prefix: { text: 'meta', meaning: 'change, beyond' },
-          root: { text: 'morph', meaning: 'form, shape' },
-          suffix: { text: 'osis', meaning: 'process, condition' }
-        },
-        etymology: {
-          language_of_origin: 'Greek',
-          historical_origins: 'From Greek metamorphōsis, from metamorphoun (to transform)'
-        },
-        definitions: {
-          primary: 'A change of the form or nature of a thing or person into a completely different one',
-          standard: [
-            'A transformation',
-            'A biological process of change in form'
-          ]
-        },
-        word_forms: {
-          base_form: 'metamorphosis',
-          verb_tenses: { present: 'metamorphose', past: 'metamorphosed' },
-          noun_forms: { singular: 'metamorphosis', plural: 'metamorphoses' }
-        },
-        analysis: {
-          parts_of_speech: 'noun',
-          synonyms: ['transformation', 'change', 'evolution'],
-          collocations: ['complete metamorphosis', 'undergo metamorphosis'],
-          example_sentence: 'The caterpillar undergoes metamorphosis to become a butterfly.'
-        }
-      },
-      {
-        word: 'serendipity',
-        morpheme_breakdown: {
-          root: { text: 'serendipity', meaning: 'pleasant surprise' }
-        },
-        etymology: {
-          language_of_origin: 'English',
-          historical_origins: 'Coined by Horace Walpole in 1754 from the Persian fairy tale "The Three Princes of Serendip"'
-        },
-        definitions: {
-          primary: 'The occurrence and development of events by chance in a happy or beneficial way',
-          standard: [
-            'A pleasant surprise',
-            'Fortunate accident'
-          ]
-        },
-        word_forms: {
-          base_form: 'serendipity',
-          adjective_forms: { positive: 'serendipitous' },
-          adverb_form: 'serendipitously'
-        },
-        analysis: {
-          parts_of_speech: 'noun',
-          synonyms: ['chance', 'fortune', 'luck'],
-          collocations: ['pure serendipity', 'moment of serendipity'],
-          example_sentence: 'Meeting my future business partner at that coffee shop was pure serendipity.'
-        }
-      }
-    ];
+  // Delete word
+  static async deleteWord(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('word_profiles')
+        .delete()
+        .eq('id', id);
 
-    for (const word of sampleWords) {
+      if (error) throw error;
+
+      return true;
+    } catch (error) {
+      console.error('Error deleting word:', error);
+      toast.error('Failed to delete word');
+      return false;
+    }
+  }
+
+  // Combined search (database + legacy)
+  static async searchAllWords(query: string, limit: number = 10): Promise<UnifiedWord[]> {
+    const results: UnifiedWord[] = [];
+    
+    // Search database words
+    const dbWords = await this.searchWords(query, { limit });
+    results.push(...dbWords);
+    
+    // If we need more results, search legacy words
+    if (results.length < limit) {
       try {
-        await this.createWord(word);
-        console.log(`Seeded word: ${word.word}`);
+        // This would need to be called from a component context
+        // For now, we'll skip legacy search in the service
+        console.log('Legacy word search not available in service context');
       } catch (error) {
-        console.error(`Failed to seed word ${word.word}:`, error);
+        console.error('Error searching legacy words:', error);
       }
     }
-
-    toast.success('Database initialized with sample words!');
+    
+    return results.slice(0, limit);
   }
 }
