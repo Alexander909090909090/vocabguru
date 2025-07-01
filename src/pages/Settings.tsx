@@ -1,10 +1,10 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Settings as SettingsIcon, Database, Shield, Bell, User } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DatabaseMonitor } from '@/components/DatabaseMonitor';
 import { SeedingControl } from '@/components/DatabaseSeeding/SeedingControl';
-import { WordEnrichmentControl } from '@/components/DatabaseSeeding/WordEnrichmentControl';
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -55,20 +55,13 @@ const SettingsPage: React.FC = () => {
           <div>
             <h2 className="text-2xl font-medium mb-4">Database Management</h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Monitor database status, populate the word repository, and enrich words with AI-powered analysis.
+              Monitor database status and populate the word repository for optimal Discovery page performance.
             </p>
           </div>
           
-          <div className="grid gap-6">
-            <div className="grid gap-6 lg:grid-cols-2">
-              <DatabaseMonitor />
-              <SeedingControl />
-            </div>
-            
-            {/* Full-width LLM Enrichment Control */}
-            <div className="w-full flex justify-center">
-              <WordEnrichmentControl />
-            </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <DatabaseMonitor />
+            <SeedingControl />
           </div>
         </TabsContent>
 

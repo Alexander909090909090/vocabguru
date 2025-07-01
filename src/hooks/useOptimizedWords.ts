@@ -1,7 +1,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { UnifiedWordService } from '@/services/unifiedWordService';
-import { UnifiedWord } from '@/types/unifiedWord';
+import { WordRepositoryEntry } from '@/services/wordRepositoryService';
+import { EnhancedWordProfile } from '@/types/enhancedWordProfile';
 
 interface UseOptimizedWordsOptions {
   autoLoad?: boolean;
@@ -10,7 +11,7 @@ interface UseOptimizedWordsOptions {
 }
 
 export function useOptimizedWords(options: UseOptimizedWordsOptions = {}) {
-  const [words, setWords] = useState<UnifiedWord[]>([]);
+  const [words, setWords] = useState<WordRepositoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,7 +22,7 @@ export function useOptimizedWords(options: UseOptimizedWordsOptions = {}) {
     setError(null);
 
     try {
-      let results: UnifiedWord[];
+      let results: WordRepositoryEntry[];
       
       if (searchQuery) {
         results = await UnifiedWordService.searchWords(searchQuery, { limit });
@@ -37,7 +38,7 @@ export function useOptimizedWords(options: UseOptimizedWordsOptions = {}) {
     }
   }, [limit]);
 
-  const getWordById = useCallback(async (id: string): Promise<UnifiedWord | null> => {
+  const getWordById = useCallback(async (id: string): Promise<EnhancedWordProfile | null> => {
     try {
       return await UnifiedWordService.getWordById(id);
     } catch (err) {

@@ -21,7 +21,6 @@ export interface WordProfile {
       meaning: string;
       origin?: string;
     };
-    phonetic?: string;
   };
   
   // Etymology details
@@ -65,7 +64,7 @@ export interface WordProfile {
     other_inflections?: string;
   };
   
-  // Analysis of the word - updated to include arrays for synonyms, antonyms, etc.
+  // Analysis of the word
   analysis: {
     parts_of_speech?: string;
     tenses_voice_mood?: string;
@@ -77,11 +76,6 @@ export interface WordProfile {
     common_collocations?: string;
     cultural_historical_significance?: string;
     example?: string;
-    // Additional array properties for enrichment
-    synonyms?: string[];
-    antonyms?: string[];
-    usage_examples?: string[];
-    collocations?: string[];
   };
 }
 

@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import WordCard from "@/components/WordCard";
 import Header from "@/components/Header";
@@ -30,37 +29,10 @@ const Index = () => {
   const [isSearching, setIsSearching] = useState(false);
   const navigate = useNavigate();
   
-  // Helper function to get word description safely
-  const getWordDescription = (word: any): string => {
-    if (typeof word.description === 'string') {
-      return word.description;
-    }
-    
-    if (word.definitions) {
-      if (Array.isArray(word.definitions)) {
-        const primaryDef = word.definitions.find((def: any) => def.type === 'primary');
-        if (primaryDef && typeof primaryDef.text === 'string') {
-          return primaryDef.text;
-        }
-        // Fallback to first definition
-        if (word.definitions.length > 0 && word.definitions[0].text) {
-          return word.definitions[0].text;
-        }
-      } else if (typeof word.definitions === 'object' && word.definitions.primary) {
-        return word.definitions.primary;
-      }
-    }
-    
-    return '';
-  };
-  
-  const filteredWords = words.filter(word => {
-    const wordText = word.word?.toLowerCase() || '';
-    const wordDesc = getWordDescription(word).toLowerCase();
-    const query = searchQuery.toLowerCase();
-    
-    return wordText.includes(query) || wordDesc.includes(query);
-  });
+  const filteredWords = words.filter(word => 
+    word.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    word.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
   
   const featuredWords = words.filter(word => word.featured);
 
@@ -149,10 +121,10 @@ const Index = () => {
       return filteredWords;
     }
     if (activeFilter === "prefix") {
-      return filteredWords.filter(word => word.morphemeBreakdown?.prefix);
+      return filteredWords.filter(word => word.morphemeBreakdown.prefix);
     }
     if (activeFilter === "suffix") {
-      return filteredWords.filter(word => word.morphemeBreakdown?.suffix);
+      return filteredWords.filter(word => word.morphemeBreakdown.suffix);
     }
     if (activeFilter === "dictionary") {
       const dictionaryIds = dictionaryWords.map(w => w.id);
@@ -385,7 +357,7 @@ const Index = () => {
               </Button>
               <Button 
                 className="gap-2"
-                variant="outline"
+                variant="quiz"
                 onClick={() => navigate("/quiz")}
               >
                 <Trophy className="h-4 w-4" />

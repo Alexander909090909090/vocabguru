@@ -1,287 +1,149 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { UnifiedWord, WordTypeConverter } from "@/types/unifiedWord";
-import { Word } from "@/data/words";
-import { toast } from "sonner";
+import { WordRepositoryEntry, WordRepositoryService } from './wordRepositoryService';
+import { EnhancedWordProfile } from '@/types/enhancedWordProfile';
+import { EnhancedWordProfileService } from './enhancedWordProfileService';
+import { WordProfile } from '@/types/wordProfile';
+import { WordProfileService } from './wordProfileService';
 
-// Unified Word Service - Single source of truth for all word operations
+// Unified service for all word operations - Phase 2/3/4 consolidation
 export class UnifiedWordService {
-  // Get all words with pagination
-  static async getWords(
-    page: number = 0,
-    limit: number = 20,
-    searchQuery?: string
-  ): Promise<{ words: UnifiedWord[]; hasMore: boolean }> {
-    try {
-      console.log(`Getting words: page=${page}, limit=${limit}, query=${searchQuery || 'none'}`);
-      
-      let query = supabase
-        .from('word_profiles')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .range(page * limit, (page + 1) * limit - 1);
+  private static cache = new Map<string, any>();
+  private static cacheTimeout = 5 * 60 * 1000; // 5 minutes
 
-      if (searchQuery) {
-        query = query.or(`word.ilike.%${searchQuery}%,definitions->>primary.ilike.%${searchQuery}%`);
+  // Phase 2: Enhanced search with caching
+  static async searchWords(query: string, options: {
+    includeDefinitions?: boolean;
+    includeMorphemes?: boolean;
+    limit?: number;
+  } = {}): Promise<WordRepositoryEntry[]> {
+    const cacheKey = `search_${query}_${JSON.stringify(options)}`;
+    
+    if (this.cache.has(cacheKey)) {
+      const cached = this.cache.get(cacheKey);
+      if (Date.now() - cached.timestamp < this.cacheTimeout) {
+        return cached.data;
       }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching words:', error);
-        throw error;
-      }
-
-      console.log(`Fetched ${data?.length || 0} words from database`);
-      const words = (data || []).map(WordTypeConverter.toUnifiedWord);
-
-      return {
-        words,
-        hasMore: words.length === limit
-      };
-    } catch (error) {
-      console.error('Error fetching words:', error);
-      return { words: [], hasMore: false };
     }
-  }
 
-  // Search words
-  static async searchWords(query: string, options?: { limit?: number }): Promise<UnifiedWord[]> {
     try {
-      console.log(`Searching words with query: "${query}"`);
+      const results = await WordRepositoryService.searchWords(query);
       
-      const { data, error } = await supabase
-        .from('word_profiles')
-        .select('*')
-        .or(`word.ilike.%${query}%,definitions->>primary.ilike.%${query}%`)
-        .order('created_at', { ascending: false })
-        .limit(options?.limit || 10);
+      // Cache results
+      this.cache.set(cacheKey, {
+        data: results,
+        timestamp: Date.now()
+      });
 
-      if (error) {
-        console.error('Search error:', error);
-        throw error;
-      }
-
-      console.log(`Search found ${data?.length || 0} results`);
-      return (data || []).map(WordTypeConverter.toUnifiedWord);
+      return results.slice(0, options.limit || 50);
     } catch (error) {
-      console.error('Error searching words:', error);
+      console.error('Search error:', error);
       return [];
     }
   }
 
-  // Get word by name
-  static async getWordByName(word: string): Promise<UnifiedWord | null> {
+  // Phase 2: Get word with performance optimization
+  static async getWordById(id: string): Promise<EnhancedWordProfile | null> {
+    const cacheKey = `word_${id}`;
+    
+    if (this.cache.has(cacheKey)) {
+      const cached = this.cache.get(cacheKey);
+      if (Date.now() - cached.timestamp < this.cacheTimeout) {
+        return cached.data;
+      }
+    }
+
     try {
-      console.log(`Getting word by name: "${word}"`);
+      const word = await EnhancedWordProfileService.getEnhancedWordProfile(id);
       
-      const { data, error } = await supabase
-        .from('word_profiles')
-        .select('*')
-        .eq('word', word.toLowerCase())
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error fetching word by name:', error);
-        throw error;
+      if (word) {
+        this.cache.set(cacheKey, {
+          data: word,
+          timestamp: Date.now()
+        });
       }
 
-      if (data) {
-        console.log(`Found word by name:`, data);
-        return WordTypeConverter.toUnifiedWord(data);
-      }
-      
-      console.log(`No word found with name: "${word}"`);
-      return null;
+      return word;
     } catch (error) {
       console.error('Error fetching word:', error);
       return null;
     }
   }
 
-  // Get word by ID
-  static async getWordById(id: string): Promise<UnifiedWord | null> {
-    try {
-      console.log(`Getting word by ID: ${id}`);
-      
-      const { data, error } = await supabase
-        .from('word_profiles')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error fetching word by ID:', error);
-        throw error;
-      }
-
-      if (data) {
-        console.log(`Found word by ID:`, data);
-        return WordTypeConverter.toUnifiedWord(data);
-      }
-      
-      console.log(`No word found with ID: ${id}`);
-      return null;
-    } catch (error) {
-      console.error('Error fetching word by ID:', error);
-      return null;
-    }
-  }
-
-  // Create new word
-  static async createWord(word: Partial<UnifiedWord>): Promise<UnifiedWord | null> {
-    try {
-      console.log(`Creating word:`, word);
-      
-      const { data, error } = await supabase
-        .from('word_profiles')
-        .insert({
-          word: word.word,
-          morpheme_breakdown: word.morpheme_breakdown || {},
-          etymology: word.etymology || {},
-          definitions: word.definitions || {},
-          word_forms: word.word_forms || {},
-          analysis: word.analysis || {}
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating word:', error);
-        throw error;
-      }
-
-      console.log(`Created word:`, data);
-      toast.success(`Word "${word.word}" created successfully`);
-      return WordTypeConverter.toUnifiedWord(data);
-    } catch (error) {
-      console.error('Error creating word:', error);
-      toast.error('Failed to create word');
-      return null;
-    }
-  }
-
-  // Update word
-  static async updateWord(id: string, updates: Partial<UnifiedWord>): Promise<UnifiedWord | null> {
-    try {
-      console.log(`Updating word ${id}:`, updates);
-      
-      const { data, error } = await supabase
-        .from('word_profiles')
-        .update({
-          morpheme_breakdown: updates.morpheme_breakdown,
-          etymology: updates.etymology,
-          definitions: updates.definitions,
-          word_forms: updates.word_forms,
-          analysis: updates.analysis
-        })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error updating word:', error);
-        throw error;
-      }
-
-      console.log(`Updated word:`, data);
-      toast.success('Word updated successfully');
-      return WordTypeConverter.toUnifiedWord(data);
-    } catch (error) {
-      console.error('Error updating word:', error);
-      toast.error('Failed to update word');
-      return null;
-    }
-  }
-
-  // Delete word
-  static async deleteWord(id: string): Promise<boolean> {
-    try {
-      console.log(`Deleting word: ${id}`);
-      
-      const { error } = await supabase
-        .from('word_profiles')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error deleting word:', error);
-        throw error;
-      }
-
-      console.log(`Deleted word: ${id}`);
-      toast.success('Word deleted successfully');
-      return true;
-    } catch (error) {
-      console.error('Error deleting word:', error);
-      toast.error('Failed to delete word');
-      return false;
-    }
-  }
-
-  // Get words for study with filtering criteria
+  // Phase 3: Study-optimized word fetching
   static async getWordsForStudy(criteria: {
     difficultyLevel?: string;
     partOfSpeech?: string;
     limit?: number;
-  } = {}): Promise<UnifiedWord[]> {
+    excludeIds?: string[];
+  } = {}): Promise<WordRepositoryEntry[]> {
     try {
-      console.log(`Getting words for study:`, criteria);
-      
-      const { limit = 20, difficultyLevel, partOfSpeech } = criteria;
-      
-      let query = supabase
-        .from('word_profiles')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(limit);
+      const { words } = await WordRepositoryService.getWordsWithPagination(
+        0,
+        criteria.limit || 20
+      );
 
-      // Add filters if provided
-      if (difficultyLevel) {
-        query = query.eq('analysis->>difficulty_level', difficultyLevel);
-      }
-      
-      if (partOfSpeech) {
-        query = query.eq('analysis->>parts_of_speech', partOfSpeech);
+      let filteredWords = words;
+
+      // Filter by difficulty if specified
+      if (criteria.difficultyLevel) {
+        filteredWords = filteredWords.filter(word => 
+          word.difficulty_level === criteria.difficultyLevel
+        );
       }
 
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching words for study:', error);
-        throw error;
+      // Filter by part of speech if specified
+      if (criteria.partOfSpeech) {
+        filteredWords = filteredWords.filter(word => 
+          word.analysis.parts_of_speech === criteria.partOfSpeech
+        );
       }
 
-      console.log(`Found ${data?.length || 0} words for study`);
-      return (data || []).map(WordTypeConverter.toUnifiedWord);
+      // Exclude specified IDs
+      if (criteria.excludeIds) {
+        filteredWords = filteredWords.filter(word => 
+          !criteria.excludeIds!.includes(word.id)
+        );
+      }
+
+      return filteredWords;
     } catch (error) {
-      console.error('Error fetching words for study:', error);
+      console.error('Error fetching study words:', error);
       return [];
     }
   }
 
-  // Combined search (database + legacy)
-  static async searchAllWords(query: string, limit: number = 10): Promise<UnifiedWord[]> {
-    console.log(`Performing combined search for: "${query}"`);
+  // Phase 3: Bulk operations for performance
+  static async getMultipleWords(ids: string[]): Promise<EnhancedWordProfile[]> {
+    const promises = ids.map(id => this.getWordById(id));
+    const results = await Promise.allSettled(promises);
     
-    const results: UnifiedWord[] = [];
-    
-    // Search database words
-    const dbWords = await this.searchWords(query, { limit });
-    results.push(...dbWords);
-    
-    // If we need more results, search legacy words
-    if (results.length < limit) {
-      try {
-        console.log('Database search incomplete, would search legacy words if available');
-        // This would need to be called from a component context
-        // For now, we'll skip legacy search in the service
-      } catch (error) {
-        console.error('Error searching legacy words:', error);
-      }
+    return results
+      .filter((result): result is PromiseFulfilledResult<EnhancedWordProfile> => 
+        result.status === 'fulfilled' && result.value !== null
+      )
+      .map(result => result.value);
+  }
+
+  // Phase 4: Cache management
+  static clearCache(): void {
+    this.cache.clear();
+  }
+
+  static getCacheStats(): { size: number; keys: string[] } {
+    return {
+      size: this.cache.size,
+      keys: Array.from(this.cache.keys())
+    };
+  }
+
+  // Phase 4: Health check
+  static async healthCheck(): Promise<boolean> {
+    try {
+      const { words } = await WordRepositoryService.getWordsWithPagination(0, 1);
+      return words.length >= 0;
+    } catch (error) {
+      console.error('Health check failed:', error);
+      return false;
     }
-    
-    console.log(`Combined search returned ${results.length} results`);
-    return results.slice(0, limit);
   }
 }
