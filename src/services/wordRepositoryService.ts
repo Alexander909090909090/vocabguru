@@ -115,12 +115,14 @@ const convertWordProfileToEntry = (profile: any): WordRepositoryEntry => {
       usage_examples: profile.analysis?.usage_examples || [],
       synonyms: profile.analysis?.synonyms || [],
       antonyms: profile.analysis?.antonyms || [],
+      // Fix: Map common_collocations to collocations
       collocations: Array.isArray(profile.analysis?.common_collocations) ?
         profile.analysis.common_collocations :
         (profile.analysis?.common_collocations ? 
-          profile.analysis.common_collocations.split(',').map((s: string) => s.trim()) : []),
+          profile.analysis.common_collocations.split(',').map((s: string) => s.trim()) : 
+          profile.analysis?.collocations || []),
       cultural_significance: profile.analysis?.cultural_significance || '',
-      example_sentence: profile.analysis?.example_sentence || ''
+      example_sentence: profile.analysis?.example_sentence || profile.analysis?.example || ''
     },
     source_apis: ['word_profiles'],
     frequency_score: 0,

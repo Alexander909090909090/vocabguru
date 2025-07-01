@@ -50,13 +50,22 @@ export class EnhancedWordProfileService {
       },
       analysis: {
         ...profile.analysis,
-        common_collocations: profile.analysis?.common_collocations ? 
-          profile.analysis.common_collocations.split(',').map(s => s.trim()) : []
+        // Fix: Handle both property names for compatibility
+        common_collocations: profile.analysis?.common_collocations || 
+          (profile.analysis?.collocations ? 
+            (Array.isArray(profile.analysis.collocations) ? 
+              profile.analysis.collocations : 
+              profile.analysis.collocations.split(',').map(s => s.trim())
+            ) : []
+          )
       },
       synonymsAntonyms,
       usage: {
         commonCollocations: profile.analysis?.common_collocations ? 
-          profile.analysis.common_collocations.split(',').map(s => s.trim()) : [],
+          (Array.isArray(profile.analysis.common_collocations) ? 
+            profile.analysis.common_collocations : 
+            profile.analysis.common_collocations.split(',').map(s => s.trim())
+          ) : [],
         contextualUsage: profile.analysis?.contextual_usage,
         sentenceStructure: profile.analysis?.sentence_structure,
         exampleSentence: profile.analysis?.example

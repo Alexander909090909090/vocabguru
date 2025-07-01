@@ -92,9 +92,10 @@ const DiscoveryPage: React.FC = () => {
           },
           analysis: {
             ...word.analysis,
+            // Fix: Use 'collocations' instead of 'common_collocations'
             common_collocations: Array.isArray(word.analysis?.collocations) ? 
               word.analysis.collocations.join(', ') : 
-              word.analysis?.collocations || ''
+              word.analysis?.collocations?.join(', ') || ''
           }
         })
       );
@@ -214,9 +215,10 @@ const DiscoveryPage: React.FC = () => {
           },
           analysis: {
             ...entry.analysis,
-            common_collocations: Array.isArray(entry.analysis?.common_collocations) ? 
-              entry.analysis.common_collocations.join(', ') : 
-              entry.analysis?.common_collocations || ''
+            // Fix: Use proper property mapping
+            common_collocations: Array.isArray(entry.analysis?.collocations) ? 
+              entry.analysis.collocations.join(', ') : 
+              entry.analysis?.collocations?.join(', ') || ''
           }
         };
         await WordProfileService.createWordProfile(basicProfile);
