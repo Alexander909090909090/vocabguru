@@ -21,6 +21,8 @@ import { WordProfileService } from "@/services/wordProfileService";
 import { EnhancedWordProfileService } from "@/services/enhancedWordProfileService";
 import { DataQualityIndicator } from "@/components/SmartDatabase/DataQualityIndicator";
 import { EnrichmentControls } from "@/components/SmartDatabase/EnrichmentControls";
+import { UnifiedWordService } from "@/services/unifiedWordService";
+import { toast } from "sonner";
 
 const WordDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,32 +30,48 @@ const WordDetail = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [word, setWord] = useState<Word | null>(null);
   const [wordProfile, setWordProfile] = useState<EnhancedWordProfile | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const { getWord } = useWords();
 
   useEffect(() => {
     const loadWord = async () => {
-      if (!id) return;
+      if (!id) {
+        setError("No word ID provided");
+        setIsLoading(false);
+        return;
+      }
       
+      console.log(`Loading word with ID: ${id}`);
       setIsLoading(true);
+      setError(null);
       
       try {
-        // First try to get from database by word name or ID
         let dbProfile = null;
+        let foundWord = null;
         
         // Check if ID is a UUID (word profile ID) or word name
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
         
         if (isUUID) {
-          dbProfile = await EnhancedWordProfileService.getEnhancedWordProfile(id);
+          console.log(`Searching by UUID: ${id}`);
+          // Try to get by UUID from unified service
+          const unifiedWord = await UnifiedWordService.getWordById(id);
+          if (unifiedWord) {
+            console.log(`Found unified word by ID:`, unifiedWord);
+            dbProfile = await EnhancedWordProfileService.getEnhancedWordProfile(id);
+          }
         } else {
-          // Try to find by word name in database
-          const searchResults = await EnhancedWordProfileService.searchEnhancedWordProfiles(id);
-          if (searchResults.length > 0) {
-            dbProfile = searchResults[0];
+          console.log(`Searching by word name: ${id}`);
+          // Try to find by word name in database first
+          const unifiedWord = await UnifiedWordService.getWordByName(id);
+          if (unifiedWord) {
+            console.log(`Found unified word by name:`, unifiedWord);
+            dbProfile = await EnhancedWordProfileService.getEnhancedWordProfile(unifiedWord.id);
           }
         }
 
         if (dbProfile) {
+          console.log(`Setting word profile:`, dbProfile);
           setWordProfile(dbProfile);
           // Convert to legacy Word format for compatibility
           const legacyWord: Word = {
@@ -85,20 +103,28 @@ const WordDetail = () => {
             images: dbProfile.images || []
           };
           setWord(legacyWord);
+          console.log(`Set legacy word:`, legacyWord);
         } else {
+          console.log(`No database profile found, trying legacy data`);
           // Fallback to legacy word data
           const foundWord = getWord(id);
           if (foundWord) {
+            console.log(`Found legacy word:`, foundWord);
             const completeWord: Word = {
               ...foundWord,
               languageOrigin: foundWord.languageOrigin || 'Unknown'
             };
             setWord(completeWord);
             setWordProfile(EnhancedWordProfileService.convertLegacyWord(completeWord));
+          } else {
+            console.log(`No word found with ID: ${id}`);
+            setError(`Word not found: ${id}`);
           }
         }
       } catch (error) {
         console.error("Error loading word:", error);
+        setError(`Failed to load word: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        toast.error("Failed to load word data");
       } finally {
         setTimeout(() => {
           setIsLoading(false);
@@ -114,6 +140,24 @@ const WordDetail = () => {
       navigate(`/deep-analysis/${encodeURIComponent(word.word)}`);
     }
   };
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <Header />
+        <main className="page-container pt-24 page-transition">
+          <div className="text-center text-white">
+            <h1 className="text-2xl font-bold mb-4">Error Loading Word</h1>
+            <p className="text-white/70 mb-4">{error}</p>
+            <Button onClick={() => navigate("/")} variant="outline">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Words
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   if (!isLoading && !word) {
     return <WordNotFound />;

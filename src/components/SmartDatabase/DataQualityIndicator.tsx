@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -31,9 +30,29 @@ export function DataQualityIndicator({ wordProfileId, showDetails = false }: Dat
       try {
         setLoading(true);
         const report = await QualityAssuranceService.performQualityAssessment(wordProfileId);
-        setQualityReport(report);
+        
+        // Ensure the report matches our interface
+        const formattedReport: QualityReport = {
+          overallScore: report.overallScore || 0,
+          completenessScore: report.completenessScore || 0,
+          accuracyScore: report.accuracyScore || 0,
+          missingFields: report.missingFields || [],
+          suggestions: report.suggestions || [],
+          status: report.status || 'poor'
+        };
+        
+        setQualityReport(formattedReport);
       } catch (error) {
         console.error('Error loading quality report:', error);
+        // Set a default report on error
+        setQualityReport({
+          overallScore: 0,
+          completenessScore: 0,
+          accuracyScore: 0,
+          missingFields: [],
+          suggestions: ['Unable to assess quality'],
+          status: 'poor'
+        });
       } finally {
         setLoading(false);
       }

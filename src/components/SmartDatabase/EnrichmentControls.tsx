@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,8 +32,8 @@ export function EnrichmentControls({ wordProfileId }: EnrichmentControlsProps) {
       setEnrichmentStatus('processing');
       setEnrichmentProgress(30);
 
-      // Simulate enrichment process with progress updates
-      const result = await ComprehensiveEnrichmentService.enrichWordProfile(wordProfileId);
+      // Use the correct method name from ComprehensiveEnrichmentService
+      const result = await ComprehensiveEnrichmentService.enrichWordComprehensively(wordProfileId);
 
       setEnrichmentProgress(70);
       setEnrichmentStatus('finalizing');
@@ -44,7 +43,7 @@ export function EnrichmentControls({ wordProfileId }: EnrichmentControlsProps) {
         setEnrichmentStatus('completed');
         
         toast.success('Word enrichment completed successfully!', {
-          description: `Enhanced with ${result.enhancedFields?.length || 0} new data points`
+          description: `Quality improved from ${result.qualityScoreBefore}% to ${result.qualityScoreAfter}%`
         });
 
         // Reset after a delay
