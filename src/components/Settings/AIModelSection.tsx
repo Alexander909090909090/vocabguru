@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -261,14 +260,10 @@ export function AIModelSection({ apiStatus, onStatusUpdate }: AIModelSectionProp
                     </div>
                     
                     <SecureInput
-                      type="password"
+                      type="apikey"
                       value={apiKeys[model.key] || ''}
                       onChange={(value, validation) => handleAPIKeyChange(model.key, value, validation)}
                       placeholder={`Enter your ${model.name} API key`}
-                      validation={{
-                        required: true,
-                        minLength: 10,
-                      }}
                     />
                   </>
                 )}

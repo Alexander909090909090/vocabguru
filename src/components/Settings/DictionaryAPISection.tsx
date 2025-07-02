@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -257,14 +256,10 @@ export function DictionaryAPISection({ apiStatus, onStatusUpdate }: DictionaryAP
                   </div>
                   
                   <SecureInput
-                    type="password"
+                    type="apikey"
                     value={apiKeys[api.key] || ''}
                     onChange={(value, validation) => handleAPIKeyChange(api.key, value, validation)}
                     placeholder={`Enter your ${api.name} API key`}
-                    validation={{
-                      required: true,
-                      minLength: 10,
-                    }}
                   />
 
                   <div className="flex gap-2">

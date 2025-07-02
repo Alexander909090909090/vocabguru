@@ -106,6 +106,32 @@ export class InputValidationService {
     };
   }
 
+  // Validate API keys
+  static validateAPIKey(apiKey: string): ValidationResult {
+    const errors: string[] = [];
+
+    if (!apiKey || apiKey.trim().length === 0) {
+      errors.push('API key is required');
+    } else {
+      // Basic API key validation - most API keys are at least 10 characters
+      if (apiKey.length < 10) {
+        errors.push('API key must be at least 10 characters long');
+      }
+      // Check for suspicious patterns that might indicate it's not a real API key
+      if (apiKey.toLowerCase().includes('your-api-key') || 
+          apiKey.toLowerCase().includes('paste-here') ||
+          apiKey === 'sk-' || apiKey === 'hf_') {
+        errors.push('Please enter a valid API key');
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      sanitizedValue: apiKey.trim()
+    };
+  }
+
   // Validate search queries
   static validateSearchQuery(query: string): ValidationResult {
     return this.validateText(query, {

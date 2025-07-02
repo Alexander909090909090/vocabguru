@@ -18,7 +18,7 @@ interface SecureInputProps {
   };
   placeholder?: string;
   className?: string;
-  type?: 'text' | 'email' | 'password' | 'search' | 'textarea';
+  type?: 'text' | 'email' | 'password' | 'search' | 'textarea' | 'apikey';
   disabled?: boolean;
 }
 
@@ -49,6 +49,9 @@ export function SecureInput({
       case 'search':
         result = InputValidationService.validateSearchQuery(newValue);
         break;
+      case 'apikey':
+        result = InputValidationService.validateAPIKey(newValue);
+        break;
       default:
         result = InputValidationService.validateText(newValue, validation);
     }
@@ -67,12 +70,16 @@ export function SecureInput({
     maxLength: validation.maxLength
   };
 
+  // Use password type for both password and apikey to hide the content
+  const inputType = (type === 'password' || type === 'apikey') ? 'password' : 
+                   (type === 'search' ? 'text' : type);
+
   return (
     <div className="space-y-2">
       {type === 'textarea' ? (
         <Textarea {...inputProps} />
       ) : (
-        <Input {...inputProps} type={type === 'search' ? 'text' : type} />
+        <Input {...inputProps} type={inputType} />
       )}
       
       {!validationResult.isValid && validationResult.errors.length > 0 && (
