@@ -6,29 +6,39 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
-  Brain, 
   Zap, 
+  Brain, 
+  Target, 
+  TrendingUp, 
   Clock, 
   CheckCircle, 
   AlertCircle, 
-  Loader2, 
+  Play, 
+  Pause,
   BarChart3,
   Settings,
-  Play,
-  Pause,
-  RefreshCw
+  Loader2
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface EnrichmentStats {
   totalWords: number;
   enrichedWords: number;
   pendingWords: number;
-  lowQualityWords: number;
   averageQuality: number;
   completionRate: number;
+}
+
+interface EnrichmentProgress {
+  isRunning: boolean;
+  processed: number;
+  total: number;
+  currentWord?: string;
+  estimatedTime?: number;
 }
 
 export function EnrichmentSection() {
@@ -36,203 +46,144 @@ export function EnrichmentSection() {
     totalWords: 0,
     enrichedWords: 0,
     pendingWords: 0,
-    lowQualityWords: 0,
     averageQuality: 0,
     completionRate: 0
   });
-  const [isEnriching, setIsEnriching] = useState(false);
-  const [enrichmentProgress, setEnrichmentProgress] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [progress, setProgress] = useState<EnrichmentProgress>({
+    isRunning: false,
+    processed: 0,
+    total: 0
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [batchSize, setBatchSize] = useState(10);
+  const [qualityThreshold, setQualityThreshold] = useState(70);
 
   useEffect(() => {
     loadEnrichmentStats();
+    const interval = setInterval(loadEnrichmentStats, 30000); // Refresh every 30 seconds
+    return () => clearInterval(interval);
   }, []);
 
   const loadEnrichmentStats = async () => {
-    setIsLoading(true);
     try {
-      // Get word profile statistics
-      const { data: wordProfiles, error: profileError } = await supabase
+      const { data: wordProfiles, error } = await supabase
         .from('word_profiles')
         .select('quality_score, completeness_score, enrichment_status');
 
-      if (profileError) {
-        console.error('Error loading word profiles:', profileError);
-        return;
-      }
+      if (error) throw error;
 
       const totalWords = wordProfiles?.length || 0;
-      const enrichedWords = wordProfiles?.filter(wp => wp.enrichment_status === 'completed').length || 0;
-      const pendingWords = wordProfiles?.filter(wp => wp.enrichment_status === 'pending' || wp.enrichment_status === 'in_progress').length || 0;
-      const lowQualityWords = wordProfiles?.filter(wp => (wp.quality_score || 0) < 70).length || 0;
+      const enrichedWords = wordProfiles?.filter(w => 
+        w.quality_score && w.quality_score >= qualityThreshold
+      ).length || 0;
+      const pendingWords = wordProfiles?.filter(w => 
+        !w.quality_score || w.quality_score < qualityThreshold
+      ).length || 0;
       
-      const qualityScores = wordProfiles?.map(wp => wp.quality_score || 0).filter(score => score > 0) || [];
-      const averageQuality = qualityScores.length > 0 
-        ? qualityScores.reduce((sum, score) => sum + score, 0) / qualityScores.length 
+      const averageQuality = totalWords > 0 
+        ? wordProfiles.reduce((sum, w) => sum + (w.quality_score || 0), 0) / totalWords
         : 0;
-      
-      const completionRate = totalWords > 0 ? (enrichedWords / totalWords) * 100 : 0;
 
       setStats({
         totalWords,
         enrichedWords,
         pendingWords,
-        lowQualityWords,
-        averageQuality,
-        completionRate
+        averageQuality: Math.round(averageQuality),
+        completionRate: totalWords > 0 ? (enrichedWords / totalWords) * 100 : 0
       });
     } catch (error) {
       console.error('Error loading enrichment stats:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load enrichment statistics",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const startBatchEnrichment = async () => {
-    setIsEnriching(true);
-    setEnrichmentProgress(0);
-
     try {
+      setIsLoading(true);
+      setProgress({ isRunning: true, processed: 0, total: batchSize });
+
       const { data, error } = await supabase.functions.invoke('start-batch-enrichment', {
-        body: { 
-          batchSize: 10,
-          qualityThreshold: 70 
-        }
+        body: { batchSize, qualityThreshold }
       });
 
-      if (error) {
-        toast({
-          title: "Enrichment Failed",
-          description: `Failed to start batch enrichment: ${error.message}`,
-          variant: "destructive",
-        });
-        return;
-      }
+      if (error) throw error;
 
-      toast({
-        title: "Enrichment Started",
-        description: "Batch enrichment process has been started successfully.",
-      });
-
-      // Simulate progress updates
-      const progressInterval = setInterval(() => {
-        setEnrichmentProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(progressInterval);
-            setIsEnriching(false);
-            loadEnrichmentStats();
-            return 100;
-          }
-          return prev + 10;
-        });
-      }, 2000);
-
+      toast.success(data.message || 'Batch enrichment started successfully');
+      await loadEnrichmentStats();
     } catch (error) {
-      toast({
-        title: "Enrichment Error",
-        description: "Error starting batch enrichment process.",
-        variant: "destructive",
-      });
+      console.error('Error starting batch enrichment:', error);
+      toast.error('Failed to start batch enrichment');
+    } finally {
+      setIsLoading(false);
+      setProgress(prev => ({ ...prev, isRunning: false }));
     }
   };
 
   const analyzeWordQuality = async () => {
     try {
+      setIsLoading(true);
+
       const { data, error } = await supabase.functions.invoke('analyze-word-quality');
 
-      if (error) {
-        toast({
-          title: "Analysis Failed",
-          description: `Failed to analyze word quality: ${error.message}`,
-          variant: "destructive",
-        });
-        return;
-      }
+      if (error) throw error;
 
-      toast({
-        title: "Quality Analysis Complete",
-        description: "Word quality analysis has been completed successfully.",
-      });
-
-      loadEnrichmentStats();
+      toast.success(data.message || 'Word quality analysis completed');
+      await loadEnrichmentStats();
     } catch (error) {
-      toast({
-        title: "Analysis Error",
-        description: "Error analyzing word quality.",
-        variant: "destructive",
-      });
+      console.error('Error analyzing word quality:', error);
+      toast.error('Failed to analyze word quality');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2">Loading enrichment data...</span>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-2">Word Repository Enrichment</h3>
-        <p className="text-sm text-muted-foreground">
-          Enhance your word repository with AI-powered analysis, morphological breakdowns, and comprehensive linguistic data.
-        </p>
-      </div>
-
-      {/* Statistics Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Overview Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Words</p>
-                <p className="text-2xl font-bold">{stats.totalWords.toLocaleString()}</p>
+                <p className="text-2xl font-bold">{stats.totalWords}</p>
+                <p className="text-sm text-muted-foreground">Total Words</p>
               </div>
-              <Brain className="h-8 w-8 text-blue-500" />
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-500" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Enriched</p>
-                <p className="text-2xl font-bold text-green-600">{stats.enrichedWords.toLocaleString()}</p>
+                <p className="text-2xl font-bold">{stats.enrichedWords}</p>
+                <p className="text-sm text-muted-foreground">Enriched</p>
               </div>
-              <CheckCircle className="h-8 w-8 text-green-500" />
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-orange-500" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Pending</p>
-                <p className="text-2xl font-bold text-yellow-600">{stats.pendingWords.toLocaleString()}</p>
+                <p className="text-2xl font-bold">{stats.pendingWords}</p>
+                <p className="text-sm text-muted-foreground">Pending</p>
               </div>
-              <Clock className="h-8 w-8 text-yellow-500" />
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-blue-500" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Low Quality</p>
-                <p className="text-2xl font-bold text-red-600">{stats.lowQualityWords.toLocaleString()}</p>
+                <p className="text-2xl font-bold">{stats.averageQuality}%</p>
+                <p className="text-sm text-muted-foreground">Avg Quality</p>
               </div>
-              <AlertCircle className="h-8 w-8 text-red-500" />
             </div>
           </CardContent>
         </Card>
@@ -243,36 +194,41 @@ export function EnrichmentSection() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
-            Enrichment Progress
+            enrichment Progress
           </CardTitle>
           <CardDescription>
-            Overall progress of word repository enrichment
+            Overall completion status of word enrichment
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <div className="flex justify-between text-sm mb-2">
-              <span>Completion Rate</span>
-              <span>{stats.completionRate.toFixed(1)}%</span>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span>Completion Rate</span>
+                <span>{Math.round(stats.completionRate)}%</span>
+              </div>
+              <Progress value={stats.completionRate} className="h-2" />
             </div>
-            <Progress value={stats.completionRate} className="h-2" />
-          </div>
-          
-          <div>
-            <div className="flex justify-between text-sm mb-2">
-              <span>Average Quality Score</span>
-              <span>{stats.averageQuality.toFixed(1)}/100</span>
-            </div>
-            <Progress value={stats.averageQuality} className="h-2" />
+            
+            {progress.isRunning && (
+              <div>
+                <div className="flex justify-between text-sm mb-2">
+                  <span>Current Batch</span>
+                  <span>{progress.processed}/{progress.total}</span>
+                </div>
+                <Progress value={(progress.processed / progress.total) * 100} className="h-2" />
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
+      {/* Main Controls */}
       <Tabs defaultValue="batch" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="batch">Batch Processing</TabsTrigger>
           <TabsTrigger value="quality">Quality Analysis</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="config">Configuration</TabsTrigger>
         </TabsList>
 
         <TabsContent value="batch" className="space-y-4">
@@ -283,54 +239,66 @@ export function EnrichmentSection() {
                 Batch Enrichment
               </CardTitle>
               <CardDescription>
-                Process multiple words simultaneously for faster enrichment
+                Process multiple words simultaneously for comprehensive linguistic analysis
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {isEnriching && (
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Enrichment Progress</span>
-                    <span>{enrichmentProgress}%</span>
-                  </div>
-                  <Progress value={enrichmentProgress} className="h-2" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="batchSize">Batch Size</Label>
+                  <Input
+                    id="batchSize"
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={batchSize}
+                    onChange={(e) => setBatchSize(Number(e.target.value))}
+                    placeholder="Number of words to process"
+                  />
                 </div>
-              )}
-
-              <div className="flex gap-2">
-                <Button
-                  onClick={startBatchEnrichment}
-                  disabled={isEnriching || stats.pendingWords === 0}
-                  size="sm"
-                >
-                  {isEnriching ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Play className="h-4 w-4 mr-2" />
-                      Start Batch Enrichment
-                    </>
-                  )}
-                </Button>
-
-                <Button
-                  onClick={loadEnrichmentStats}
-                  variant="outline"
-                  size="sm"
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh Stats
-                </Button>
+                <div>
+                  <Label htmlFor="qualityThreshold">Quality Threshold (%)</Label>
+                  <Input
+                    id="qualityThreshold"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={qualityThreshold}
+                    onChange={(e) => setQualityThreshold(Number(e.target.value))}
+                    placeholder="Minimum quality score"
+                  />
+                </div>
               </div>
 
-              {stats.pendingWords === 0 && (
+              <Button
+                onClick={startBatchEnrichment}
+                disabled={isLoading || progress.isRunning}
+                className="w-full"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : progress.isRunning ? (
+                  <>
+                    <Pause className="mr-2 h-4 w-4" />
+                    Processing Batch...
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-4 w-4" />
+                    Start Batch Enrichment
+                  </>
+                )}
+              </Button>
+
+              {stats.pendingWords > 0 && (
                 <Alert>
-                  <CheckCircle className="h-4 w-4" />
+                  <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    All words in the repository have been processed. Add more words to continue enrichment.
+                    {stats.pendingWords} words are pending enrichment. 
+                    Running batch enrichment will improve their linguistic analysis.
                   </AlertDescription>
                 </Alert>
               )}
@@ -342,80 +310,103 @@ export function EnrichmentSection() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
+                <Brain className="h-5 w-5" />
                 Quality Analysis
               </CardTitle>
               <CardDescription>
-                Analyze and improve the quality of word definitions and analysis
+                Analyze and score the quality of word profiles based on linguistic completeness
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-secondary/20 rounded-lg">
-                  <h4 className="font-medium mb-2">Quality Distribution</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>High Quality (80-100)</span>
-                      <Badge variant="default" className="bg-green-500">
-                        {Math.round((stats.enrichedWords / stats.totalWords) * 100)}%
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Medium Quality (60-79)</span>
-                      <Badge variant="outline">
-                        {Math.round(((stats.totalWords - stats.enrichedWords - stats.lowQualityWords) / stats.totalWords) * 100)}%
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Low Quality (0-59)</span>
-                      <Badge variant="destructive">
-                        {Math.round((stats.lowQualityWords / stats.totalWords) * 100)}%
-                      </Badge>
-                    </div>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <h4 className="font-medium">Analysis Criteria</h4>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Morphological breakdown completeness</li>
+                    <li>• Etymology depth and accuracy</li>
+                    <li>• Definition richness and variety</li>
+                    <li>• Usage examples and collocations</li>
+                    <li>• Phonetic and semantic analysis</li>
+                  </ul>
                 </div>
-
-                <div className="p-4 bg-secondary/20 rounded-lg">
-                  <h4 className="font-medium mb-2">Improvement Suggestions</h4>
-                  <div className="space-y-2 text-sm">
-                    <p>• Focus on morphological analysis</p>
-                    <p>• Add more usage examples</p>
-                    <p>• Enhance etymology data</p>
-                    <p>• Improve definition clarity</p>
-                  </div>
+                <div className="space-y-2">
+                  <h4 className="font-medium">Quality Metrics</h4>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Completeness Score (0-100%)</li>
+                    <li>• Accuracy Rating</li>
+                    <li>• Source Reliability</li>
+                    <li>• Linguistic Depth</li>
+                    <li>• Usage Authenticity</li>
+                  </ul>
                 </div>
               </div>
 
               <Button
                 onClick={analyzeWordQuality}
+                disabled={isLoading}
+                className="w-full"
                 variant="outline"
-                size="sm"
               >
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Run Quality Analysis
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Brain className="mr-2 h-4 w-4" />
+                    Analyze Word Quality
+                  </>
+                )}
               </Button>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="settings" className="space-y-4">
+        <TabsContent value="config" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5" />
-                Enrichment Settings
+                Enrichment Configuration
               </CardTitle>
               <CardDescription>
-                Configure enrichment parameters and preferences
+                Configure deep linguistic analysis parameters
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <Alert>
-                <Settings className="h-4 w-4" />
+                <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  Enrichment settings will be available in a future update. Currently using default parameters for optimal performance.
+                  <strong>Deep Linguistic Analysis Features:</strong>
+                  <br />• Morphological decomposition with etymological origins
+                  <br />• Phonological analysis with IPA transcription
+                  <br />• Semantic field mapping and conceptual domains
+                  <br />• Historical etymology with borrowing paths
+                  <br />• Syntactic behavior and collocation patterns
+                  <br />• Register analysis (formal, informal, technical, archaic)
                 </AlertDescription>
               </Alert>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <h4 className="font-medium mb-2">Morphological Analysis</h4>
+                    <Badge variant="outline">Prefix Detection</Badge>
+                    <Badge variant="outline" className="ml-2">Root Analysis</Badge>
+                    <Badge variant="outline" className="ml-2">Suffix Mapping</Badge>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-4">
+                    <h4 className="font-medium mb-2">Semantic Enhancement</h4>
+                    <Badge variant="outline">Synonyms/Antonyms</Badge>
+                    <Badge variant="outline" className="ml-2">Collocations</Badge>
+                    <Badge variant="outline" className="ml-2">Usage Patterns</Badge>
+                  </CardContent>
+                </Card>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

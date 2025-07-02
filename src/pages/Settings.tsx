@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Settings as SettingsIcon, Database, Shield, Bell, User, Plug } from 'lucide-react';
@@ -144,7 +143,7 @@ const SettingsPage: React.FC = () => {
           <div>
             <h2 className="text-2xl font-medium mb-4">Notification Preferences</h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Control how and when you receive notifications from VocabGuru.
+              Configure how and when you receive notifications about your learning progress.
             </p>
             <div className="bg-secondary/20 p-6 rounded-lg">
               <p className="text-center text-muted-foreground">
@@ -158,7 +157,7 @@ const SettingsPage: React.FC = () => {
           <div>
             <h2 className="text-2xl font-medium mb-4">Privacy & Security</h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Manage your data privacy and security preferences.
+              Manage your data privacy settings and security preferences.
             </p>
             <div className="bg-secondary/20 p-6 rounded-lg">
               <p className="text-center text-muted-foreground">
