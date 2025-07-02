@@ -34,6 +34,7 @@ export function useUnifiedWords() {
         languageOrigin: dbWord.etymology.language_of_origin || 'Unknown',
         description: dbWord.definitions.primary || 'No description available',
         featured: false,
+        images: [], // Add empty images array to satisfy Word interface
         morphemeBreakdown: {
           prefix: dbWord.morpheme_breakdown.prefix,
           root: dbWord.morpheme_breakdown.root,
@@ -151,6 +152,7 @@ export function useUnifiedWords() {
         languageOrigin: wordData.languageOrigin || 'Unknown',
         description: wordData.description || '',
         featured: false,
+        images: [], // Add empty images array
         morphemeBreakdown: wordData.morphemeBreakdown || { root: { text: wordData.word || '', meaning: '' } },
         etymology: wordData.etymology || { origin: '', evolution: '', culturalVariations: '' },
         definitions: wordData.definitions || [{ type: 'primary', text: wordData.description || '' }],
