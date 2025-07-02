@@ -1,10 +1,13 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Settings as SettingsIcon, Database, Shield, Bell, User } from 'lucide-react';
+import { Settings as SettingsIcon, Database, Shield, Bell, User, Plug } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DatabaseMonitor } from '@/components/DatabaseMonitor';
 import { SeedingControl } from '@/components/DatabaseSeeding/SeedingControl';
+import { APIIntegrationsTab } from '@/components/Settings/APIIntegrationsTab';
+import { RoleService } from '@/services/roleService';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -13,6 +16,25 @@ const pageVariants = {
 };
 
 const SettingsPage: React.FC = () => {
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [isCheckingRole, setIsCheckingRole] = useState(true);
+
+  useEffect(() => {
+    const checkAdminRole = async () => {
+      try {
+        const hasAdminRole = await RoleService.hasRole('admin');
+        setIsAdmin(hasAdminRole);
+      } catch (error) {
+        console.error('Error checking admin role:', error);
+        setIsAdmin(false);
+      } finally {
+        setIsCheckingRole(false);
+      }
+    };
+
+    checkAdminRole();
+  }, []);
+
   return (
     <motion.div
       initial="initial"
@@ -32,10 +54,14 @@ const SettingsPage: React.FC = () => {
       </p>
 
       <Tabs defaultValue="database" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="database" className="flex items-center gap-2">
             <Database className="h-4 w-4" />
             Database
+          </TabsTrigger>
+          <TabsTrigger value="integrations" className="flex items-center gap-2">
+            <Plug className="h-4 w-4" />
+            API Integrations
           </TabsTrigger>
           <TabsTrigger value="account" className="flex items-center gap-2">
             <User className="h-4 w-4" />
@@ -63,6 +89,40 @@ const SettingsPage: React.FC = () => {
             <DatabaseMonitor />
             <SeedingControl />
           </div>
+        </TabsContent>
+
+        <TabsContent value="integrations" className="space-y-6 mt-6">
+          <div>
+            <h2 className="text-2xl font-medium mb-4">API Integrations</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Configure open-source dictionary APIs and AI models for enhanced word analysis and repository population.
+            </p>
+            
+            {!isAdmin && !isCheckingRole && (
+              <Alert className="mb-6">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Administrator access required to manage API integrations. Contact your system administrator for access.
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+          
+          {isCheckingRole ? (
+            <div className="bg-secondary/20 p-6 rounded-lg">
+              <p className="text-center text-muted-foreground">
+                Checking permissions...
+              </p>
+            </div>
+          ) : isAdmin ? (
+            <APIIntegrationsTab />
+          ) : (
+            <div className="bg-secondary/20 p-6 rounded-lg">
+              <p className="text-center text-muted-foreground">
+                Administrator privileges required to access API integrations.
+              </p>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="account" className="space-y-6 mt-6">
