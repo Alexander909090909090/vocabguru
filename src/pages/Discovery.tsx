@@ -58,6 +58,28 @@ const DiscoveryPage: React.FC = () => {
   const [selectedWord, setSelectedWord] = useState<WordRepositoryEntry | null>(null);
   const [isWordDialogOpen, setIsWordDialogOpen] = useState(false);
 
+  // Helper function to safely get collocations from analysis
+  const getCollocations = (analysis: any): string[] => {
+    if (!analysis) return [];
+    
+    // Check for collocations property (WordRepositoryEntry style)
+    if (Array.isArray(analysis.collocations)) {
+      return analysis.collocations;
+    }
+    
+    // Check for common_collocations property (WordProfile style)
+    if (Array.isArray(analysis.common_collocations)) {
+      return analysis.common_collocations;
+    }
+    
+    // Handle string format
+    if (typeof analysis.common_collocations === 'string') {
+      return analysis.common_collocations.split(',').map((s: string) => s.trim()).filter(Boolean);
+    }
+    
+    return [];
+  };
+
   // Load enhanced word profiles with pagination
   const loadEnhancedWords = useCallback(async (pageNum: number = 0, reset: boolean = true) => {
     setIsLoadingMore(true);
@@ -92,10 +114,8 @@ const DiscoveryPage: React.FC = () => {
           },
           analysis: {
             ...word.analysis,
-            // Fix: Use 'collocations' instead of 'common_collocations'
-            common_collocations: Array.isArray(word.analysis?.collocations) ? 
-              word.analysis.collocations.join(', ') : 
-              word.analysis?.collocations?.join(', ') || ''
+            // Fix: Use safe collocation getter
+            common_collocations: getCollocations(word.analysis)
           }
         })
       );
@@ -161,7 +181,11 @@ const DiscoveryPage: React.FC = () => {
         etymology: word.etymology,
         definitions: word.definitions,
         word_forms: word.word_forms,
-        analysis: word.analysis,
+        analysis: {
+          ...word.analysis,
+          // Ensure we have the right property names for WordRepositoryEntry
+          collocations: getCollocations(word.analysis)
+        },
         source_apis: ['word_profiles'],
         frequency_score: 75,
         difficulty_level: 'intermediate',
@@ -215,10 +239,8 @@ const DiscoveryPage: React.FC = () => {
           },
           analysis: {
             ...entry.analysis,
-            // Fix: Use proper property mapping
-            common_collocations: Array.isArray(entry.analysis?.collocations) ? 
-              entry.analysis.collocations.join(', ') : 
-              entry.analysis?.collocations?.join(', ') || ''
+            // Fix: Use safe collocation getter and convert to string format for WordProfile
+            common_collocations: getCollocations(entry.analysis).join(', ')
           }
         };
         await WordProfileService.createWordProfile(basicProfile);

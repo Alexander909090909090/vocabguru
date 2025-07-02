@@ -5,6 +5,23 @@ import { Word } from "@/data/words";
 import { WordProfileService } from "./wordProfileService";
 
 export class EnhancedWordProfileService {
+  // Helper function to safely get collocations from analysis
+  private static getCollocations(analysis: any): string[] {
+    if (!analysis) return [];
+    
+    // Check for common_collocations property (WordProfile style)
+    if (Array.isArray(analysis.common_collocations)) {
+      return analysis.common_collocations;
+    }
+    
+    // Handle string format
+    if (typeof analysis.common_collocations === 'string') {
+      return analysis.common_collocations.split(',').map((s: string) => s.trim()).filter(Boolean);
+    }
+    
+    return [];
+  }
+
   // Convert WordProfile to EnhancedWordProfile
   static convertWordProfile(profile: WordProfile): EnhancedWordProfile {
     let synonymsAntonyms = { synonyms: [], antonyms: [] };
@@ -21,6 +38,9 @@ export class EnhancedWordProfileService {
     const morphemeBreakdown = profile.morpheme_breakdown || {
       root: { text: profile.word, meaning: 'Root meaning not available' }
     };
+
+    // Safely get collocations
+    const collocations = this.getCollocations(profile.analysis);
 
     return {
       id: profile.id,
@@ -50,22 +70,12 @@ export class EnhancedWordProfileService {
       },
       analysis: {
         ...profile.analysis,
-        // Fix: Handle both property names for compatibility
-        common_collocations: profile.analysis?.common_collocations || 
-          (profile.analysis?.collocations ? 
-            (Array.isArray(profile.analysis.collocations) ? 
-              profile.analysis.collocations : 
-              profile.analysis.collocations.split(',').map(s => s.trim())
-            ) : []
-          )
+        // Fix: Use safe collocation getter
+        common_collocations: collocations
       },
       synonymsAntonyms,
       usage: {
-        commonCollocations: profile.analysis?.common_collocations ? 
-          (Array.isArray(profile.analysis.common_collocations) ? 
-            profile.analysis.common_collocations : 
-            profile.analysis.common_collocations.split(',').map(s => s.trim())
-          ) : [],
+        commonCollocations: collocations,
         contextualUsage: profile.analysis?.contextual_usage,
         sentenceStructure: profile.analysis?.sentence_structure,
         exampleSentence: profile.analysis?.example
