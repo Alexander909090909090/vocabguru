@@ -1,226 +1,216 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ArrowLeft, BookOpen, Volume2, Share2, Bookmark, Brain } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from '@/components/ui/use-toast';
+import { WordHeader } from '@/components/WordDetail/WordHeader';
+import { WordMainContent } from '@/components/WordDetail/WordMainContent';
+import { AIAssistantTab } from '@/components/WordDetail/AIAssistantTab';
+import { WordNotFound } from '@/components/WordDetail/WordNotFound';
+import { WordRepositoryEntry, wordRepositoryService } from '@/services/wordRepositoryService';
+import { SimplifiedDeepAnalysis } from '@/components/DeepAnalysis/SimplifiedDeepAnalysis';
+import Header from '@/components/Header';
 
-import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import Header from "@/components/Header";
-import MorphemeBreakdown from "@/components/MorphemeBreakdown";
-import { ArrowLeft, Brain } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useWords } from "@/context/WordsContext"; 
-import WordHeader from "@/components/WordDetail/WordHeader";
-import WordNotFound from "@/components/WordDetail/WordNotFound";
-import EnhancedWordContent from "@/components/WordDetail/EnhancedWordContent";
-import AIAssistantTab from "@/components/WordDetail/AIAssistantTab";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Word } from "@/data/words";
-import { EnhancedWordProfile } from "@/types/enhancedWordProfile";
-import { Breadcrumbs } from "@/components/Navigation/Breadcrumbs";
-import { NextSteps } from "@/components/Navigation/NextSteps";
-import { QuickActions } from "@/components/Navigation/QuickActions";
+const pageVariants = {
+  initial: { opacity: 0, y: 20 },
+  in: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 }
+};
 
-const WordDetail = () => {
+const WordDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const [word, setWord] = useState<WordRepositoryEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [word, setWord] = useState<Word | null>(null);
-  const { getWord } = useWords();
-
-  // Convert Word to EnhancedWordProfile
-  const convertToEnhancedProfile = (word: Word): EnhancedWordProfile => {
-    return {
-      id: word.id,
-      word: word.word,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      pronunciation: word.pronunciation,
-      partOfSpeech: word.partOfSpeech,
-      languageOrigin: word.languageOrigin,
-      description: word.description,
-      featured: word.featured,
-      morpheme_breakdown: word.morphemeBreakdown,
-      morphemeBreakdown: word.morphemeBreakdown,
-      etymology: {
-        historical_origins: word.etymology.origin,
-        language_of_origin: word.languageOrigin,
-        word_evolution: word.etymology.evolution,
-        cultural_regional_variations: word.etymology.culturalVariations,
-        origin: word.etymology.origin,
-        evolution: word.etymology.evolution,
-        culturalVariations: word.etymology.culturalVariations
-      },
-      definitions: {
-        primary: word.definitions.find(d => d.type === 'primary')?.text,
-        standard: word.definitions.filter(d => d.type === 'standard').map(d => d.text),
-        extended: word.definitions.filter(d => d.type === 'extended').map(d => d.text),
-        contextual: word.definitions.filter(d => d.type === 'contextual').map(d => d.text),
-        specialized: word.definitions.filter(d => d.type === 'specialized').map(d => d.text)
-      },
-      word_forms: {
-        noun_forms: word.forms.noun ? { singular: word.forms.noun } : undefined,
-        verb_tenses: word.forms.verb ? { present: word.forms.verb } : undefined,
-        adjective_forms: word.forms.adjective ? { positive: word.forms.adjective } : undefined,
-        adverb_form: word.forms.adverb,
-        other_inflections: []
-      },
-      analysis: {
-        parts_of_speech: word.partOfSpeech,
-        contextual_usage: word.usage.contextualUsage,
-        sentence_structure: word.usage.sentenceStructure,
-        common_collocations: word.usage.commonCollocations,
-        cultural_historical_significance: word.etymology.culturalVariations,
-        example: word.usage.exampleSentence
-      },
-      images: word.images,
-      synonymsAntonyms: word.synonymsAntonyms,
-      usage: word.usage,
-      forms: word.forms
-    };
-  };
+  const [activeTab, setActiveTab] = useState('overview');
+  const [isBookmarked, setIsBookmarked] = useState(false);
 
   useEffect(() => {
-    const loadWord = async () => {
-      if (!id) return;
-      
-      setIsLoading(true);
-      
-      try {
-        const foundWord = getWord(id);
-        if (foundWord) {
-          const completeWord: Word = {
-            ...foundWord,
-            languageOrigin: foundWord.languageOrigin || 'Unknown'
-          };
-          setWord(completeWord);
-        }
-      } catch (error) {
-        console.error("Error loading word:", error);
-      } finally {
-        setTimeout(() => {
-          setIsLoading(false);
-        }, 300);
+    if (id) {
+      loadWordDetails(id);
+    }
+  }, [id]);
+
+  const loadWordDetails = async (wordId: string) => {
+    setIsLoading(true);
+    try {
+      const wordData = await wordRepositoryService.getWordById(wordId);
+      if (wordData) {
+        setWord(wordData);
+        // Check if word is bookmarked (mock for now)
+        setIsBookmarked(Math.random() > 0.5);
+      } else {
+        setWord(null);
       }
-    };
-
-    loadWord();
-  }, [id, getWord]);
-
-  const handleDeepAnalysis = () => {
-    if (word) {
-      navigate(`/deep-analysis/${encodeURIComponent(word.word)}`);
+    } catch (error) {
+      console.error('Failed to load word details:', error);
+      toast({
+        title: "Loading Error",
+        description: "Failed to load word details. Please try again.",
+        variant: "destructive"
+      });
+      setWord(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  if (!isLoading && !word) {
-    return <WordNotFound />;
+  const handleBookmarkToggle = () => {
+    setIsBookmarked(!isBookmarked);
+    toast({
+      title: isBookmarked ? "Removed from bookmarks" : "Added to bookmarks",
+      description: `"${word?.word}" has been ${isBookmarked ? 'removed from' : 'added to'} your bookmarks.`,
+    });
+  };
+
+  const handleShare = () => {
+    if (navigator.share && word) {
+      navigator.share({
+        title: `${word.word} - VocabGuru`,
+        text: `Check out this word: ${word.word}`,
+        url: window.location.href,
+      });
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      toast({
+        title: "Link copied",
+        description: "Word link has been copied to clipboard.",
+      });
+    }
+  };
+
+  const pronounceWord = () => {
+    if (word && 'speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(word.word);
+      utterance.rate = 0.8;
+      utterance.pitch = 1;
+      speechSynthesis.speak(utterance);
+    } else {
+      toast({
+        title: "Speech not supported",
+        description: "Your browser doesn't support text-to-speech.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <Header />
+        <div className="container mx-auto py-24 px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="animate-pulse space-y-6">
+              <div className="h-8 bg-slate-700 rounded w-1/4"></div>
+              <div className="h-12 bg-slate-700 rounded w-1/2"></div>
+              <div className="h-64 bg-slate-700 rounded"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  const getGradient = (id: string) => {
-    const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const hue1 = hash % 360;
-    const hue2 = (hash * 7) % 360;
-    return `linear-gradient(135deg, hsl(${hue1}, 80%, 70%), hsl(${hue2}, 80%, 60%))`;
-  };
+  if (!word) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <Header />
+        <WordNotFound />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <Header />
       
-      <main className="page-container pt-24 page-transition">
-        <Breadcrumbs />
-        
-        <div className="flex items-center justify-between mb-6">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="group text-white/80 hover:text-white hover:bg-white/10" 
-            onClick={() => navigate("/")}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-            Back to Words
-          </Button>
+      <motion.div
+        initial="initial"
+        animate="in"
+        exit="exit"
+        variants={pageVariants}
+        transition={{ duration: 0.3 }}
+        className="container mx-auto py-24 px-4"
+      >
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Navigation */}
+          <div className="flex items-center justify-between">
+            <Link to="/discovery">
+              <Button variant="ghost" className="text-white hover:bg-white/10">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Discovery
+              </Button>
+            </Link>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={pronounceWord}
+                className="text-white border-white/20 hover:bg-white/10"
+              >
+                <Volume2 className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBookmarkToggle}
+                className={`border-white/20 hover:bg-white/10 ${
+                  isBookmarked 
+                    ? 'text-yellow-400 bg-yellow-400/10' 
+                    : 'text-white'
+                }`}
+              >
+                <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-current' : ''}`} />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleShare}
+                className="text-white border-white/20 hover:bg-white/10"
+              >
+                <Share2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
 
-          {word && (
-            <Button 
-              onClick={handleDeepAnalysis}
-              className="bg-primary/20 border-primary/30 text-primary hover:bg-primary/30"
-              variant="outline"
-            >
-              <Brain className="h-4 w-4 mr-2" />
-              Deep Analysis
-            </Button>
-          )}
+          {/* Word Header */}
+          <WordHeader word={word} />
+
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 bg-slate-800/50">
+              <TabsTrigger value="overview" className="text-white data-[state=active]:bg-primary">
+                <BookOpen className="h-4 w-4 mr-2" />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="analysis" className="text-white data-[state=active]:bg-primary">
+                <Brain className="h-4 w-4 mr-2" />
+                Deep Analysis
+              </TabsTrigger>
+              <TabsTrigger value="ai" className="text-white data-[state=active]:bg-primary">
+                <Brain className="h-4 w-4 mr-2" />
+                AI Assistant
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="space-y-6">
+              <WordMainContent word={word} />
+            </TabsContent>
+
+            <TabsContent value="analysis" className="space-y-6">
+              <SimplifiedDeepAnalysis word={word.word} />
+            </TabsContent>
+
+            <TabsContent value="ai" className="space-y-6">
+              <AIAssistantTab word={word.word} />
+            </TabsContent>
+          </Tabs>
         </div>
-        
-        {isLoading ? (
-          <>
-            <div className="rounded-xl p-6 mb-8 bg-white/10 backdrop-blur-md animate-pulse">
-              <div className="h-8 w-32 bg-white/20 rounded mb-4"></div>
-              <div className="h-12 w-64 bg-white/20 rounded mb-2"></div>
-              <div className="h-6 w-48 bg-white/20 rounded mb-6"></div>
-              <div className="h-4 w-full bg-white/20 rounded"></div>
-            </div>
-            
-            <div className="mb-8">
-              <Skeleton className="h-40 w-full bg-white/10" />
-            </div>
-            
-            <div className="mb-8">
-              <Skeleton className="h-10 w-full mb-4 bg-white/10" />
-              <Skeleton className="h-64 w-full bg-white/10" />
-            </div>
-          </>
-        ) : word ? (
-          <>
-            <WordHeader 
-              word={word} 
-              getGradient={getGradient} 
-              isLoading={isLoading} 
-            />
-            
-            <MorphemeBreakdown breakdown={word.morphemeBreakdown} />
-            
-            <div className="mt-8">
-              <Tabs defaultValue="details" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 bg-white/10 backdrop-blur-md border-white/20">
-                  <TabsTrigger value="details" className="text-white data-[state=active]:bg-primary data-[state=active]:text-white">
-                    Word Analysis
-                  </TabsTrigger>
-                  <TabsTrigger value="ai-assist" className="text-white data-[state=active]:bg-primary data-[state=active]:text-white">
-                    AI Assistant
-                  </TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="details">
-                  <EnhancedWordContent wordProfile={convertToEnhancedProfile(word)} />
-                </TabsContent>
-                
-                <TabsContent value="ai-assist">
-                  <AIAssistantTab word={word} />
-                </TabsContent>
-              </Tabs>
-            </div>
-            
-            {word && (
-              <>
-                <div className="mt-8">
-                  <NextSteps 
-                    context="word-detail" 
-                    data={{ wordId: word.id }}
-                  />
-                </div>
-              </>
-            )}
-          </>
-        ) : null}
-      </main>
-      
-      <QuickActions currentPage="word-detail" />
-      
-      <footer className="border-t border-white/10 mt-12 py-6 bg-black/20 backdrop-blur-md">
-        <div className="container-inner text-center text-sm text-white/60">
-          <p>© 2024 VocabGuru. All rights reserved.</p>
-        </div>
-      </footer>
+      </motion.div>
     </div>
   );
 };

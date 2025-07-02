@@ -1,426 +1,344 @@
-import { useEffect, useState } from "react";
-import WordCard from "@/components/WordCard";
-import Header from "@/components/Header";
-import { Input } from "@/components/ui/input";
-import { Search, Plus, LayoutGrid, Grid3X3, Trophy } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import WordGrid from "@/components/WordGrid";
-import { useWords } from "@/context/WordsContext";
-import DictionarySearch from "@/components/DictionarySearch";
-import { searchDictionaryWord } from "@/lib/dictionaryApi";
-import { toast } from "@/components/ui/use-toast";
-import { useNavigate } from "react-router-dom";
-import { Link } from "react-router-dom";
-import { QuickActions } from "@/components/Navigation/QuickActions";
-import { NextSteps } from "@/components/Navigation/NextSteps";
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Search, BookOpen, GraduationCap, Trophy, Sparkles, TrendingUp, Clock, Target } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Link } from 'react-router-dom';
+import { toast } from '@/components/ui/use-toast';
+import { WordCard } from '@/components/WordCard';
+import { WordRepositoryCard } from '@/components/WordRepository/WordRepositoryCard';
+import { WordRepositoryEntry, wordRepositoryService } from '@/services/wordRepositoryService';
+import { useAuth } from '@/context/AuthContext';
+import Header from '@/components/Header';
 
-type FilterCategory = "all" | "prefix" | "root" | "suffix" | "origin" | "dictionary";
-type ViewMode = "cards" | "grid";
+const pageVariants = {
+  initial: { opacity: 0, y: 20 },
+  in: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 }
+};
 
-const Index = () => {
-  const { words, addWord, getWord, dictionaryWords } = useWords();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<FilterCategory>("all");
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [showDictionarySearch, setShowDictionarySearch] = useState(false);
-  const [username, setUsername] = useState("Scholar");
-  const [viewMode, setViewMode] = useState<ViewMode>("cards");
-  const [isSearching, setIsSearching] = useState(false);
-  const navigate = useNavigate();
-  
-  const filteredWords = words.filter(word => 
-    word.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    word.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  
-  const featuredWords = words.filter(word => word.featured);
+interface UserStats {
+  wordsStudied: number;
+  quizzesCompleted: number;
+  currentStreak: number;
+  totalScore: number;
+  averageAccuracy: number;
+  learningStreak: number;
+}
 
-  const uniqueOrigins = Array.from(new Set(words.map(word => word.languageOrigin)));
+interface LearningGoal {
+  daily: number;
+  weekly: number;
+  monthly: number;
+}
+
+const Index: React.FC = () => {
+  const { user } = useAuth();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [featuredWords, setFeaturedWords] = useState<WordRepositoryEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [userStats, setUserStats] = useState<UserStats>({
+    wordsStudied: 23,
+    quizzesCompleted: 8,
+    currentStreak: 5,
+    totalScore: 1250,
+    averageAccuracy: 87,
+    learningStreak: 12
+  });
+  const [learningGoals, setLearningGoals] = useState<LearningGoal>({
+    daily: 5,
+    weekly: 25,
+    monthly: 100
+  });
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsInitialLoad(false);
-    }, 100);
-    
-    const savedName = localStorage.getItem("vocabguru-username");
-    if (savedName) {
-      setUsername(savedName);
-    }
-    
-    const handleToggleDrawer = () => {
-      setIsDrawerOpen(!isDrawerOpen);
-    };
-    
-    window.addEventListener('toggle-drawer', handleToggleDrawer);
-    
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('toggle-drawer', handleToggleDrawer);
-    };
-  }, [isDrawerOpen]);
+    loadFeaturedWords();
+    loadUserStats();
+  }, []);
 
-  const toggleDrawer = () => {
-    setIsDrawerOpen(!isDrawerOpen);
-  };
-
-  const toggleViewMode = () => {
-    setViewMode(viewMode === "cards" ? "grid" : "cards");
-  };
-  
-  const toggleDictionarySearch = () => {
-    setShowDictionarySearch(!showDictionarySearch);
-  };
-  
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!searchQuery.trim()) {
-      toast({
-        title: "Please enter a word",
-        description: "Type a word to search",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const normalizedWord = searchQuery.trim().toLowerCase();
-    const existingWord = getWord(normalizedWord);
-    
-    if (existingWord) {
-      navigate(`/word/${existingWord.id}`);
-      setSearchQuery("");
-      return;
-    }
-    
-    setIsSearching(true);
-    
+  const loadFeaturedWords = async () => {
+    setIsLoading(true);
     try {
-      const word = await searchDictionaryWord(normalizedWord);
-      
-      if (word) {
-        addWord(word);
-        navigate(`/word/${word.id}`);
-        setSearchQuery("");
-      }
+      const words = await wordRepositoryService.getAllWords(1, 8);
+      setFeaturedWords(words);
     } catch (error) {
-      console.error("Error searching word:", error);
+      console.error('Failed to load featured words:', error);
       toast({
-        title: "Error",
-        description: "Failed to search for word",
-        variant: "destructive",
+        title: "Loading Error",
+        description: "Failed to load featured words. Please try again.",
+        variant: "destructive"
       });
     } finally {
-      setIsSearching(false);
+      setIsLoading(false);
     }
   };
 
-  const getFilteredWordsByCategory = () => {
-    if (activeFilter === "all") return filteredWords;
-    if (activeFilter === "origin") {
-      return filteredWords;
-    }
-    if (activeFilter === "prefix") {
-      return filteredWords.filter(word => word.morphemeBreakdown.prefix);
-    }
-    if (activeFilter === "suffix") {
-      return filteredWords.filter(word => word.morphemeBreakdown.suffix);
-    }
-    if (activeFilter === "dictionary") {
-      const dictionaryIds = dictionaryWords.map(w => w.id);
-      return filteredWords.filter(word => dictionaryIds.includes(word.id));
-    }
-    return filteredWords;
+  const loadUserStats = async () => {
+    // In a real app, this would fetch from the database
+    // For now, we'll use mock data
+    setUserStats({
+      wordsStudied: Math.floor(Math.random() * 50) + 10,
+      quizzesCompleted: Math.floor(Math.random() * 20) + 5,
+      currentStreak: Math.floor(Math.random() * 10) + 1,
+      totalScore: Math.floor(Math.random() * 2000) + 500,
+      averageAccuracy: Math.floor(Math.random() * 20) + 75,
+      learningStreak: Math.floor(Math.random() * 30) + 5
+    });
   };
 
-  const displayWords = getFilteredWordsByCategory();
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      // Navigate to discovery page with search term as query parameter
+      window.location.href = `/discovery?search=${encodeURIComponent(searchTerm.trim())}`;
+    }
+  };
+
+  const dailyProgress = Math.min((userStats.wordsStudied % learningGoals.daily) / learningGoals.daily * 100, 100);
+  const weeklyProgress = Math.min(userStats.wordsStudied / learningGoals.weekly * 100, 100);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <Header />
       
-      <div 
-        className={`fixed top-0 left-0 h-full w-64 bg-background/95 backdrop-blur-sm z-50 shadow-lg transform transition-transform duration-300 ease-in-out ${
-          isDrawerOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+      <motion.div
+        initial="initial"
+        animate="in"
+        exit="exit"
+        variants={pageVariants}
+        transition={{ duration: 0.3 }}
+        className="container mx-auto py-24 px-4 space-y-8"
       >
-        <div className="p-5">
-          <div className="flex items-center gap-2 mb-6">
-            <div className="flex items-center justify-center bg-primary w-8 h-8 rounded-full">
-              <span className="text-primary-foreground font-semibold">V</span>
-            </div>
-            <span className="font-semibold text-lg">VocabGuru</span>
-          </div>
-          
-          <nav className="space-y-1">
-            <Link to="/" className="block py-2 px-3 rounded hover:bg-accent transition-colors">
-              Words
-            </Link>
-            <Link to="/quiz" className="block py-2 px-3 rounded hover:bg-accent transition-colors">
-              Vocabulary Quiz
-            </Link>
-            <Link to="/calvern" className="block py-2 px-3 rounded hover:bg-accent transition-colors">
-              Speak to Calvern
-            </Link>
-          </nav>
-          
-          <div className="mt-6 space-y-2">
-            <Button 
-              className="w-full justify-start gap-2" 
-              variant="outline"
-              onClick={toggleDictionarySearch}
-            >
-              <Search className="h-4 w-4" />
-              Dictionary Search
-            </Button>
-            <Button 
-              className="w-full justify-start gap-2" 
-              variant="outline"
-              onClick={() => navigate("/calvern")}
-            >
-              Speak To Calvern
-            </Button>
-          </div>
-        </div>
-      </div>
-      
-      <div 
-        className={`transition-opacity duration-300 ${isDrawerOpen ? "opacity-50" : "opacity-100"}`}
-        onClick={isDrawerOpen ? toggleDrawer : undefined}
-      >
-        <main className={`page-container ${viewMode === "grid" ? "pt-5 md:pt-6" : "pt-24"}`}>
-          {viewMode === "cards" && (
-            <section className="mb-8">
-              <div className="glass-card rounded-2xl p-8 md:p-12 text-center space-y-6 animate-scale-in">
-                <h1 className="text-3xl md:text-4xl font-bold">
-                  Welcome back, <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-400">{username}!</span>
-                </h1>
-                <p className="text-lg max-w-2xl mx-auto text-muted-foreground">
-                  Master language with interactive quizzes, etymology breakdowns, and daily word insights.
-                </p>
-                
-                {showDictionarySearch ? (
-                  <div className="max-w-md mx-auto">
-                    <DictionarySearch />
-                    <Button 
-                      variant="link" 
-                      className="mt-2 text-sm"
-                      onClick={toggleDictionarySearch}
-                    >
-                      Cancel Dictionary Search
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-4">
-                    <form className="relative max-w-md mx-auto w-full" onSubmit={handleSearch}>
-                      <Input
-                        type="text"
-                        placeholder="Search any word..."
-                        className="w-full bg-secondary/50 border-none h-12 pl-12 focus-visible:ring-primary"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        disabled={isSearching}
-                      />
-                      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      {isSearching && (
-                        <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                          <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
-                        </div>
-                      )}
-                    </form>
-                    <Button 
-                      variant="outline" 
-                      onClick={toggleDictionarySearch}
-                      className="gap-2"
-                    >
-                      <Search className="h-4 w-4" />
-                      Advanced Dictionary Search
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </section>
-          )}
-          
-          {viewMode === "grid" && (
-            <div className="mb-6">
-              <p className="text-muted-foreground text-sm text-center">
-                Master language with interactive quizzes, etymology breakdowns, and daily word insights
-              </p>
-              
-              <div className="mt-4 relative">
-                <Input
-                  type="text"
-                  placeholder="Search..."
-                  className="w-full bg-secondary/30 border-none h-10 pl-10 focus-visible:ring-primary"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              </div>
-              
-              <div className="mt-4">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={toggleDictionarySearch}
-                  className="w-full gap-2"
-                >
-                  <Search className="h-4 w-4" />
-                  Search Dictionary
-                </Button>
-                
-                {showDictionarySearch && (
-                  <div className="mt-4">
-                    <DictionarySearch />
-                    <Button 
-                      variant="link" 
-                      className="mt-2 text-sm"
-                      onClick={toggleDictionarySearch}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          
-          <section className="flex flex-wrap items-center justify-between gap-3 mb-6">
-            <div className="flex flex-wrap gap-2">
-              <Button 
-                variant={activeFilter === "all" ? "default" : "outline"} 
-                size="sm"
-                onClick={() => setActiveFilter("all")}
-                className="rounded-full"
-              >
-                All
-              </Button>
-              <Button 
-                variant={activeFilter === "prefix" ? "default" : "outline"} 
-                size="sm"
-                onClick={() => setActiveFilter("prefix")}
-                className="rounded-full"
-              >
-                Prefix
-              </Button>
-              <Button 
-                variant={activeFilter === "suffix" ? "default" : "outline"} 
-                size="sm"
-                onClick={() => setActiveFilter("suffix")}
-                className="rounded-full"
-              >
-                Suffix
-              </Button>
-              <Button 
-                variant={activeFilter === "origin" ? "default" : "outline"} 
-                size="sm"
-                onClick={() => setActiveFilter("origin")}
-                className="rounded-full"
-              >
-                Origin
-              </Button>
-              <Button 
-                variant={activeFilter === "dictionary" ? "default" : "outline"} 
-                size="sm"
-                onClick={() => setActiveFilter("dictionary")}
-                className="rounded-full"
-              >
-                Dictionary
-              </Button>
-            </div>
-            
-            <div className="flex gap-2">
-              <Button 
-                className="gap-2" 
-                variant="secondary"
-                onClick={toggleViewMode}
-              >
-                {viewMode === "cards" ? (
-                  <>
-                    <Grid3X3 className="h-4 w-4" />
-                    Change View
-                  </>
-                ) : (
-                  <>
-                    <LayoutGrid className="h-4 w-4" />
-                    Change View
-                  </>
-                )}
-              </Button>
-              <Button 
-                className="gap-2"
-                onClick={toggleDictionarySearch}
-              >
-                <Plus className="h-4 w-4" />
-                Add Word
-              </Button>
-              <Button 
-                className="gap-2"
-                variant="quiz"
-                onClick={() => navigate("/quiz")}
-              >
-                <Trophy className="h-4 w-4" />
-                Quiz
-              </Button>
-            </div>
-          </section>
-          
-          <section>
-            <h2 className="text-2xl font-semibold mb-6">
-              {searchQuery ? "Search Results" : activeFilter !== "all" ? `${activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1)} Filter` : "All Words"}
-            </h2>
-            
-            {displayWords.length === 0 ? (
-              <div className="glass-card rounded-lg p-8 text-center">
-                <p className="text-muted-foreground">No words found matching '{searchQuery}'</p>
-              </div>
-            ) : viewMode === "cards" ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {displayWords.map((word, index) => (
-                  <div 
-                    key={word.id}
-                    className="transition-all duration-500"
-                    style={{ 
-                      animationDelay: `${index * 100}ms`,
-                      opacity: isInitialLoad ? 0 : 1,
-                      transform: isInitialLoad ? 'translateY(20px)' : 'translateY(0)'
-                    }}
-                  >
-                    <WordCard word={word} />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <WordGrid words={displayWords} />
-            )}
-          </section>
+        {/* Hero Section */}
+        <div className="text-center space-y-6">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
+              Master Vocabulary with
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400"> AI</span>
+            </h1>
+            <p className="text-xl text-slate-300 max-w-2xl mx-auto">
+              Discover, learn, and master new words with AI-powered morphological analysis and intelligent study tools.
+            </p>
+          </motion.div>
 
-          {displayWords.length > 0 && (
-            <section className="mt-12">
-              <NextSteps 
-                context="discovery" 
-                data={{ suggestedWords: displayWords.slice(0, 3).map(w => w.word) }}
-              />
-            </section>
-          )}
-        </main>
-      </div>
-      
-      <QuickActions 
-        currentPage="home"
-        userProgress={{
-          wordsStudied: words.length,
-          quizzesCompleted: 0,
-          currentStreak: 1
-        }}
-      />
-      
-      <footer className="border-t border-white/10 mt-12 py-6">
-        <div className="container-inner text-center text-sm text-muted-foreground">
-          <p>© 2024 VocabGuru. All rights reserved.</p>
+          {/* Quick Search */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="max-w-md mx-auto"
+          >
+            <form onSubmit={handleSearch} className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search for a word..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                />
+              </div>
+              <Button type="submit" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                <Search className="h-4 w-4" />
+              </Button>
+            </form>
+          </motion.div>
         </div>
-      </footer>
+
+        {/* User Stats Dashboard */}
+        {user && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+          >
+            <Card className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 border-blue-500/30">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-blue-300 text-sm font-medium">Words Studied</p>
+                    <p className="text-2xl font-bold text-white">{userStats.wordsStudied}</p>
+                  </div>
+                  <BookOpen className="h-8 w-8 text-blue-400" />
+                </div>
+                <div className="mt-4">
+                  <div className="flex justify-between text-sm text-blue-300 mb-1">
+                    <span>Daily Goal</span>
+                    <span>{Math.min(userStats.wordsStudied % learningGoals.daily, learningGoals.daily)}/{learningGoals.daily}</span>
+                  </div>
+                  <Progress value={dailyProgress} className="h-2" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-green-500/20 to-green-600/20 border-green-500/30">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-green-300 text-sm font-medium">Current Streak</p>
+                    <p className="text-2xl font-bold text-white">{userStats.currentStreak} days</p>
+                  </div>
+                  <TrendingUp className="h-8 w-8 text-green-400" />
+                </div>
+                <div className="mt-4">
+                  <Badge variant="outline" className="border-green-500/50 text-green-300">
+                    <Clock className="h-3 w-3 mr-1" />
+                    Keep it up!
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 border-purple-500/30">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-purple-300 text-sm font-medium">Quizzes Completed</p>
+                    <p className="text-2xl font-bold text-white">{userStats.quizzesCompleted}</p>
+                  </div>
+                  <Trophy className="h-8 w-8 text-purple-400" />
+                </div>
+                <div className="mt-4">
+                  <p className="text-sm text-purple-300">
+                    {userStats.averageAccuracy}% accuracy
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-orange-500/20 to-orange-600/20 border-orange-500/30">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-orange-300 text-sm font-medium">Total Score</p>
+                    <p className="text-2xl font-bold text-white">{userStats.totalScore.toLocaleString()}</p>
+                  </div>
+                  <Target className="h-8 w-8 text-orange-400" />
+                </div>
+                <div className="mt-4">
+                  <Badge variant="outline" className="border-orange-500/50 text-orange-300">
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    Rising!
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Quick Actions */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-6"
+        >
+          <Link to="/discovery">
+            <Card className="group hover:scale-105 transition-all duration-200 cursor-pointer bg-gradient-to-br from-slate-800/50 to-purple-800/30 border-purple-500/30">
+              <CardContent className="p-6 text-center">
+                <BookOpen className="h-12 w-12 mx-auto mb-4 text-purple-400 group-hover:text-purple-300" />
+                <h3 className="text-lg font-semibold text-white mb-2">Discover Words</h3>
+                <p className="text-slate-300 text-sm">
+                  Explore our AI-powered vocabulary database with morphological analysis
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/quiz">
+            <Card className="group hover:scale-105 transition-all duration-200 cursor-pointer bg-gradient-to-br from-slate-800/50 to-green-800/30 border-green-500/30">
+              <CardContent className="p-6 text-center">
+                <GraduationCap className="h-12 w-12 mx-auto mb-4 text-green-400 group-hover:text-green-300" />
+                <h3 className="text-lg font-semibold text-white mb-2">Take Quiz</h3>
+                <p className="text-slate-300 text-sm">
+                  Test your knowledge with adaptive quizzes tailored to your level
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/calvern">
+            <Card className="group hover:scale-105 transition-all duration-200 cursor-pointer bg-gradient-to-br from-slate-800/50 to-pink-800/30 border-pink-500/30">
+              <CardContent className="p-6 text-center">
+                <Sparkles className="h-12 w-12 mx-auto mb-4 text-pink-400 group-hover:text-pink-300" />
+                <h3 className="text-lg font-semibold text-white mb-2">Ask Calvern</h3>
+                <p className="text-slate-300 text-sm">
+                  Get AI-powered explanations and examples for any word
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+        </motion.div>
+
+        {/* Featured Words */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.0 }}
+          className="space-y-6"
+        >
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold text-white">Featured Words</h2>
+            <Link to="/discovery">
+              <Button variant="outline" className="text-white border-white/20 hover:bg-white/10">
+                View All
+              </Button>
+            </Link>
+          </div>
+
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <Card key={index} className="animate-pulse">
+                  <CardContent className="p-6">
+                    <div className="space-y-3">
+                      <div className="h-4 bg-slate-700 rounded w-3/4"></div>
+                      <div className="h-3 bg-slate-700 rounded w-full"></div>
+                      <div className="h-3 bg-slate-700 rounded w-2/3"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : featuredWords.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredWords.map((word) => (
+                <WordRepositoryCard
+                  key={word.id}
+                  word={word}
+                  onClick={() => {
+                    window.location.href = `/word/${word.id}`;
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="text-center py-12">
+                <BookOpen className="h-12 w-12 mx-auto mb-4 text-slate-400" />
+                <h3 className="text-lg font-semibold text-white mb-2">No featured words available</h3>
+                <p className="text-slate-400 mb-4">
+                  Start exploring our vocabulary database to discover amazing words!
+                </p>
+                <Link to="/discovery">
+                  <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    Explore Words
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
+        </motion.div>
+      </motion.div>
     </div>
   );
 };
