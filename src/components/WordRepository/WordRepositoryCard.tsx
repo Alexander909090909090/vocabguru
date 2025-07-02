@@ -7,9 +7,10 @@ import { cn } from "@/lib/utils";
 interface WordRepositoryCardProps {
   wordEntry: WordRepositoryEntry;
   priority?: boolean;
+  onClick?: () => void;
 }
 
-export function WordRepositoryCard({ wordEntry, priority = false }: WordRepositoryCardProps) {
+export function WordRepositoryCard({ wordEntry, priority = false, onClick }: WordRepositoryCardProps) {
   const [isImageLoaded, setIsImageLoaded] = useState(priority);
   
   // Create a gradient background based on the word id to ensure consistent colors per word
@@ -24,10 +25,16 @@ export function WordRepositoryCard({ wordEntry, priority = false }: WordReposito
     return `linear-gradient(135deg, hsl(${hue1}, 80%, 60%), hsl(${hue2}, 80%, 50%))`;
   };
 
+  const handleClick = () => {
+    if (onClick) {
+      onClick();
+    }
+  };
+
   return (
-    <Link 
-      to={`/word/${wordEntry.id}`}
-      className="block"
+    <div 
+      onClick={handleClick}
+      className="block cursor-pointer"
     >
       <div className="glass-card overflow-hidden rounded-xl hover-card">
         <div 
@@ -68,7 +75,7 @@ export function WordRepositoryCard({ wordEntry, priority = false }: WordReposito
           </div>
         </div>
       </div>
-    </Link>
+    </div>
   );
 }
 

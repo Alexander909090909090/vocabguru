@@ -10,7 +10,7 @@ import { Link } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import { WordCard } from '@/components/WordCard';
 import { WordRepositoryCard } from '@/components/WordRepository/WordRepositoryCard';
-import { WordRepositoryEntry, wordRepositoryService } from '@/services/wordRepositoryService';
+import { WordRepositoryEntry, WordRepositoryService } from '@/services/wordRepositoryService';
 import { useAuth } from '@/context/AuthContext';
 import Header from '@/components/Header';
 
@@ -62,7 +62,7 @@ const Index: React.FC = () => {
   const loadFeaturedWords = async () => {
     setIsLoading(true);
     try {
-      const words = await wordRepositoryService.getAllWords(1, 8);
+      const { words } = await WordRepositoryService.getWordsWithPagination(0, 8);
       setFeaturedWords(words);
     } catch (error) {
       console.error('Failed to load featured words:', error);
@@ -313,7 +313,7 @@ const Index: React.FC = () => {
               {featuredWords.map((word) => (
                 <WordRepositoryCard
                   key={word.id}
-                  word={word}
+                  wordEntry={word}
                   onClick={() => {
                     window.location.href = `/word/${word.id}`;
                   }}

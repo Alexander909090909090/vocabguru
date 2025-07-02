@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
 import { WordRepositoryGrid } from '@/components/WordRepository/WordRepositoryGrid';
 import { SmartDiscoveryAgent } from '@/components/Discovery/SmartDiscoveryAgent';
-import { WordRepositoryEntry, wordRepositoryService } from '@/services/wordRepositoryService';
+import { WordRepositoryEntry, WordRepositoryService } from '@/services/wordRepositoryService';
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 
@@ -116,7 +116,7 @@ const Discovery: React.FC = () => {
   const loadWords = async () => {
     setIsLoading(true);
     try {
-      const words = await wordRepositoryService.getAllWords(1, 500);
+      const { words } = await WordRepositoryService.getWordsWithPagination(0, 500);
       setAllWords(words);
       setFilteredWords(words);
     } catch (error) {
@@ -243,13 +243,7 @@ const Discovery: React.FC = () => {
               <p className="text-slate-300">Loading vocabulary...</p>
             </div>
           ) : filteredWords.length > 0 ? (
-            <WordRepositoryGrid 
-              words={filteredWords} 
-              onWordSelect={(word) => {
-                // Handle word selection if needed
-                console.log('Selected word:', word);
-              }}
-            />
+            <WordRepositoryGrid />
           ) : (
             <Card>
               <CardContent className="text-center py-12">

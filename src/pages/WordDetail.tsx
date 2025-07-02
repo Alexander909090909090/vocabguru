@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -7,11 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/use-toast';
-import { WordHeader } from '@/components/WordDetail/WordHeader';
-import { WordMainContent } from '@/components/WordDetail/WordMainContent';
-import { AIAssistantTab } from '@/components/WordDetail/AIAssistantTab';
-import { WordNotFound } from '@/components/WordDetail/WordNotFound';
-import { WordRepositoryEntry, wordRepositoryService } from '@/services/wordRepositoryService';
+import WordHeader from '@/components/WordDetail/WordHeader';
+import WordMainContent from '@/components/WordDetail/WordMainContent';
+import AIAssistantTab from '@/components/WordDetail/AIAssistantTab';
+import WordNotFound from '@/components/WordDetail/WordNotFound';
+import { WordRepositoryEntry, WordRepositoryService } from '@/services/wordRepositoryService';
 import { SimplifiedDeepAnalysis } from '@/components/DeepAnalysis/SimplifiedDeepAnalysis';
 import Header from '@/components/Header';
 
@@ -37,7 +38,7 @@ const WordDetail: React.FC = () => {
   const loadWordDetails = async (wordId: string) => {
     setIsLoading(true);
     try {
-      const wordData = await wordRepositoryService.getWordById(wordId);
+      const wordData = await WordRepositoryService.getWordByName(wordId);
       if (wordData) {
         setWord(wordData);
         // Check if word is bookmarked (mock for now)
@@ -202,11 +203,11 @@ const WordDetail: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="analysis" className="space-y-6">
-              <SimplifiedDeepAnalysis word={word.word} />
+              <SimplifiedDeepAnalysis wordData={word.word} />
             </TabsContent>
 
             <TabsContent value="ai" className="space-y-6">
-              <AIAssistantTab word={word.word} />
+              <AIAssistantTab wordData={word.word} />
             </TabsContent>
           </Tabs>
         </div>
