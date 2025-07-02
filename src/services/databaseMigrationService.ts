@@ -1,125 +1,184 @@
 
-import { supabase } from '@/integrations/supabase/client';
-import { WordProfile } from '@/types/wordProfile';
-import words from '@/data/words';
-import { toast } from 'sonner';
+import { supabase } from "@/integrations/supabase/client";
+import { WordProfile } from "@/types/wordProfile";
+import { Word } from "@/data/words";
+import words from "@/data/words"; // Changed from named import to default import
+import { EnhancedDatabaseSeeding } from "./enhancedDatabaseSeeding";
+import { toast } from "@/components/ui/use-toast";
 
 export class DatabaseMigrationService {
+  // Check if database has been migrated
   static async checkMigrationStatus(): Promise<boolean> {
     try {
-      const { data, error } = await supabase
+      const { count, error } = await supabase
         .from('word_profiles')
-        .select('count(*)')
-        .single();
+        .select('*', { count: 'exact', head: true });
 
       if (error) {
         console.error('Error checking migration status:', error);
         return false;
       }
 
-      return (data?.count || 0) > 0;
+      // Consider migrated if we have more than 10 words
+      return (count || 0) > 10;
     } catch (error) {
-      console.error('Migration status check failed:', error);
+      console.error('Error in migration status check:', error);
       return false;
     }
   }
 
-  static async initializeDatabase(): Promise<void> {
-    try {
-      console.log('🚀 Starting database migration...');
-      
-      // Convert legacy words to word profiles
-      const profiles: Partial<WordProfile>[] = words.map(word => ({
-        word: word.word,
-        morpheme_breakdown: word.morphemeBreakdown || {
-          root: { text: word.word, meaning: word.description }
-        },
-        etymology: {
-          historical_origins: word.etymology?.origin || 'Unknown origin',
-          language_of_origin: word.languageOrigin || 'Unknown',
-          word_evolution: word.etymology?.evolution || '',
-          cultural_regional_variations: word.etymology?.culturalVariations || ''
-        },
-        definitions: {
-          primary: word.description,
-          standard: word.definitions?.filter(d => d.type === 'standard').map(d => d.text) || [],
-          extended: word.definitions?.filter(d => d.type === 'extended').map(d => d.text) || [],
-          contextual: word.definitions?.find(d => d.type === 'contextual')?.text || '',
-          specialized: word.definitions?.find(d => d.type === 'specialized')?.text || ''
-        },
-        word_forms: {
-          base_form: word.word,
-          noun_forms: word.forms?.noun ? { singular: word.forms.noun } : undefined,
-          verb_tenses: word.forms?.verb ? { present: word.forms.verb } : undefined,
-          adjective_forms: word.forms?.adjective ? { positive: word.forms.adjective } : undefined,
-          adverb_form: word.forms?.adverb,
-          other_inflections: ''
-        },
-        analysis: {
-          parts_of_speech: word.partOfSpeech,
-          contextual_usage: word.usage?.contextualUsage || '',
-          sentence_structure: word.usage?.sentenceStructure || '',
-          synonyms_antonyms: JSON.stringify(word.synonymsAntonyms || { synonyms: [], antonyms: [] }),
-          common_collocations: Array.isArray(word.usage?.commonCollocations) 
-            ? word.usage.commonCollocations.join(', ')
-            : word.usage?.commonCollocations || '',
-          example: word.usage?.exampleSentence || ''
-        }
-      }));
+  // Migrate legacy words to database
+  static async migrateLegacyWords(): Promise<{ success: number; failed: number }> {
+    let successCount = 0;
+    let failureCount = 0;
 
-      // Insert in batches to avoid overwhelming the database
-      const batchSize = 10;
-      let inserted = 0;
+    console.log('🔄 Starting legacy word migration...');
 
-      for (let i = 0; i < profiles.length; i += batchSize) {
-        const batch = profiles.slice(i, i + batchSize);
-        
-        const { error } = await supabase
+    for (const legacyWord of words) { // Using default import
+      try {
+        // Check if word already exists
+        const { data: existingWord } = await supabase
           .from('word_profiles')
-          .insert(batch);
+          .select('id')
+          .eq('word', legacyWord.word.toLowerCase())
+          .maybeSingle();
 
-        if (error) {
-          console.error(`Error inserting batch ${i / batchSize + 1}:`, error);
+        if (existingWord) {
+          console.log(`⏭️ Skipping existing word: ${legacyWord.word}`);
           continue;
         }
 
-        inserted += batch.length;
-        console.log(`✅ Migrated ${inserted}/${profiles.length} words`);
+        // Convert legacy word to WordProfile format
+        const wordProfile: Partial<WordProfile> = {
+          word: legacyWord.word.toLowerCase(),
+          morpheme_breakdown: legacyWord.morphemeBreakdown,
+          etymology: {
+            historical_origins: legacyWord.etymology.origin,
+            language_of_origin: legacyWord.languageOrigin,
+            word_evolution: legacyWord.etymology.evolution,
+            cultural_regional_variations: legacyWord.etymology.culturalVariations
+          },
+          definitions: {
+            primary: legacyWord.definitions.find(d => d.type === 'primary')?.text || legacyWord.description,
+            standard: legacyWord.definitions.filter(d => d.type === 'standard').map(d => d.text),
+            extended: legacyWord.definitions.filter(d => d.type === 'extended').map(d => d.text),
+            contextual: legacyWord.definitions.find(d => d.type === 'contextual')?.text || '',
+            specialized: legacyWord.definitions.find(d => d.type === 'specialized')?.text || ''
+          },
+          word_forms: {
+            base_form: legacyWord.word,
+            noun_forms: legacyWord.forms.noun ? { singular: legacyWord.forms.noun } : undefined,
+            verb_tenses: legacyWord.forms.verb ? { present: legacyWord.forms.verb } : undefined,
+            adjective_forms: legacyWord.forms.adjective ? { positive: legacyWord.forms.adjective } : undefined,
+            adverb_form: legacyWord.forms.adverb,
+            other_inflections: ''
+          },
+          analysis: {
+            parts_of_speech: legacyWord.partOfSpeech,
+            contextual_usage: legacyWord.usage.contextualUsage,
+            sentence_structure: legacyWord.usage.sentenceStructure,
+            common_collocations: legacyWord.usage.commonCollocations?.join(', ') || '',
+            example: legacyWord.usage.exampleSentence,
+            synonyms_antonyms: JSON.stringify(legacyWord.synonymsAntonyms)
+          }
+        };
+
+        // Insert into database
+        const { error } = await supabase
+          .from('word_profiles')
+          .insert(wordProfile);
+
+        if (error) {
+          console.error(`❌ Failed to migrate word "${legacyWord.word}":`, error);
+          failureCount++;
+        } else {
+          console.log(`✅ Migrated word: ${legacyWord.word}`);
+          successCount++;
+        }
+
+        // Small delay to avoid overwhelming the database
+        await new Promise(resolve => setTimeout(resolve, 50));
+      } catch (error) {
+        console.error(`❌ Error migrating word "${legacyWord.word}":`, error);
+        failureCount++;
+      }
+    }
+
+    console.log(`🏁 Migration completed: ${successCount} success, ${failureCount} failures`);
+    return { success: successCount, failed: failureCount };
+  }
+
+  // Full database initialization
+  static async initializeDatabase(): Promise<void> {
+    try {
+      const isMigrated = await this.checkMigrationStatus();
+      
+      if (isMigrated) {
+        console.log('✅ Database already initialized');
+        return;
       }
 
-      console.log('🎉 Database migration completed!');
-      toast.success(`Successfully migrated ${inserted} words to database`);
+      console.log('🚀 Starting database initialization...');
+      
+      // Step 1: Migrate legacy words
+      const legacyResults = await this.migrateLegacyWords();
+      
+      // Step 2: Seed additional words if needed
+      const currentCount = await EnhancedDatabaseSeeding.getComprehensiveWordCount();
+      
+      if (currentCount < 50) {
+        console.log('📚 Adding essential vocabulary...');
+        await EnhancedDatabaseSeeding.quickSeed();
+      }
+
+      const finalCount = await EnhancedDatabaseSeeding.getComprehensiveWordCount();
+      
+      toast({
+        title: "Database initialized successfully",
+        description: `${finalCount} words are now available in your vocabulary collection.`,
+      });
+
+      console.log(`🎉 Database initialization complete! Total words: ${finalCount}`);
     } catch (error) {
-      console.error('Database migration failed:', error);
-      toast.error('Database migration failed');
+      console.error('❌ Database initialization failed:', error);
+      toast({
+        title: "Database initialization failed",
+        description: "Please try refreshing the page or contact support.",
+        variant: "destructive"
+      });
       throw error;
     }
   }
 
+  // Get migration statistics
   static async getMigrationStats(): Promise<{
     totalWords: number;
-    migratedWords: number;
-    completionPercentage: number;
+    legacyWords: number;
+    apiWords: number;
+    qualityScore: number;
   }> {
     try {
-      const { data, error } = await supabase
+      const { count: totalWords } = await supabase
         .from('word_profiles')
-        .select('count(*)')
-        .single();
+        .select('*', { count: 'exact', head: true });
 
-      if (error) throw error;
+      const { data: qualityData } = await supabase
+        .from('word_profiles')
+        .select('quality_score')
+        .not('quality_score', 'is', null);
 
-      const migratedWords = data?.count || 0;
-      const totalWords = words.length;
+      const avgQuality = qualityData?.length ? 
+        qualityData.reduce((sum, row) => sum + (row.quality_score || 0), 0) / qualityData.length : 0;
 
       return {
-        totalWords,
-        migratedWords,
-        completionPercentage: totalWords > 0 ? (migratedWords / totalWords) * 100 : 0
+        totalWords: totalWords || 0,
+        legacyWords: words.length, // Using default import
+        apiWords: Math.max(0, (totalWords || 0) - words.length),
+        qualityScore: Math.round(avgQuality * 100) / 100
       };
     } catch (error) {
       console.error('Error getting migration stats:', error);
-      return { totalWords: words.length, migratedWords: 0, completionPercentage: 0 };
+      return { totalWords: 0, legacyWords: 0, apiWords: 0, qualityScore: 0 };
     }
   }
 }

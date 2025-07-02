@@ -6,7 +6,6 @@ import { Search, Plus, LayoutGrid, Grid3X3, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import WordGrid from "@/components/WordGrid";
 import { useWords } from "@/context/WordsContext";
-import { useUnifiedWords } from "@/hooks/useUnifiedWords";
 import DictionarySearch from "@/components/DictionarySearch";
 import { searchDictionaryWord } from "@/lib/dictionaryApi";
 import { toast } from "@/components/ui/use-toast";
@@ -19,12 +18,7 @@ type FilterCategory = "all" | "prefix" | "root" | "suffix" | "origin" | "diction
 type ViewMode = "cards" | "grid";
 
 const Index = () => {
-  // Keep existing context for backward compatibility
-  const { words: legacyWords, addWord, getWord, dictionaryWords } = useWords();
-  
-  // Use unified word service for enhanced word profiles
-  const { words: unifiedWords, loading: unifiedLoading, searchWords: searchUnifiedWords } = useUnifiedWords();
-  
+  const { words, addWord, getWord, dictionaryWords } = useWords();
   const [searchQuery, setSearchQuery] = useState("");
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterCategory>("all");
@@ -35,27 +29,14 @@ const Index = () => {
   const [isSearching, setIsSearching] = useState(false);
   const navigate = useNavigate();
   
-  // Use unified words if available, fallback to legacy words
-  const displayWords = unifiedWords.length > 0 ? 
-    unifiedWords.map(word => ({
-      id: word.id,
-      word: word.word,
-      description: word.definitions.primary || 'No description available',
-      partOfSpeech: word.analysis.parts_of_speech || 'unknown',
-      languageOrigin: word.etymology.language_of_origin || 'Unknown',
-      morphemeBreakdown: word.morpheme_breakdown,
-      featured: false // Can be enhanced based on quality scores
-    })) : 
-    legacyWords;
-  
-  const filteredWords = displayWords.filter(word => 
+  const filteredWords = words.filter(word => 
     word.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
     word.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
-  const featuredWords = filteredWords.filter(word => word.featured);
+  const featuredWords = words.filter(word => word.featured);
 
-  const uniqueOrigins = Array.from(new Set(displayWords.map(word => word.languageOrigin)));
+  const uniqueOrigins = Array.from(new Set(words.map(word => word.languageOrigin)));
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -104,19 +85,8 @@ const Index = () => {
     }
     
     const normalizedWord = searchQuery.trim().toLowerCase();
-    
-    // First check unified words
-    if (unifiedWords.length > 0) {
-      const existingUnifiedWord = unifiedWords.find(w => w.word.toLowerCase() === normalizedWord);
-      if (existingUnifiedWord) {
-        navigate(`/word/${existingUnifiedWord.id}`);
-        setSearchQuery("");
-        return;
-      }
-    }
-    
-    // Fallback to legacy words
     const existingWord = getWord(normalizedWord);
+    
     if (existingWord) {
       navigate(`/word/${existingWord.id}`);
       setSearchQuery("");
@@ -151,10 +121,10 @@ const Index = () => {
       return filteredWords;
     }
     if (activeFilter === "prefix") {
-      return filteredWords.filter(word => word.morphemeBreakdown?.prefix);
+      return filteredWords.filter(word => word.morphemeBreakdown.prefix);
     }
     if (activeFilter === "suffix") {
-      return filteredWords.filter(word => word.morphemeBreakdown?.suffix);
+      return filteredWords.filter(word => word.morphemeBreakdown.suffix);
     }
     if (activeFilter === "dictionary") {
       const dictionaryIds = dictionaryWords.map(w => w.id);
@@ -163,25 +133,12 @@ const Index = () => {
     return filteredWords;
   };
 
-  const finalDisplayWords = getFilteredWordsByCategory();
-
-  // Show loading state if unified words are loading and no legacy words
-  if (unifiedLoading && legacyWords.length === 0) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading enhanced word profiles...</p>
-        </div>
-      </div>
-    );
-  }
+  const displayWords = getFilteredWordsByCategory();
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       
-      {/* ... keep existing drawer code (sidebar navigation) the same ... */}
       <div 
         className={`fixed top-0 left-0 h-full w-64 bg-background/95 backdrop-blur-sm z-50 shadow-lg transform transition-transform duration-300 ease-in-out ${
           isDrawerOpen ? "translate-x-0" : "-translate-x-full"
@@ -204,9 +161,6 @@ const Index = () => {
             </Link>
             <Link to="/calvern" className="block py-2 px-3 rounded hover:bg-accent transition-colors">
               Speak to Calvern
-            </Link>
-            <Link to="/settings" className="block py-2 px-3 rounded hover:bg-accent transition-colors">
-              Settings
             </Link>
           </nav>
           
@@ -235,7 +189,6 @@ const Index = () => {
         onClick={isDrawerOpen ? toggleDrawer : undefined}
       >
         <main className={`page-container ${viewMode === "grid" ? "pt-5 md:pt-6" : "pt-24"}`}>
-          {/* ... keep existing hero section code the same ... */}
           {viewMode === "cards" && (
             <section className="mb-8">
               <div className="glass-card rounded-2xl p-8 md:p-12 text-center space-y-6 animate-scale-in">
@@ -289,7 +242,6 @@ const Index = () => {
             </section>
           )}
           
-          {/* ... keep existing grid view search section the same ... */}
           {viewMode === "grid" && (
             <div className="mb-6">
               <p className="text-muted-foreground text-sm text-center">
@@ -334,7 +286,6 @@ const Index = () => {
             </div>
           )}
           
-          {/* ... keep existing filter and control section the same ... */}
           <section className="flex flex-wrap items-center justify-between gap-3 mb-6">
             <div className="flex flex-wrap gap-2">
               <Button 
@@ -415,29 +366,18 @@ const Index = () => {
             </div>
           </section>
           
-          {/* Enhanced: Word display section with unified word support */}
           <section>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold">
-                {searchQuery ? "Search Results" : activeFilter !== "all" ? `${activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1)} Filter` : "All Words"}
-              </h2>
-              
-              {/* Enhanced: Show data source indicator */}
-              {unifiedWords.length > 0 && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                  Enhanced Profiles ({unifiedWords.length})
-                </div>
-              )}
-            </div>
+            <h2 className="text-2xl font-semibold mb-6">
+              {searchQuery ? "Search Results" : activeFilter !== "all" ? `${activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1)} Filter` : "All Words"}
+            </h2>
             
-            {finalDisplayWords.length === 0 ? (
+            {displayWords.length === 0 ? (
               <div className="glass-card rounded-lg p-8 text-center">
                 <p className="text-muted-foreground">No words found matching '{searchQuery}'</p>
               </div>
             ) : viewMode === "cards" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {finalDisplayWords.map((word, index) => (
+                {displayWords.map((word, index) => (
                   <div 
                     key={word.id}
                     className="transition-all duration-500"
@@ -452,15 +392,15 @@ const Index = () => {
                 ))}
               </div>
             ) : (
-              <WordGrid words={finalDisplayWords} />
+              <WordGrid words={displayWords} />
             )}
           </section>
 
-          {finalDisplayWords.length > 0 && (
+          {displayWords.length > 0 && (
             <section className="mt-12">
               <NextSteps 
                 context="discovery" 
-                data={{ suggestedWords: finalDisplayWords.slice(0, 3).map(w => w.word) }}
+                data={{ suggestedWords: displayWords.slice(0, 3).map(w => w.word) }}
               />
             </section>
           )}
@@ -470,7 +410,7 @@ const Index = () => {
       <QuickActions 
         currentPage="home"
         userProgress={{
-          wordsStudied: finalDisplayWords.length,
+          wordsStudied: words.length,
           quizzesCompleted: 0,
           currentStreak: 1
         }}
