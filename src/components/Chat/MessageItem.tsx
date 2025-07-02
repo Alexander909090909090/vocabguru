@@ -12,29 +12,70 @@ interface MessageItemProps {
 }
 
 const MessageItem = ({ message, handleFeedback, formatTimestamp }: MessageItemProps) => {
-  // Convert markdown-style headers to HTML
+  // Safe text formatting without HTML injection
   const formatText = (text: string) => {
     // Ensure text is a string and handle edge cases
     if (typeof text !== 'string' || !text) {
       return <div>No content available</div>;
     }
 
-    // Format headers
-    let formattedText = text
-      .replace(/^# (.*$)/gm, '<h3 class="text-lg font-bold mt-3 mb-2">$1</h3>')
-      .replace(/^## (.*$)/gm, '<h4 class="text-base font-semibold mt-2 mb-1">$1</h4>')
-      .replace(/^### (.*$)/gm, '<h5 class="text-sm font-medium mt-2 mb-1">$1</h5>');
-    
-    // Format bold text
-    formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    
-    // Format lists
-    formattedText = formattedText.replace(/^\s*-\s+(.*$)/gm, '<li class="ml-4">$1</li>');
-    
-    // Add line breaks
-    formattedText = formattedText.replace(/\n\n/g, '<br><br>');
-    
-    return <div dangerouslySetInnerHTML={{ __html: formattedText }} />;
+    // Split text into lines and format safely
+    const lines = text.split('\n');
+    const formattedElements: JSX.Element[] = [];
+
+    lines.forEach((line, index) => {
+      // Handle headers
+      if (line.startsWith('# ')) {
+        formattedElements.push(
+          <h3 key={index} className="text-lg font-bold mt-3 mb-2">
+            {line.substring(2)}
+          </h3>
+        );
+      } else if (line.startsWith('## ')) {
+        formattedElements.push(
+          <h4 key={index} className="text-base font-semibold mt-2 mb-1">
+            {line.substring(3)}
+          </h4>
+        );
+      } else if (line.startsWith('### ')) {
+        formattedElements.push(
+          <h5 key={index} className="text-sm font-medium mt-2 mb-1">
+            {line.substring(4)}
+          </h5>
+        );
+      } else if (line.trim().startsWith('- ')) {
+        // Handle list items
+        formattedElements.push(
+          <li key={index} className="ml-4">
+            {formatInlineText(line.substring(2))}
+          </li>
+        );
+      } else if (line.trim() === '') {
+        // Handle empty lines
+        formattedElements.push(<br key={index} />);
+      } else {
+        // Handle regular text
+        formattedElements.push(
+          <p key={index} className="mb-1">
+            {formatInlineText(line)}
+          </p>
+        );
+      }
+    });
+
+    return <div>{formattedElements}</div>;
+  };
+
+  // Safe inline text formatting without HTML injection
+  const formatInlineText = (text: string) => {
+    // Handle bold text **text**
+    const parts = text.split(/(\*\*.*?\*\*)/);
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={index}>{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
   };
 
   // Ensure message.text is a string

@@ -1,5 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,30 +13,101 @@ serve(async (req) => {
   }
 
   try {
+    // Get the authorization header
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'No authorization header' }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // Create authenticated Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+
+    // Get user from JWT token
+    const jwt = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: userError } = await supabase.auth.getUser(jwt)
+    
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication token' }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
     const { apiType, apiKey, apiKeyValue } = await req.json()
 
-    let testResult = { success: false, error: 'Unknown API' }
+    if (!apiType || !apiKey) {
+      return new Response(
+        JSON.stringify({ error: 'API type and key are required' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
 
-    // Test different API connections
+    let testApiKey = apiKeyValue
+
+    // If no API key value provided, try to retrieve from secure storage
+    if (!testApiKey) {
+      const configKey = `${apiType}_${apiKey}_api_key`
+      const { data: configData, error: configError } = await supabase
+        .from('api_source_data')
+        .select('raw_data')
+        .eq('source_name', configKey)
+        .single()
+
+      if (configError || !configData?.raw_data?.api_key) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'API key not found. Please configure the API key first.' 
+          }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+
+      testApiKey = configData.raw_data.api_key
+    }
+
+    // Test the API connection based on the API type
+    let testResult = { success: false, error: 'Unknown API type' }
+
     switch (apiKey) {
       case 'wordnik':
-        testResult = await testWordnikAPI(apiKeyValue)
+        testResult = await testWordnikAPI(testApiKey)
         break
       case 'oxford':
-        testResult = await testOxfordAPI(apiKeyValue)
+        testResult = await testOxfordAPI(testApiKey)
         break
       case 'merriam_webster':
-        testResult = await testMerriamWebsterAPI(apiKeyValue)
-        break
-      case 'huggingface':
-        testResult = await testHuggingFaceAPI(apiKeyValue)
+        testResult = await testMerriamWebsterAPI(testApiKey)
         break
       case 'wiktionary':
       case 'free_dictionary':
-        testResult = await testPublicAPI(apiKey)
+        // These don't require API keys
+        testResult = { success: true, message: 'No authentication required' }
         break
       default:
-        testResult = { success: false, error: 'Unsupported API' }
+        testResult = { success: false, error: `Unsupported API: ${apiKey}` }
     }
 
     return new Response(
@@ -47,7 +119,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error testing API connection:', error)
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ 
+        success: false, 
+        error: 'Internal server error' 
+      }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -58,38 +133,49 @@ serve(async (req) => {
 
 async function testWordnikAPI(apiKey: string) {
   try {
-    const response = await fetch(`https://api.wordnik.com/v4/words.json/definitions?limit=1&api_key=${apiKey}`)
+    const response = await fetch(`https://api.wordnik.com/v4/word.json/test/definitions?limit=1&api_key=${apiKey}`)
     
     if (response.ok) {
-      return { success: true }
+      return { success: true, message: 'Wordnik API connection successful' }
+    } else if (response.status === 401) {
+      return { success: false, error: 'Invalid Wordnik API key' }
     } else {
-      return { success: false, error: `HTTP ${response.status}: ${response.statusText}` }
+      return { success: false, error: `Wordnik API error: ${response.status}` }
     }
   } catch (error) {
-    return { success: false, error: `Connection failed: ${error.message}` }
+    return { success: false, error: 'Failed to connect to Wordnik API' }
   }
 }
 
 async function testOxfordAPI(apiKey: string) {
   try {
-    // Oxford API requires both app_id and app_key, this is a simplified test
-    const response = await fetch('https://od-api.oxforddictionaries.com/api/v2/entries/en-gb/test', {
+    // Oxford API requires both app_id and app_key, but for testing we'll just validate format
+    if (!apiKey.includes(':')) {
+      return { success: false, error: 'Oxford API key should be in format "app_id:app_key"' }
+    }
+    
+    const [appId, appKey] = apiKey.split(':')
+    if (!appId || !appKey) {
+      return { success: false, error: 'Invalid Oxford API key format' }
+    }
+
+    // Test with a simple word lookup
+    const response = await fetch('https://od-api.oxforddictionaries.com/api/v2/entries/en-us/test', {
       headers: {
-        'app_id': apiKey.split(':')[0] || apiKey,
-        'app_key': apiKey.split(':')[1] || apiKey
+        'app_id': appId,
+        'app_key': appKey
       }
     })
-    
-    // Even a 404 means the API is reachable and keys are valid
-    if (response.status === 404 || response.status === 200) {
-      return { success: true }
-    } else if (response.status === 401 || response.status === 403) {
-      return { success: false, error: 'Invalid API credentials' }
+
+    if (response.ok) {
+      return { success: true, message: 'Oxford API connection successful' }
+    } else if (response.status === 401) {
+      return { success: false, error: 'Invalid Oxford API credentials' }
     } else {
-      return { success: false, error: `HTTP ${response.status}: ${response.statusText}` }
+      return { success: false, error: `Oxford API error: ${response.status}` }
     }
   } catch (error) {
-    return { success: false, error: `Connection failed: ${error.message}` }
+    return { success: false, error: 'Failed to connect to Oxford API' }
   }
 }
 
@@ -98,59 +184,13 @@ async function testMerriamWebsterAPI(apiKey: string) {
     const response = await fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/test?key=${apiKey}`)
     
     if (response.ok) {
-      return { success: true }
+      return { success: true, message: 'Merriam-Webster API connection successful' }
     } else if (response.status === 401) {
-      return { success: false, error: 'Invalid API key' }
+      return { success: false, error: 'Invalid Merriam-Webster API key' }
     } else {
-      return { success: false, error: `HTTP ${response.status}: ${response.statusText}` }
+      return { success: false, error: `Merriam-Webster API error: ${response.status}` }
     }
   } catch (error) {
-    return { success: false, error: `Connection failed: ${error.message}` }
-  }
-}
-
-async function testHuggingFaceAPI(apiKey: string) {
-  try {
-    const response = await fetch('https://api-inference.huggingface.co/models/bert-base-uncased', {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`
-      }
-    })
-    
-    if (response.ok || response.status === 503) {
-      // 503 means model is loading, but API key is valid
-      return { success: true }
-    } else if (response.status === 401) {
-      return { success: false, error: 'Invalid API token' }
-    } else {
-      return { success: false, error: `HTTP ${response.status}: ${response.statusText}` }
-    }
-  } catch (error) {
-    return { success: false, error: `Connection failed: ${error.message}` }
-  }
-}
-
-async function testPublicAPI(apiType: string) {
-  try {
-    let testUrl = ''
-    
-    switch (apiType) {
-      case 'wiktionary':
-        testUrl = 'https://en.wiktionary.org/w/api.php?action=query&format=json&titles=test'
-        break
-      case 'free_dictionary':
-        testUrl = 'https://api.dictionaryapi.dev/api/v2/entries/en/test'
-        break
-    }
-    
-    const response = await fetch(testUrl)
-    
-    if (response.ok) {
-      return { success: true }
-    } else {
-      return { success: false, error: `HTTP ${response.status}: ${response.statusText}` }
-    }
-  } catch (error) {
-    return { success: false, error: `Connection failed: ${error.message}` }
+    return { success: false, error: 'Failed to connect to Merriam-Webster API' }
   }
 }

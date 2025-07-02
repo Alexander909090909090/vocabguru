@@ -1,7 +1,7 @@
 
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { InputValidationService, ValidationResult } from '@/services/inputValidationService';
+import { SecureInputValidationService, ValidationResult } from '@/services/secureInputValidationService';
 import { useState, useEffect } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
@@ -41,19 +41,19 @@ export function SecureInput({
 
     switch (type) {
       case 'email':
-        result = InputValidationService.validateEmail(newValue);
+        result = SecureInputValidationService.validateEmail(newValue);
         break;
       case 'password':
-        result = InputValidationService.validatePassword(newValue);
+        result = SecureInputValidationService.validatePassword(newValue);
         break;
       case 'search':
-        result = InputValidationService.validateSearchQuery(newValue);
+        result = SecureInputValidationService.validateSearchQuery(newValue);
         break;
       case 'apikey':
-        result = InputValidationService.validateAPIKey(newValue);
+        result = SecureInputValidationService.validateAPIKey(newValue);
         break;
       default:
-        result = InputValidationService.validateText(newValue, validation);
+        result = SecureInputValidationService.validateText(newValue, validation);
     }
 
     setValidationResult(result);
