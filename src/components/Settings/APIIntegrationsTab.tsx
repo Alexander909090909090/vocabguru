@@ -9,8 +9,7 @@ import { DictionaryAPISection } from './DictionaryAPISection';
 import { AIModelSection } from './AIModelSection';
 import { ResourceLinksSection } from './ResourceLinksSection';
 import { DatabaseInitSection } from './DatabaseInitSection';
-import { EnrichmentSection } from './EnrichmentSection';
-import { Book, Brain, ExternalLink, Database, CheckCircle, AlertCircle, Loader2, Zap } from 'lucide-react';
+import { Book, Brain, ExternalLink, Database, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
@@ -112,7 +111,7 @@ export function APIIntegrationsTab() {
 
       {/* Main Configuration Tabs */}
       <Tabs defaultValue="dictionary" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="dictionary" className="flex items-center gap-2">
             <Book className="h-4 w-4" />
             Dictionary APIs
@@ -120,10 +119,6 @@ export function APIIntegrationsTab() {
           <TabsTrigger value="ai-models" className="flex items-center gap-2">
             <Brain className="h-4 w-4" />
             AI Models
-          </TabsTrigger>
-          <TabsTrigger value="enrichment" className="flex items-center gap-2">
-            <Zap className="h-4 w-4" />
-            Enrichment
           </TabsTrigger>
           <TabsTrigger value="resources" className="flex items-center gap-2">
             <ExternalLink className="h-4 w-4" />
@@ -147,10 +142,6 @@ export function APIIntegrationsTab() {
             apiStatus={apiStatus} 
             onStatusUpdate={checkAPIStatus}
           />
-        </TabsContent>
-
-        <TabsContent value="enrichment" className="space-y-6 mt-6">
-          <EnrichmentSection />
         </TabsContent>
 
         <TabsContent value="resources" className="space-y-6 mt-6">
