@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Plus, BookOpen, Globe, Loader2, Sparkles, Filter } from 'lucide-react';
@@ -19,6 +18,7 @@ import { EnhancedSmartSearch } from '@/components/SmartSearch/EnhancedSmartSearc
 import { AIRecommendations } from '@/components/Discovery/AIRecommendations';
 import { FloatingActionButton } from '@/components/Discovery/FloatingActionButton';
 import { WordDetailDialog } from '@/components/Discovery/WordDetailDialog';
+import { EnhancedDatabaseSeeding } from '@/services/enhancedDatabaseSeeding';
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -80,6 +80,43 @@ const DiscoveryPage: React.FC = () => {
     return [];
   };
 
+  // Auto-initialize database if empty
+  useEffect(() => {
+    const initializeDatabase = async () => {
+      try {
+        const needsInit = await EnhancedDatabaseSeeding.needsSeeding();
+        if (needsInit) {
+          console.log('🔧 Database appears empty, initializing with words...');
+          toast({
+            title: "Initializing word database",
+            description: "Setting up your vocabulary collection...",
+          });
+          
+          await EnhancedDatabaseSeeding.quickSeed();
+          
+          toast({
+            title: "Database initialized",
+            description: "Your vocabulary collection is ready!",
+          });
+          
+          // Refresh the page data
+          if (searchMode === 'browse') {
+            loadEnhancedWords(0, true);
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing database:', error);
+        toast({
+          title: "Database initialization failed",
+          description: "Some features may not work properly. Please try refreshing the page.",
+          variant: "destructive"
+        });
+      }
+    };
+
+    initializeDatabase();
+  }, []);
+
   // Load enhanced word profiles with pagination
   const loadEnhancedWords = useCallback(async (pageNum: number = 0, reset: boolean = true) => {
     setIsLoadingMore(true);
@@ -114,8 +151,8 @@ const DiscoveryPage: React.FC = () => {
           },
           analysis: {
             ...word.analysis,
-            // Fix: Use safe collocation getter
-            common_collocations: getCollocations(word.analysis)
+            // Fix: Convert array to string format expected by WordProfile
+            common_collocations: getCollocations(word.analysis).join(', ')
           }
         })
       );
@@ -239,7 +276,7 @@ const DiscoveryPage: React.FC = () => {
           },
           analysis: {
             ...entry.analysis,
-            // Fix: Use safe collocation getter and convert to string format for WordProfile
+            // Fix: Convert array to string format for WordProfile
             common_collocations: getCollocations(entry.analysis).join(', ')
           }
         };
