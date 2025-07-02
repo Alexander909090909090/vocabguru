@@ -17,6 +17,7 @@ import { EnhancedWordProfile } from "@/types/enhancedWordProfile";
 import { Breadcrumbs } from "@/components/Navigation/Breadcrumbs";
 import { NextSteps } from "@/components/Navigation/NextSteps";
 import { QuickActions } from "@/components/Navigation/QuickActions";
+import { WordRepositoryService, WordRepositoryEntry } from "@/services/wordRepositoryService";
 
 const WordDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -24,6 +25,47 @@ const WordDetail = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [word, setWord] = useState<Word | null>(null);
   const { getWord } = useWords();
+
+  // Convert WordRepositoryEntry to Word
+  const convertRepositoryEntryToWord = (entry: WordRepositoryEntry): Word => {
+    return {
+      id: entry.id,
+      word: entry.word,
+      pronunciation: entry.phonetic,
+      description: entry.definitions.primary || 'No description available',
+      languageOrigin: entry.etymology.language_of_origin || 'Unknown',
+      partOfSpeech: entry.analysis.parts_of_speech || 'unknown',
+      morphemeBreakdown: entry.morpheme_breakdown,
+      etymology: {
+        origin: entry.etymology.historical_origins || 'Unknown origin',
+        evolution: entry.etymology.word_evolution || 'Evolution not available',
+        culturalVariations: entry.etymology.cultural_variations
+      },
+      definitions: [
+        ...(entry.definitions.primary ? [{ type: 'primary' as const, text: entry.definitions.primary }] : []),
+        ...(entry.definitions.standard?.map(def => ({ type: 'standard' as const, text: def })) || []),
+        ...(entry.definitions.extended?.map(def => ({ type: 'extended' as const, text: def })) || []),
+        ...(entry.definitions.contextual?.map(def => ({ type: 'contextual' as const, text: def })) || [])
+      ],
+      forms: {
+        noun: entry.word_forms.noun_forms?.singular,
+        verb: entry.word_forms.verb_tenses?.present,
+        adjective: entry.word_forms.adjective_forms?.positive,
+        adverb: entry.word_forms.adverb_form
+      },
+      usage: {
+        commonCollocations: entry.analysis.collocations || [],
+        contextualUsage: entry.analysis.example_sentence || 'No contextual usage available',
+        sentenceStructure: 'Standard sentence structure',
+        exampleSentence: entry.analysis.example_sentence || 'No example sentence available'
+      },
+      synonymsAntonyms: {
+        synonyms: entry.analysis.synonyms || [],
+        antonyms: entry.analysis.antonyms || []
+      },
+      images: []
+    };
+  };
 
   // Convert Word to EnhancedWordProfile
   const convertToEnhancedProfile = (word: Word): EnhancedWordProfile => {
@@ -38,7 +80,7 @@ const WordDetail = () => {
       description: word.description,
       featured: word.featured,
       morpheme_breakdown: word.morphemeBreakdown,
-      morphemeBreakdown: word.morphemeBreakdown,
+      morphemeBreakdown: word.morphemeBreakdown, // Legacy compatibility
       etymology: {
         historical_origins: word.etymology.origin,
         language_of_origin: word.languageOrigin,
@@ -84,6 +126,7 @@ const WordDetail = () => {
       setIsLoading(true);
       
       try {
+        // First try to get from context
         const foundWord = getWord(id);
         if (foundWord) {
           const completeWord: Word = {
@@ -91,6 +134,17 @@ const WordDetail = () => {
             languageOrigin: foundWord.languageOrigin || 'Unknown'
           };
           setWord(completeWord);
+        } else {
+          // Try to get from word repository
+          try {
+            const repositoryEntry = await WordRepositoryService.getWordByName(id);
+            if (repositoryEntry) {
+              const convertedWord = convertRepositoryEntryToWord(repositoryEntry);
+              setWord(convertedWord);
+            }
+          } catch (error) {
+            console.error("Error loading word from repository:", error);
+          }
         }
       } catch (error) {
         console.error("Error loading word:", error);
