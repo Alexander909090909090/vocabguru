@@ -1,11 +1,10 @@
-
 import DOMPurify from 'dompurify';
 import { toast } from 'sonner';
 
 export interface ValidationResult {
   isValid: boolean;
   errors: string[];
-  sanitizedValue?: string;
+  sanitizedValue?: string | number;
 }
 
 export class SecureInputValidationService {
@@ -330,7 +329,7 @@ export class SecureInputValidationService {
     return {
       isValid: errors.length === 0,
       errors,
-      sanitizedValue: goal
+      sanitizedValue: goal.toString()
     };
   }
 }
