@@ -2,7 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { WordProfile } from "@/types/wordProfile";
 import { Word } from "@/data/words";
-import { words as legacyWords } from "@/data/words";
+import words from "@/data/words"; // Changed from named import to default import
 import { EnhancedDatabaseSeeding } from "./enhancedDatabaseSeeding";
 import { toast } from "@/components/ui/use-toast";
 
@@ -34,7 +34,7 @@ export class DatabaseMigrationService {
 
     console.log('🔄 Starting legacy word migration...');
 
-    for (const legacyWord of legacyWords) {
+    for (const legacyWord of words) { // Using default import
       try {
         // Check if word already exists
         const { data: existingWord } = await supabase
@@ -172,8 +172,8 @@ export class DatabaseMigrationService {
 
       return {
         totalWords: totalWords || 0,
-        legacyWords: legacyWords.length,
-        apiWords: Math.max(0, (totalWords || 0) - legacyWords.length),
+        legacyWords: words.length, // Using default import
+        apiWords: Math.max(0, (totalWords || 0) - words.length),
         qualityScore: Math.round(avgQuality * 100) / 100
       };
     } catch (error) {

@@ -4,6 +4,7 @@ export interface WordProfile {
   word: string;
   created_at: string;
   updated_at: string;
+  quality_score?: number; // Added this property
   
   // Morpheme breakdown
   morpheme_breakdown: {

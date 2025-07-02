@@ -1,11 +1,10 @@
-
 import { WordRepositoryEntry, WordRepositoryService } from './wordRepositoryService';
 import { EnhancedWordProfile } from '@/types/enhancedWordProfile';
 import { EnhancedWordProfileService } from './enhancedWordProfileService';
 import { WordProfile } from '@/types/wordProfile';
 import { WordProfileService } from './wordProfileService';
 import { DatabaseMigrationService } from './databaseMigrationService';
-import { words as legacyWords } from '@/data/words';
+import words from '@/data/words';
 
 // Unified service for all word operations - Phase 2/3/4 consolidation
 export class UnifiedWordService {
@@ -53,7 +52,7 @@ export class UnifiedWordService {
       
       // Fallback: Search legacy words if database is empty
       if (results.length === 0) {
-        const legacyMatches = legacyWords
+        const legacyMatches = words
           .filter(word => 
             word.word.toLowerCase().includes(query.toLowerCase()) ||
             word.description.toLowerCase().includes(query.toLowerCase())
@@ -96,7 +95,7 @@ export class UnifiedWordService {
       
       // Fallback: Search legacy words
       if (!word) {
-        const legacyWord = legacyWords.find(w => w.id === id);
+        const legacyWord = words.find(w => w.id === id);
         if (legacyWord) {
           word = EnhancedWordProfileService.convertLegacyWord(legacyWord);
         }
@@ -127,19 +126,19 @@ export class UnifiedWordService {
     
     try {
       // Primary: Get from database
-      let { words } = await WordRepositoryService.getWordsWithPagination(
+      let { words: dbWords } = await WordRepositoryService.getWordsWithPagination(
         0,
         criteria.limit || 20
       );
 
       // Fallback: Use legacy words if database is empty
-      if (words.length === 0) {
-        words = legacyWords
+      if (dbWords.length === 0) {
+        dbWords = words
           .slice(0, criteria.limit || 20)
           .map(word => this.convertLegacyToRepository(word));
       }
 
-      let filteredWords = words;
+      let filteredWords = dbWords;
 
       // Apply filters
       if (criteria.difficultyLevel) {
