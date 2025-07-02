@@ -57,7 +57,11 @@ export function SecureInput({
     }
 
     setValidationResult(result);
-    onChange(result.sanitizedValue || newValue, result);
+    // Ensure sanitizedValue is always a string for onChange callback
+    const sanitizedString = typeof result.sanitizedValue === 'number' 
+      ? result.sanitizedValue.toString() 
+      : (result.sanitizedValue || newValue);
+    onChange(sanitizedString, result);
   };
 
   const inputProps = {

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Settings as SettingsIcon, Database, Shield, Bell, User, Plug } from 'lucide-react';
@@ -50,7 +51,7 @@ const SettingsPage: React.FC = () => {
       </div>
       
       <p className="text-gray-600 dark:text-gray-400 mb-8">
-        Manage your VocabGuru preferences, database, and account settings.
+        Manage your VocabGuru preferences, database, integrations, and account settings.
       </p>
 
       <Tabs defaultValue="database" className="w-full">
@@ -93,9 +94,9 @@ const SettingsPage: React.FC = () => {
 
         <TabsContent value="integrations" className="space-y-6 mt-6">
           <div>
-            <h2 className="text-2xl font-medium mb-4">API Integrations</h2>
+            <h2 className="text-2xl font-medium mb-4">API Integrations & Enrichment</h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Configure open-source dictionary APIs and AI models for enhanced word analysis and repository population.
+              Configure open-source dictionary APIs, AI models, and manage word repository enrichment for enhanced analysis.
             </p>
             
             {!isAdmin && !isCheckingRole && (

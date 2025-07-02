@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SecureInput } from '@/components/Security/SecureInput';
-import { ValidationResult } from '@/services/inputValidationService';
+import { ValidationResult } from '@/services/secureInputValidationService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { 
