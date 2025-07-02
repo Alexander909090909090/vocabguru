@@ -19,7 +19,6 @@ import StudyCenter from "./pages/StudyCenter";
 import NotFound from "./pages/NotFound";
 import { SimplifiedDeepAnalysis } from "./components/DeepAnalysis/SimplifiedDeepAnalysis";
 import Settings from "./pages/Settings";
-import APIManagement from "./pages/APIManagement";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -70,11 +69,6 @@ const App = () => (
                 <Route path="/settings" element={
                   <ProtectedRoute>
                     <Settings />
-                  </ProtectedRoute>
-                } />
-                <Route path="/api-management" element={
-                  <ProtectedRoute>
-                    <APIManagement />
                   </ProtectedRoute>
                 } />
                 <Route path="/profile" element={

@@ -1,23 +1,24 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, BookOpen, Sparkles, Database, RefreshCw } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Search, Plus, BookOpen, Globe, Loader2, Sparkles, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
-import { WordRepositoryGrid } from '@/components/WordRepository/WordRepositoryGrid';
-import { SmartDiscoveryAgent } from '@/components/Discovery/SmartDiscoveryAgent';
-import { WordRepositoryEntry, WordRepositoryService } from '@/services/wordRepositoryService';
-import { supabase } from '@/integrations/supabase/client';
-import Header from '@/components/Header';
-
-interface DatabaseStatus {
-  wordCount: number;
-  isInitialized: boolean;
-  isPopulating: boolean;
-}
+import { WordProfileService } from '@/services/wordProfileService';
+import { WordProfile } from '@/types/wordProfile';
+import { SemanticSearchService, SemanticSearchResult } from '@/services/semanticSearchService';
+import AIChatInterface from '@/components/AIChatInterface';
+import { EnhancedWordProfile } from '@/types/enhancedWordProfile';
+import { WordRepositoryService, WordRepositoryEntry } from '@/services/wordRepositoryService';
+import { EnhancedWordProfileService } from '@/services/enhancedWordProfileService';
+import EnhancedWordCard from '@/components/Discovery/EnhancedWordCard';
+import { EnhancedSmartSearch } from '@/components/SmartSearch/EnhancedSmartSearch';
+import { AIRecommendations } from '@/components/Discovery/AIRecommendations';
+import { FloatingActionButton } from '@/components/Discovery/FloatingActionButton';
+import { WordDetailDialog } from '@/components/Discovery/WordDetailDialog';
+import { EnhancedDatabaseSeeding } from '@/services/enhancedDatabaseSeeding';
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -25,264 +26,547 @@ const pageVariants = {
   exit: { opacity: 0, y: -20 }
 };
 
-const Discovery: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filteredWords, setFilteredWords] = useState<WordRepositoryEntry[]>([]);
-  const [allWords, setAllWords] = useState<WordRepositoryEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [databaseStatus, setDatabaseStatus] = useState<DatabaseStatus>({
-    wordCount: 0,
-    isInitialized: false,
-    isPopulating: false
-  });
+interface DictionaryEntry {
+  word: string;
+  phonetic?: string;
+  meanings: Array<{
+    partOfSpeech: string;
+    definitions: Array<{
+      definition: string;
+      example?: string;
+      synonyms?: string[];
+      antonyms?: string[];
+    }>;
+  }>;
+  origin?: string;
+}
 
+const DiscoveryPage: React.FC = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [meaningSearch, setMeaningSearch] = useState('');
+  const [searchResults, setSearchResults] = useState<DictionaryEntry[]>([]);
+  const [semanticResults, setSemanticResults] = useState<SemanticSearchResult[]>([]);
+  const [enhancedWords, setEnhancedWords] = useState<EnhancedWordProfile[]>([]);
+  const [filteredWords, setFilteredWords] = useState<WordRepositoryEntry[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSemanticSearching, setIsSemanticSearching] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isAdding, setIsAdding] = useState<string | null>(null);
+  const [searchMode, setSearchMode] = useState<'smart' | 'browse'>('browse');
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [selectedWord, setSelectedWord] = useState<WordRepositoryEntry | null>(null);
+  const [isWordDialogOpen, setIsWordDialogOpen] = useState(false);
+
+  // Helper function to safely get collocations from analysis
+  const getCollocations = (analysis: any): string[] => {
+    if (!analysis) return [];
+    
+    // Check for collocations property (WordRepositoryEntry style)
+    if (Array.isArray(analysis.collocations)) {
+      return analysis.collocations;
+    }
+    
+    // Check for common_collocations property (WordProfile style)
+    if (Array.isArray(analysis.common_collocations)) {
+      return analysis.common_collocations;
+    }
+    
+    // Handle string format
+    if (typeof analysis.common_collocations === 'string') {
+      return analysis.common_collocations.split(',').map((s: string) => s.trim()).filter(Boolean);
+    }
+    
+    return [];
+  };
+
+  // Auto-initialize database if empty
   useEffect(() => {
-    checkDatabaseStatus();
-    loadWords();
+    const initializeDatabase = async () => {
+      try {
+        const needsInit = await EnhancedDatabaseSeeding.needsSeeding();
+        if (needsInit) {
+          console.log('🔧 Database appears empty, initializing with words...');
+          toast({
+            title: "Initializing word database",
+            description: "Setting up your vocabulary collection...",
+          });
+          
+          await EnhancedDatabaseSeeding.quickSeed();
+          
+          toast({
+            title: "Database initialized",
+            description: "Your vocabulary collection is ready!",
+          });
+          
+          // Refresh the page data
+          if (searchMode === 'browse') {
+            loadEnhancedWords(0, true);
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing database:', error);
+        toast({
+          title: "Database initialization failed",
+          description: "Some features may not work properly. Please try refreshing the page.",
+          variant: "destructive"
+        });
+      }
+    };
+
+    initializeDatabase();
   }, []);
 
-  useEffect(() => {
-    if (searchTerm.trim() === '') {
-      setFilteredWords(allWords);
-    } else {
-      const filtered = allWords.filter(word =>
-        word.word.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (word.definitions?.primary && 
-         word.definitions.primary.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
-      setFilteredWords(filtered);
-    }
-  }, [searchTerm, allWords]);
-
-  const checkDatabaseStatus = async () => {
-    try {
-      const { count, error } = await supabase
-        .from('word_profiles')
-        .select('*', { count: 'exact', head: true });
-
-      if (error) throw error;
-
-      const wordCount = count || 0;
-      setDatabaseStatus({
-        wordCount,
-        isInitialized: wordCount > 0,
-        isPopulating: false
-      });
-
-      // Auto-initialize if database is empty
-      if (wordCount < 100) {
-        await initializeDatabase();
-      }
-    } catch (error) {
-      console.error('Database status check failed:', error);
-    }
-  };
-
-  const initializeDatabase = async () => {
-    setDatabaseStatus(prev => ({ ...prev, isPopulating: true }));
+  // Load enhanced word profiles with pagination
+  const loadEnhancedWords = useCallback(async (pageNum: number = 0, reset: boolean = true) => {
+    setIsLoadingMore(true);
     
     try {
-      console.log('Auto-initializing database with essential vocabulary...');
+      const { words: newWords, hasMore: moreAvailable } = await WordRepositoryService.getWordsWithPagination(
+        pageNum,
+        20
+      );
       
-      const { data, error } = await supabase.functions.invoke('smart-word-population', {
-        body: { 
-          mode: 'initial',
-          targetCount: 200,
-          categories: ['academic', 'common', 'technical', 'literary']
-        }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Database Initialized",
-        description: `Added ${data.wordsAdded} essential vocabulary words. Discovery is ready!`,
-      });
-
-      await checkDatabaseStatus();
-      await loadWords();
+      // Convert to enhanced word profiles
+      const enhancedProfiles = newWords.map(word => 
+        EnhancedWordProfileService.convertWordProfile({
+          id: word.id,
+          word: word.word,
+          created_at: word.created_at,
+          updated_at: word.updated_at,
+          morpheme_breakdown: word.morpheme_breakdown || { root: { text: word.word, meaning: 'Root meaning to be analyzed' } },
+          etymology: word.etymology || {},
+          definitions: {
+            primary: word.definitions?.primary,
+            standard: word.definitions?.standard || [],
+            extended: word.definitions?.extended || [],
+            contextual: word.definitions?.contextual?.[0] || '',
+            specialized: word.definitions?.specialized?.[0] || ''
+          },
+          word_forms: {
+            ...word.word_forms,
+            other_inflections: Array.isArray(word.word_forms?.other_inflections) ? 
+              word.word_forms.other_inflections[0] || '' : 
+              word.word_forms?.other_inflections || ''
+          },
+          analysis: {
+            ...word.analysis,
+            // Fix: Convert array to string format expected by WordProfile
+            common_collocations: getCollocations(word.analysis).join(', ')
+          }
+        })
+      );
+      
+      if (reset) {
+        setEnhancedWords(enhancedProfiles);
+      } else {
+        setEnhancedWords(prev => [...prev, ...enhancedProfiles]);
+      }
+      
+      setHasMore(moreAvailable);
+      setPage(pageNum);
     } catch (error) {
-      console.error('Database initialization failed:', error);
+      console.error('Error loading enhanced words:', error);
       toast({
-        title: "Initialization Failed",
-        description: "Some dictionary APIs may not be configured. Check API Management in Settings.",
+        title: "Error loading words",
+        description: "Failed to load word profiles. Please try again.",
         variant: "destructive"
       });
     } finally {
-      setDatabaseStatus(prev => ({ ...prev, isPopulating: false }));
+      setIsLoadingMore(false);
     }
+  }, []);
+
+  // Load initial words
+  useEffect(() => {
+    if (searchMode === 'browse') {
+      loadEnhancedWords(0, true);
+    }
+  }, [searchMode, loadEnhancedWords]);
+
+  // Infinite scroll handler
+  useEffect(() => {
+    const handleScroll = () => {
+      if (
+        searchMode === 'browse' &&
+        hasMore &&
+        !isLoadingMore &&
+        window.innerHeight + document.documentElement.scrollTop >= 
+        document.documentElement.offsetHeight - 1000
+      ) {
+        loadEnhancedWords(page + 1, false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [searchMode, hasMore, isLoadingMore, page, loadEnhancedWords]);
+
+  const handleSmartSearchResults = (results: WordRepositoryEntry[]) => {
+    setFilteredWords(results);
   };
 
-  const loadWords = async () => {
-    setIsLoading(true);
+  const handleWordSelect = (word: WordRepositoryEntry | EnhancedWordProfile) => {
+    // Convert EnhancedWordProfile to WordRepositoryEntry if needed
+    let wordEntry: WordRepositoryEntry;
+    
+    if ('morpheme_breakdown' in word && word.morpheme_breakdown) {
+      wordEntry = {
+        id: word.id,
+        word: word.word,
+        morpheme_breakdown: word.morpheme_breakdown,
+        etymology: word.etymology,
+        definitions: word.definitions,
+        word_forms: word.word_forms,
+        analysis: {
+          ...word.analysis,
+          // Ensure we have the right property names for WordRepositoryEntry
+          collocations: getCollocations(word.analysis)
+        },
+        source_apis: ['word_profiles'],
+        frequency_score: 75,
+        difficulty_level: 'intermediate',
+        created_at: word.created_at || new Date().toISOString(),
+        updated_at: word.updated_at || new Date().toISOString()
+      };
+    } else {
+      wordEntry = word as WordRepositoryEntry;
+    }
+
+    setSelectedWord(wordEntry);
+    setIsWordDialogOpen(true);
+  };
+
+  const addWordToCollection = async (entry: DictionaryEntry | SemanticSearchResult | EnhancedWordProfile | WordRepositoryEntry) => {
+    const wordToAdd = entry.word;
+    setIsAdding(wordToAdd);
+    
     try {
-      const { words } = await WordRepositoryService.getWordsWithPagination(0, 500);
-      setAllWords(words);
-      setFilteredWords(words);
-    } catch (error) {
-      console.error('Failed to load words:', error);
+      const existingWord = await WordProfileService.getWordProfile(wordToAdd);
+      if (existingWord) {
+        toast({
+          title: "Word already exists",
+          description: `"${wordToAdd}" is already in your collection.`,
+        });
+        return;
+      }
+
+      // Handle enhanced word profile or word repository entry
+      if ('morpheme_breakdown' in entry && entry.morpheme_breakdown) {
+        const basicProfile: Partial<WordProfile> = {
+          word: entry.word,
+          morpheme_breakdown: entry.morpheme_breakdown,
+          etymology: entry.etymology,
+          definitions: {
+            primary: entry.definitions.primary,
+            standard: entry.definitions.standard,
+            extended: entry.definitions.extended,
+            contextual: Array.isArray(entry.definitions.contextual) ? 
+              entry.definitions.contextual[0] : 
+              entry.definitions.contextual || '',
+            specialized: Array.isArray(entry.definitions.specialized) ? 
+              entry.definitions.specialized[0] : 
+              entry.definitions.specialized || ''
+          },
+          word_forms: {
+            ...entry.word_forms,
+            other_inflections: Array.isArray(entry.word_forms?.other_inflections) ? 
+              entry.word_forms.other_inflections[0] || '' : 
+              entry.word_forms?.other_inflections || ''
+          },
+          analysis: {
+            ...entry.analysis,
+            // Fix: Convert array to string format for WordProfile
+            common_collocations: getCollocations(entry.analysis).join(', ')
+          }
+        };
+        await WordProfileService.createWordProfile(basicProfile);
+      }
+      // Handle semantic results and dictionary entries
+      else if ('score' in entry || 'meanings' in entry) {
+        try {
+          const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${wordToAdd}`);
+          if (response.ok) {
+            const dictData = await response.json();
+            await addDictionaryEntry(dictData[0]);
+            return;
+          }
+        } catch (error) {
+          console.log('Dictionary lookup failed, creating basic entry');
+        }
+        
+        // Create basic entry if dictionary lookup fails
+        const basicProfile: Partial<WordProfile> = {
+          word: wordToAdd,
+          morpheme_breakdown: {
+            root: {
+              text: wordToAdd,
+              meaning: 'Meaning to be analyzed'
+            }
+          },
+          etymology: {
+            language_of_origin: 'English',
+            historical_origins: 'Etymology to be researched'
+          },
+          definitions: {
+            primary: 'Definition to be researched',
+            standard: []
+          },
+          word_forms: {
+            base_form: wordToAdd
+          },
+          analysis: {
+            parts_of_speech: 'unknown',
+            synonyms_antonyms: JSON.stringify({ synonyms: [], antonyms: [] }),
+            example: 'Example usage to be added'
+          }
+        };
+
+        await WordProfileService.createWordProfile(basicProfile);
+      }
+      
       toast({
-        title: "Loading Failed",
-        description: "Failed to load vocabulary. Please try again.",
+        title: "Word added successfully",
+        description: `"${wordToAdd}" has been added to your collection.`
+      });
+    } catch (error) {
+      console.error('Error adding word:', error);
+      toast({
+        title: "Failed to add word",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
         variant: "destructive"
       });
     } finally {
-      setIsLoading(false);
+      setIsAdding(null);
     }
   };
 
-  const handleWordsDiscovered = (newWords: WordRepositoryEntry[]) => {
-    setAllWords(prev => [...newWords, ...prev]);
-    setFilteredWords(prev => [...newWords, ...prev]);
-    setDatabaseStatus(prev => ({
-      ...prev,
-      wordCount: prev.wordCount + newWords.length
-    }));
-  };
+  const addDictionaryEntry = async (entry: DictionaryEntry) => {
+    const primaryMeaning = entry.meanings[0]?.definitions[0];
+    const wordProfile: Partial<WordProfile> = {
+      word: entry.word,
+      morpheme_breakdown: {
+        root: {
+          text: entry.word,
+          meaning: primaryMeaning?.definition || 'Definition not available'
+        }
+      },
+      etymology: {
+        language_of_origin: 'English',
+        historical_origins: entry.origin || 'Etymology not available'
+      },
+      definitions: {
+        primary: primaryMeaning?.definition || 'Definition not available',
+        standard: entry.meanings.slice(0, 3).map(m => 
+          m.definitions[0]?.definition || ''
+        ).filter(Boolean)
+      },
+      word_forms: {
+        base_form: entry.word
+      },
+      analysis: {
+        parts_of_speech: entry.meanings[0]?.partOfSpeech || 'unknown',
+        synonyms_antonyms: JSON.stringify({
+          synonyms: primaryMeaning?.synonyms || [],
+          antonyms: primaryMeaning?.antonyms || []
+        }),
+        example: primaryMeaning?.example || 'No example available'
+      }
+    };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Search is handled by useEffect
+    await WordProfileService.createWordProfile(wordProfile);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <Header />
-      
+    <>
       <motion.div
         initial="initial"
         animate="in"
         exit="exit"
-        variants={{
-          initial: { opacity: 0, y: 20 },
-          in: { opacity: 1, y: 0 },
-          exit: { opacity: 0, y: -20 }
-        }}
+        variants={pageVariants}
         transition={{ duration: 0.3 }}
-        className="container mx-auto py-24 px-4 space-y-8"
+        className="container mx-auto py-8 px-4"
       >
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Discover Words
-          </h1>
-          <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-            Explore our intelligent vocabulary database powered by AI and multiple dictionary sources
-          </p>
-          
-          {/* Database Status */}
-          <div className="flex justify-center">
-            <Badge variant={databaseStatus.isInitialized ? "default" : "secondary"} className="text-sm">
-              {databaseStatus.isPopulating ? (
-                <>
-                  <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-                  Initializing Database...
-                </>
-              ) : (
-                <>
-                  <Database className="h-3 w-3 mr-1" />
-                  {databaseStatus.wordCount} words available
-                </>
-              )}
-            </Badge>
-          </div>
+        <div className="flex items-center gap-3 mb-6">
+          <Globe className="h-8 w-8 text-primary" />
+          <h1 className="text-3xl font-semibold">Word Discovery</h1>
+        </div>
+        
+        <p className="text-gray-600 dark:text-gray-400 mb-8">
+          Discover new words with AI-powered search and recommendations.
+        </p>
+
+        {/* Search Mode Toggle */}
+        <div className="flex gap-2 mb-6">
+          <Button
+            variant={searchMode === 'browse' ? 'default' : 'outline'}
+            onClick={() => setSearchMode('browse')}
+            className="flex items-center gap-2"
+          >
+            <BookOpen className="h-4 w-4" />
+            Browse Words
+          </Button>
+          <Button
+            variant={searchMode === 'smart' ? 'default' : 'outline'}
+            onClick={() => setSearchMode('smart')}
+            className="flex items-center gap-2"
+          >
+            <Search className="h-4 w-4" />
+            Smart Search
+          </Button>
         </div>
 
-        {/* Smart Discovery Agent */}
-        <SmartDiscoveryAgent onWordsDiscovered={handleWordsDiscovered} />
+        {/* Smart Search Mode */}
+        {searchMode === 'smart' && (
+          <div className="mb-8">
+            <EnhancedSmartSearch 
+              onResults={handleSmartSearchResults}
+              onLoading={setIsSearching}
+            />
+          </div>
+        )}
 
-        {/* Search */}
-        <Card>
-          <CardContent className="pt-6">
-            <form onSubmit={handleSearch} className="flex gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search vocabulary..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+        <div className="grid lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            {/* Smart Search Results */}
+            {searchMode === 'smart' && (
+              <div className="space-y-6">
+                {filteredWords.length > 0 ? (
+                  <>
+                    <h2 className="text-2xl font-medium">Search Results</h2>
+                    <div className="grid gap-6 md:grid-cols-2">
+                      {filteredWords.map((word) => (
+                        <Card 
+                          key={word.id} 
+                          className="cursor-pointer hover:shadow-md transition-shadow"
+                          onClick={() => handleWordSelect(word)}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <h3 className="text-lg font-semibold capitalize">{word.word}</h3>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addWordToCollection(word);
+                                }}
+                                disabled={isAdding === word.word}
+                              >
+                                {isAdding === word.word ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Plus className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              {word.definitions.primary}
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {word.analysis?.parts_of_speech && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {word.analysis.parts_of_speech}
+                                </Badge>
+                              )}
+                              <Badge variant="outline" className="text-xs">
+                                {word.difficulty_level}
+                              </Badge>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </>
+                ) : !isSearching && (
+                  <div className="space-y-6">
+                    <AIRecommendations 
+                      onWordSelect={handleWordSelect}
+                      onAddToCollection={addWordToCollection}
+                    />
+                  </div>
+                )}
               </div>
-              <Button type="submit">
-                <Search className="h-4 w-4 mr-2" />
-                Search
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+            )}
 
-        {/* Results */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold text-white">
-              {searchTerm ? `Search Results (${filteredWords.length})` : `Vocabulary Library (${allWords.length})`}
-            </h2>
-            <Button 
-              onClick={loadWords} 
-              variant="outline" 
-              disabled={isLoading}
-              className="text-white border-white/20 hover:bg-white/10"
-            >
-              {isLoading ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Loading...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh
-                </>
-              )}
-            </Button>
+            {/* Browse Mode */}
+            {searchMode === 'browse' && (
+              <div className="space-y-6">
+                <AIRecommendations 
+                  onWordSelect={handleWordSelect}
+                  onAddToCollection={addWordToCollection}
+                />
+                
+                <div>
+                  <h2 className="text-2xl font-medium mb-4">All Words</h2>
+                  
+                  {enhancedWords.length > 0 ? (
+                    <>
+                      <div className="grid gap-6 md:grid-cols-2">
+                        {enhancedWords.map((wordProfile, index) => (
+                          <EnhancedWordCard 
+                            key={wordProfile.id} 
+                            wordProfile={wordProfile}
+                            onAddToCollection={addWordToCollection}
+                            showAddButton={true}
+                          />
+                        ))}
+                      </div>
+                      
+                      {/* Loading more indicator */}
+                      {isLoadingMore && (
+                        <div className="flex justify-center py-8">
+                          <Loader2 className="h-8 w-8 animate-spin" />
+                          <span className="ml-2">Loading more words...</span>
+                        </div>
+                      )}
+                      
+                      {!hasMore && enhancedWords.length > 0 && (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <p>You've reached the end of our word repository!</p>
+                        </div>
+                      )}
+                    </>
+                  ) : isLoadingMore ? (
+                    <div className="flex justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                      <span className="ml-2">Loading word repository...</span>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-500 mb-2">No words available</h3>
+                      <p className="text-gray-400">
+                        The word repository is empty. Visit Settings to populate it with words.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
-          {isLoading ? (
-            <div className="text-center py-12">
-              <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-              <p className="text-slate-300">Loading vocabulary...</p>
+          {/* AI Chat Panel */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-8">
+              <AIChatInterface />
             </div>
-          ) : filteredWords.length > 0 ? (
-            <WordRepositoryGrid />
-          ) : (
-            <Card>
-              <CardContent className="text-center py-12">
-                <BookOpen className="h-12 w-12 mx-auto mb-4 text-slate-400" />
-                <h3 className="text-lg font-semibold text-white mb-2">
-                  {searchTerm ? 'No words found' : 'No vocabulary available'}
-                </h3>
-                <p className="text-slate-400 mb-4">
-                  {searchTerm 
-                    ? `Try a different search term or use the Smart Discovery feature above`
-                    : 'The vocabulary database is being initialized. Please wait...'
-                  }
-                </p>
-                {!searchTerm && !databaseStatus.isInitialized && (
-                  <Button 
-                    onClick={initializeDatabase}
-                    disabled={databaseStatus.isPopulating}
-                    className="bg-primary hover:bg-primary/80"
-                  >
-                    {databaseStatus.isPopulating ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Initializing...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Initialize Database
-                      </>
-                    )}
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          )}
+          </div>
         </div>
       </motion.div>
-    </div>
+
+      {/* Floating Action Button */}
+      <FloatingActionButton />
+
+      {/* Word Detail Dialog */}
+      <WordDetailDialog
+        word={selectedWord}
+        isOpen={isWordDialogOpen}
+        onClose={() => setIsWordDialogOpen(false)}
+        onAddToCollection={addWordToCollection}
+      />
+    </>
   );
 };
 
-export default Discovery;
+export default DiscoveryPage;
