@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import WordCard from "@/components/WordCard";
 import Header from "@/components/Header";
@@ -6,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Search, Plus, LayoutGrid, Grid3X3, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import WordGrid from "@/components/WordGrid";
-import { useUnifiedWords } from "@/hooks/useUnifiedWords";
+import { useWords } from "@/context/WordsContext";
 import DictionarySearch from "@/components/DictionarySearch";
 import { searchDictionaryWord } from "@/lib/dictionaryApi";
 import { toast } from "@/components/ui/use-toast";
@@ -15,11 +14,11 @@ import { Link } from "react-router-dom";
 import { QuickActions } from "@/components/Navigation/QuickActions";
 import { NextSteps } from "@/components/Navigation/NextSteps";
 
-type FilterCategory = "all" | "prefix" | "root" | "suffix" | "origin" | "dictionary" | "enhanced" | "legacy";
+type FilterCategory = "all" | "prefix" | "root" | "suffix" | "origin" | "dictionary";
 type ViewMode = "cards" | "grid";
 
 const Index = () => {
-  const { words, loading, addWord, getWord, searchWords } = useUnifiedWords();
+  const { words, addWord, getWord, dictionaryWords } = useWords();
   const [searchQuery, setSearchQuery] = useState("");
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterCategory>("all");
@@ -30,7 +29,10 @@ const Index = () => {
   const [isSearching, setIsSearching] = useState(false);
   const navigate = useNavigate();
   
-  const filteredWords = searchQuery ? searchWords(searchQuery) : words;
+  const filteredWords = words.filter(word => 
+    word.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    word.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
   
   const featuredWords = words.filter(word => word.featured);
 
@@ -115,12 +117,6 @@ const Index = () => {
 
   const getFilteredWordsByCategory = () => {
     if (activeFilter === "all") return filteredWords;
-    if (activeFilter === "enhanced") {
-      return filteredWords.filter(word => (word as any).source === 'database');
-    }
-    if (activeFilter === "legacy") {
-      return filteredWords.filter(word => (word as any).source === 'legacy');
-    }
     if (activeFilter === "origin") {
       return filteredWords;
     }
@@ -131,24 +127,13 @@ const Index = () => {
       return filteredWords.filter(word => word.morphemeBreakdown.suffix);
     }
     if (activeFilter === "dictionary") {
-      return filteredWords.filter(word => (word as any).source === 'database');
+      const dictionaryIds = dictionaryWords.map(w => w.id);
+      return filteredWords.filter(word => dictionaryIds.includes(word.id));
     }
     return filteredWords;
   };
 
   const displayWords = getFilteredWordsByCategory();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-lg font-medium">Loading comprehensive word collection...</p>
-          <p className="text-sm text-muted-foreground">Integrating database and legacy words</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -211,24 +196,8 @@ const Index = () => {
                   Welcome back, <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-400">{username}!</span>
                 </h1>
                 <p className="text-lg max-w-2xl mx-auto text-muted-foreground">
-                  Master language with comprehensive word profiles, deep linguistic analysis, and interactive learning tools.
+                  Master language with interactive quizzes, etymology breakdowns, and daily word insights.
                 </p>
-                
-                {/* Enhanced stats display */}
-                <div className="flex justify-center gap-6 text-sm">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-primary">{words.filter(w => (w as any).source === 'database').length}</div>
-                    <div className="text-muted-foreground">Enhanced Words</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-secondary-foreground">{words.filter(w => (w as any).source === 'legacy').length}</div>
-                    <div className="text-muted-foreground">Legacy Words</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-accent-foreground">{words.length}</div>
-                    <div className="text-muted-foreground">Total Words</div>
-                  </div>
-                </div>
                 
                 {showDictionarySearch ? (
                   <div className="max-w-md mx-auto">
@@ -276,7 +245,7 @@ const Index = () => {
           {viewMode === "grid" && (
             <div className="mb-6">
               <p className="text-muted-foreground text-sm text-center">
-                Master language with comprehensive word profiles, deep linguistic analysis, and interactive learning tools
+                Master language with interactive quizzes, etymology breakdowns, and daily word insights
               </p>
               
               <div className="mt-4 relative">
@@ -325,23 +294,7 @@ const Index = () => {
                 onClick={() => setActiveFilter("all")}
                 className="rounded-full"
               >
-                All ({words.length})
-              </Button>
-              <Button 
-                variant={activeFilter === "enhanced" ? "default" : "outline"} 
-                size="sm"
-                onClick={() => setActiveFilter("enhanced")}
-                className="rounded-full"
-              >
-                Enhanced ({words.filter(w => (w as any).source === 'database').length})
-              </Button>
-              <Button 
-                variant={activeFilter === "legacy" ? "default" : "outline"} 
-                size="sm"
-                onClick={() => setActiveFilter("legacy")}
-                className="rounded-full"
-              >
-                Legacy ({words.filter(w => (w as any).source === 'legacy').length})
+                All
               </Button>
               <Button 
                 variant={activeFilter === "prefix" ? "default" : "outline"} 
@@ -366,6 +319,14 @@ const Index = () => {
                 className="rounded-full"
               >
                 Origin
+              </Button>
+              <Button 
+                variant={activeFilter === "dictionary" ? "default" : "outline"} 
+                size="sm"
+                onClick={() => setActiveFilter("dictionary")}
+                className="rounded-full"
+              >
+                Dictionary
               </Button>
             </div>
             
@@ -407,16 +368,12 @@ const Index = () => {
           
           <section>
             <h2 className="text-2xl font-semibold mb-6">
-              {searchQuery ? `Search Results (${displayWords.length})` : 
-               activeFilter !== "all" ? `${activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1)} Words (${displayWords.length})` : 
-               `All Words (${displayWords.length})`}
+              {searchQuery ? "Search Results" : activeFilter !== "all" ? `${activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1)} Filter` : "All Words"}
             </h2>
             
             {displayWords.length === 0 ? (
               <div className="glass-card rounded-lg p-8 text-center">
-                <p className="text-muted-foreground">
-                  {searchQuery ? `No words found matching '${searchQuery}'` : 'No words found for this filter'}
-                </p>
+                <p className="text-muted-foreground">No words found matching '{searchQuery}'</p>
               </div>
             ) : viewMode === "cards" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -430,7 +387,7 @@ const Index = () => {
                       transform: isInitialLoad ? 'translateY(20px)' : 'translateY(0)'
                     }}
                   >
-                    <WordCard word={word as any} priority={index < 6} />
+                    <WordCard word={word} />
                   </div>
                 ))}
               </div>
