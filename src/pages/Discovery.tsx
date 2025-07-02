@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, BookOpen, Sparkles, Database, RefreshCw } from 'lucide-react';
@@ -29,7 +30,7 @@ const Discovery: React.FC = () => {
   const [filteredWords, setFilteredWords] = useState<WordRepositoryEntry[]>([]);
   const [allWords, setAllWords] = useState<WordRepositoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [databaseStatus, setDatabaseStatus<DatabaseStatus>({
+  const [databaseStatus, setDatabaseStatus] = useState<DatabaseStatus>({
     wordCount: 0,
     isInitialized: false,
     isPopulating: false
