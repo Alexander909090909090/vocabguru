@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DatabaseMonitor } from '@/components/DatabaseMonitor';
 import { SeedingControl } from '@/components/DatabaseSeeding/SeedingControl';
 import { APIIntegrationsTab } from '@/components/Settings/APIIntegrationsTab';
+import { EnrichmentSection } from '@/components/Settings/EnrichmentSection';
 import { RoleService } from '@/services/roleService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
@@ -54,8 +55,12 @@ const SettingsPage: React.FC = () => {
         Manage your VocabGuru preferences, database, integrations, and account settings.
       </p>
 
-      <Tabs defaultValue="database" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+      <Tabs defaultValue="enrichment" className="w-full">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="enrichment" className="flex items-center gap-2">
+            <SettingsIcon className="h-4 w-4" />
+            Enrichment
+          </TabsTrigger>
           <TabsTrigger value="database" className="flex items-center gap-2">
             <Database className="h-4 w-4" />
             Database
@@ -78,6 +83,17 @@ const SettingsPage: React.FC = () => {
           </TabsTrigger>
         </TabsList>
 
+        <TabsContent value="enrichment" className="space-y-6 mt-6">
+          <div>
+            <h2 className="text-2xl font-medium mb-4">Word Repository Enrichment</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Enhance your word repository with AI-powered linguistic analysis, morphological breakdowns, and comprehensive language data.
+            </p>
+          </div>
+          
+          <EnrichmentSection />
+        </TabsContent>
+
         <TabsContent value="database" className="space-y-6 mt-6">
           <div>
             <h2 className="text-2xl font-medium mb-4">Database Management</h2>
@@ -94,9 +110,9 @@ const SettingsPage: React.FC = () => {
 
         <TabsContent value="integrations" className="space-y-6 mt-6">
           <div>
-            <h2 className="text-2xl font-medium mb-4">API Integrations & Enrichment</h2>
+            <h2 className="text-2xl font-medium mb-4">API Integrations</h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Configure open-source dictionary APIs, AI models, and manage word repository enrichment for enhanced analysis.
+              Configure open-source dictionary APIs and AI models for enhanced word analysis and enrichment.
             </p>
             
             {!isAdmin && !isCheckingRole && (
