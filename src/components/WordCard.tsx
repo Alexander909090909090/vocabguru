@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { UnifiedWord } from "@/hooks/useUnifiedWords";
+import { UnsplashImageService } from "@/services/unsplashImageService";
 
 interface WordCardProps {
   word: UnifiedWord;
@@ -12,7 +13,8 @@ interface WordCardProps {
 }
 
 export function WordCard({ word, priority = false }: WordCardProps) {
-  const [isImageLoaded, setIsImageLoaded] = useState(priority);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [contextualImage, setContextualImage] = useState<string | null>(null);
   
   // Create a gradient background based on the word id to ensure consistent colors per word
   const getGradient = (id: string) => {
@@ -26,16 +28,16 @@ export function WordCard({ word, priority = false }: WordCardProps) {
     return `linear-gradient(135deg, hsl(${hue1}, 80%, 60%), hsl(${hue2}, 80%, 50%))`;
   };
 
-  // For the thumbnail image
-  const thumbnailImage = word.images?.[0];
-  
+  // Get contextual image for the word
   useEffect(() => {
-    if (!priority && thumbnailImage) {
-      const img = new Image();
-      img.src = thumbnailImage.url;
-      img.onload = () => setIsImageLoaded(true);
-    }
-  }, [thumbnailImage, priority]);
+    // For now, use placeholder images until user configures Unsplash
+    const placeholderImage = UnsplashImageService.getPlaceholderImage(word.word);
+    setContextualImage(placeholderImage);
+    setIsImageLoaded(true);
+  }, [word.word]);
+
+  // For the thumbnail image (prefer contextual over original images)
+  const thumbnailImage = contextualImage || word.images?.[0]?.url;
 
   return (
     <Link 
@@ -49,13 +51,19 @@ export function WordCard({ word, priority = false }: WordCardProps) {
         >
           {thumbnailImage && (
             <img
-              src={thumbnailImage.url}
-              alt={thumbnailImage.alt}
+              src={thumbnailImage}
+              alt={`Visual representation of ${word.word}`}
               className={cn(
                 "w-full h-full object-cover object-center transition-all duration-500",
-                isImageLoaded ? "image-loaded" : "image-loading"
+                isImageLoaded ? "opacity-100" : "opacity-0"
               )}
               loading={priority ? "eager" : "lazy"}
+              onLoad={() => setIsImageLoaded(true)}
+              onError={() => {
+                // Fallback to gradient on image error
+                setContextualImage(null);
+                setIsImageLoaded(false);
+              }}
             />
           )}
           {word.featured && (

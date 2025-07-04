@@ -7,6 +7,7 @@ import { DatabaseMonitor } from '@/components/DatabaseMonitor';
 import { SeedingControl } from '@/components/DatabaseSeeding/SeedingControl';
 import { APIIntegrationsTab } from '@/components/Settings/APIIntegrationsTab';
 import { EnrichmentSection } from '@/components/Settings/EnrichmentSection';
+import { CSVDataManagement } from '@/components/Settings/CSVDataManagement';
 import { RoleService } from '@/services/roleService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
@@ -56,30 +57,36 @@ const SettingsPage: React.FC = () => {
       </p>
 
       <Tabs defaultValue="enrichment" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="enrichment" className="flex items-center gap-2">
-            <SettingsIcon className="h-4 w-4" />
-            Enrichment
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1">
+          <TabsTrigger value="enrichment" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+            <SettingsIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Enrichment</span>
+            <span className="sm:hidden">Enrich</span>
           </TabsTrigger>
-          <TabsTrigger value="database" className="flex items-center gap-2">
-            <Database className="h-4 w-4" />
-            Database
+          <TabsTrigger value="database" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+            <Database className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Database</span>
+            <span className="sm:hidden">DB</span>
           </TabsTrigger>
-          <TabsTrigger value="integrations" className="flex items-center gap-2">
-            <Plug className="h-4 w-4" />
-            API Integrations
+          <TabsTrigger value="integrations" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+            <Plug className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">API Integrations</span>
+            <span className="sm:hidden">APIs</span>
           </TabsTrigger>
-          <TabsTrigger value="account" className="flex items-center gap-2">
-            <User className="h-4 w-4" />
-            Account
+          <TabsTrigger value="account" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+            <User className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Account</span>
+            <span className="sm:hidden">User</span>
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex items-center gap-2">
-            <Bell className="h-4 w-4" />
-            Notifications
+          <TabsTrigger value="notifications" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+            <Bell className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Notifications</span>
+            <span className="sm:hidden">Notify</span>
           </TabsTrigger>
-          <TabsTrigger value="privacy" className="flex items-center gap-2">
-            <Shield className="h-4 w-4" />
-            Privacy
+          <TabsTrigger value="privacy" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+            <Shield className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Privacy</span>
+            <span className="sm:hidden">Sec</span>
           </TabsTrigger>
         </TabsList>
 
@@ -102,9 +109,16 @@ const SettingsPage: React.FC = () => {
             </p>
           </div>
           
-          <div className="grid gap-6 lg:grid-cols-2">
-            <DatabaseMonitor />
-            <SeedingControl />
+          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
+            <div className="lg:col-span-1">
+              <DatabaseMonitor />
+            </div>
+            <div className="lg:col-span-1">
+              <SeedingControl />
+            </div>
+            <div className="lg:col-span-2 xl:col-span-1">
+              <CSVDataManagement />
+            </div>
           </div>
         </TabsContent>
 
