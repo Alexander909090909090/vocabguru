@@ -7,7 +7,7 @@ import { DatabaseMonitor } from '@/components/DatabaseMonitor';
 import { SeedingControl } from '@/components/DatabaseSeeding/SeedingControl';
 import { APIIntegrationsTab } from '@/components/Settings/APIIntegrationsTab';
 import { EnrichmentSection } from '@/components/Settings/EnrichmentSection';
-import { CSVDataManagement } from '@/components/Settings/CSVDataManagement';
+import { AICSVImporter } from '@/components/Settings/AICSVImporter';
 import { RoleService } from '@/services/roleService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
@@ -117,7 +117,7 @@ const SettingsPage: React.FC = () => {
               <SeedingControl />
             </div>
             <div className="lg:col-span-2 xl:col-span-1">
-              <CSVDataManagement />
+              <AICSVImporter />
             </div>
           </div>
         </TabsContent>

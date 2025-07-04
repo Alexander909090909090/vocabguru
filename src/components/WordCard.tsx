@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { UnifiedWord } from "@/hooks/useUnifiedWords";
-import { UnsplashImageService } from "@/services/unsplashImageService";
+// Removed UnsplashImageService import - using gradients only
 
 interface WordCardProps {
   word: UnifiedWord;
@@ -13,8 +13,7 @@ interface WordCardProps {
 }
 
 export function WordCard({ word, priority = false }: WordCardProps) {
-  const [isImageLoaded, setIsImageLoaded] = useState(false);
-  const [contextualImage, setContextualImage] = useState<string | null>(null);
+  // Removed image loading state - using gradients only
   
   // Create a gradient background based on the word id to ensure consistent colors per word
   const getGradient = (id: string) => {
@@ -28,16 +27,8 @@ export function WordCard({ word, priority = false }: WordCardProps) {
     return `linear-gradient(135deg, hsl(${hue1}, 80%, 60%), hsl(${hue2}, 80%, 50%))`;
   };
 
-  // Get contextual image for the word
-  useEffect(() => {
-    // For now, use placeholder images until user configures Unsplash
-    const placeholderImage = UnsplashImageService.getPlaceholderImage(word.word);
-    setContextualImage(placeholderImage);
-    setIsImageLoaded(true);
-  }, [word.word]);
-
-  // For the thumbnail image (prefer contextual over original images)
-  const thumbnailImage = contextualImage || word.images?.[0]?.url;
+  // Always use gradient background (no images)
+  const thumbnailImage = null;
 
   return (
     <Link 
@@ -49,23 +40,12 @@ export function WordCard({ word, priority = false }: WordCardProps) {
           className="h-40 relative overflow-hidden"
           style={{ background: getGradient(word.id) }}
         >
-          {thumbnailImage && (
-            <img
-              src={thumbnailImage}
-              alt={`Visual representation of ${word.word}`}
-              className={cn(
-                "w-full h-full object-cover object-center transition-all duration-500",
-                isImageLoaded ? "opacity-100" : "opacity-0"
-              )}
-              loading={priority ? "eager" : "lazy"}
-              onLoad={() => setIsImageLoaded(true)}
-              onError={() => {
-                // Fallback to gradient on image error
-                setContextualImage(null);
-                setIsImageLoaded(false);
-              }}
-            />
-          )}
+          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+            <div className="text-center text-white">
+              <h3 className="text-2xl font-bold mb-1">{word.word}</h3>
+              <p className="text-sm opacity-90">{word.description?.slice(0, 50)}...</p>
+            </div>
+          </div>
           {word.featured && (
             <div className="absolute top-3 right-3">
               <span className="chip bg-primary/90 text-white backdrop-blur-sm">

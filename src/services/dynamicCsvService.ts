@@ -19,14 +19,39 @@ interface CsvAnalysisResult {
   confidence: number;
   recommendations: string[];
   preview: any[];
+  aiEnhancements: string[];
 }
 
-// Dynamic CSV intelligence service with AI-powered column detection
+// AI-powered Dynamic CSV intelligence service
 export class DynamicCsvService {
   
-  // Analyze CSV structure and auto-detect column mappings
-  static analyzeCsvStructure(headers: string[], sampleRows: string[][]): CsvAnalysisResult {
-    console.log('🔍 Analyzing CSV structure with headers:', headers);
+  // AI-powered CSV structure analysis
+  static async analyzeCsvStructure(headers: string[], sampleRows: string[][]): Promise<CsvAnalysisResult> {
+    console.log('🧠 AI-powered CSV analysis for headers:', headers);
+    
+    try {
+      // Try AI analysis first
+      const { data: aiResult, error } = await supabase.functions.invoke('ai-csv-analyzer', {
+        body: { headers, sampleRows }
+      });
+
+      if (!error && aiResult) {
+        console.log('✅ AI analysis successful:', aiResult);
+        return aiResult;
+      } else {
+        console.warn('AI analysis failed, falling back to pattern matching:', error);
+      }
+    } catch (error) {
+      console.warn('AI analysis error, using fallback:', error);
+    }
+
+    // Fallback to pattern-based analysis
+    return this.fallbackAnalyzeCsvStructure(headers, sampleRows);
+  }
+
+  // Fallback pattern-based analysis
+  private static fallbackAnalyzeCsvStructure(headers: string[], sampleRows: string[][]): CsvAnalysisResult {
+    console.log('🔍 Fallback: Analyzing CSV structure with headers:', headers);
     
     const mappings: CsvColumnMapping = {};
     const recommendations: string[] = [];
@@ -117,18 +142,15 @@ export class DynamicCsvService {
       return mapped;
     });
     
-    // Add recommendations for missing critical fields
-    if (!mappings.word) {
-      recommendations.push('⚠️ No word column detected - this is required for import');
-      confidence *= 0.5;
-    }
-    if (!mappings.definition) {
-      recommendations.push('⚠️ No definition column detected - definitions will be fetched from dictionary');
-    }
+    // Add AI enhancement recommendations
+    const aiEnhancements = ['definition', 'morpheme_breakdown', 'etymology', 'synonyms', 'usage_examples'];
+    aiEnhancements.forEach(enhancement => {
+      recommendations.push(`🤖 AI will generate missing: ${enhancement}`);
+    });
     
-    console.log('📊 CSV Analysis Results:', { mappings, confidence, recommendations });
+    console.log('📊 Fallback CSV Analysis Results:', { mappings, confidence, recommendations });
     
-    return { mappings, confidence, recommendations, preview };
+    return { mappings, confidence, recommendations, preview, aiEnhancements };
   }
   
   // Calculate match score for header patterns
@@ -189,7 +211,7 @@ export class DynamicCsvService {
     return matrix[str2.length][str1.length];
   }
   
-  // Process CSV data with dynamic mappings
+  // Process CSV data with AI-powered dynamic mappings
   static async processCsvData(
     rows: string[][],
     mappings: CsvColumnMapping,
@@ -204,10 +226,10 @@ export class DynamicCsvService {
     errors: string[];
     successful: string[];
   }> {
-    const { skipFirstRow = true, enrichMissingData = true, batchSize = 10 } = options;
+    const { skipFirstRow = true, enrichMissingData = true, batchSize = 5 } = options;
     const dataRows = skipFirstRow ? rows.slice(1) : rows;
     
-    console.log(`📥 Processing ${dataRows.length} CSV rows with mappings:`, mappings);
+    console.log(`📥 AI-powered processing ${dataRows.length} CSV rows with mappings:`, mappings);
     
     const results = {
       imported: 0,
@@ -216,7 +238,7 @@ export class DynamicCsvService {
       successful: [] as string[]
     };
     
-    // Process in batches to avoid overwhelming the system
+    // Process in smaller batches to handle AI enrichment
     for (let i = 0; i < dataRows.length; i += batchSize) {
       const batch = dataRows.slice(i, i + batchSize);
       const batchPromises = batch.map(row => this.processRow(row, mappings, enrichMissingData));
@@ -224,7 +246,7 @@ export class DynamicCsvService {
       const batchResults = await Promise.allSettled(batchPromises);
       
       batchResults.forEach((result, index) => {
-        const rowIndex = i + index + (skipFirstRow ? 2 : 1); // +2 for header and 1-based indexing
+        const rowIndex = i + index + (skipFirstRow ? 2 : 1);
         
         if (result.status === 'fulfilled' && result.value.success) {
           results.imported++;
@@ -238,27 +260,39 @@ export class DynamicCsvService {
         }
       });
       
-      // Small delay between batches
+      // Longer delay between batches for AI processing
       if (i + batchSize < dataRows.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
     
-    console.log('📊 CSV Processing Results:', results);
+    console.log('📊 AI-Enhanced CSV Processing Results:', results);
     return results;
   }
   
-  // Process individual row
+  // Find word column with flexible matching
+  private static findWordColumn(row: string[], mappings: CsvColumnMapping): number | undefined {
+    // Try to find any non-empty column that could be a word
+    for (let i = 0; i < row.length; i++) {
+      const value = row[i]?.trim();
+      if (value && value.length > 0 && value.length < 50 && !value.includes(' ')) {
+        return i;
+      }
+    }
+    return undefined;
+  }
+  
+  // Enhanced row processing with AI enrichment
   private static async processRow(
     row: string[],
     mappings: CsvColumnMapping,
     enrichMissingData: boolean
   ): Promise<{ success: boolean; word?: string; error?: string }> {
     try {
-      // Extract word - this is required
-      const wordCol = mappings.word;
-      if (wordCol === undefined || !row[wordCol]?.trim()) {
-        return { success: false, error: 'Missing word column or empty word' };
+      // Find any column that could contain a word - be flexible
+      const wordCol = mappings.word ?? this.findWordColumn(row, mappings);
+      if (wordCol === undefined) {
+        return { success: false, error: 'No word found in any column' };
       }
       
       const word = row[wordCol].trim().toLowerCase();
@@ -269,64 +303,10 @@ export class DynamicCsvService {
         return { success: false, error: `Word "${word}" already exists` };
       }
       
-      // Build word profile from CSV data
-      const wordProfile = {
-        word,
-        definitions: {
-          primary: mappings.definition !== undefined ? row[mappings.definition]?.trim() : '',
-          standard: [],
-          extended: [],
-          contextual: [],
-          specialized: []
-        },
-        morpheme_breakdown: {
-          prefix: mappings.morphemePrefix !== undefined && row[mappings.morphemePrefix] 
-            ? { text: row[mappings.morphemePrefix], meaning: 'prefix meaning' }
-            : undefined,
-          root: {
-            text: mappings.morphemeRoot !== undefined ? row[mappings.morphemeRoot] : word,
-            meaning: 'root meaning'
-          },
-          suffix: mappings.morphemeSuffix !== undefined && row[mappings.morphemeSuffix]
-            ? { text: row[mappings.morphemeSuffix], meaning: 'suffix meaning' }
-            : undefined
-        },
-        etymology: {
-          language_of_origin: mappings.etymology !== undefined ? row[mappings.etymology] : 'Unknown',
-          historical_origins: 'Imported from CSV',
-          word_evolution: 'Evolution details pending enrichment',
-          cultural_variations: []
-        },
-        word_forms: {
-          base_form: word,
-          noun_forms: {},
-          verb_tenses: {},
-          adjective_forms: {},
-          adverb_form: '',
-          other_inflections: []
-        },
-        analysis: {
-          parts_of_speech: mappings.partOfSpeech !== undefined ? row[mappings.partOfSpeech] : 'noun',
-          synonyms: [],
-          antonyms: [],
-          collocations: [],
-          usage_examples: [],
-          example_sentence: `The word "${word}" can be used in various contexts.`
-        },
-        source_apis: ['csv_import'],
-        frequency_score: 50,
-        difficulty_level: 'intermediate',
-        phonetic: mappings.pronunciation !== undefined ? row[mappings.pronunciation] : ''
-      };
+      // Build flexible word profile from CSV data
+      const wordProfile = this.buildWordProfile(word, row, mappings);
       
-      // Add custom fields from unmapped columns
-      Object.entries(mappings).forEach(([field, colIndex]) => {
-        if (field.startsWith('custom_') && colIndex !== undefined && row[colIndex]) {
-          (wordProfile as any)[field] = row[colIndex];
-        }
-      });
-      
-      // Store the word profile using supabase directly
+      // Store the word profile
       const { data: result, error } = await supabase
         .from('word_profiles')
         .insert([wordProfile])
@@ -334,12 +314,12 @@ export class DynamicCsvService {
         .single();
       
       if (!error && result) {
-        // If enrichment is enabled and definition is missing, try to enrich
-        if (enrichMissingData && !wordProfile.definitions.primary) {
+        // Enhanced AI-powered enrichment
+        if (enrichMissingData) {
           try {
-            await EnhancedDictionaryService.searchAndStoreWord(word);
+            await this.aiEnhanceWordProfile(result.id, wordProfile);
           } catch (enrichError) {
-            console.warn(`Failed to enrich word "${word}":`, enrichError);
+            console.warn(`Failed to AI-enhance word "${word}":`, enrichError);
           }
         }
         
@@ -355,5 +335,161 @@ export class DynamicCsvService {
         error: error instanceof Error ? error.message : 'Unknown processing error' 
       };
     }
+  }
+
+  // Build word profile with flexible data extraction
+  private static buildWordProfile(word: string, row: string[], mappings: CsvColumnMapping): any {
+    const getValue = (fieldName: string): string => {
+      const index = mappings[fieldName];
+      return (index !== undefined && row[index]) ? row[index].trim() : '';
+    };
+
+    return {
+      word,
+      definitions: {
+        primary: getValue('definition') || `Definition for ${word}`,
+        standard: [],
+        extended: [],
+        contextual: [],
+        specialized: []
+      },
+      morpheme_breakdown: {
+        prefix: getValue('morphemePrefix') ? { 
+          text: getValue('morphemePrefix'), 
+          meaning: 'prefix meaning' 
+        } : undefined,
+        root: {
+          text: getValue('morphemeRoot') || word,
+          meaning: 'root meaning'
+        },
+        suffix: getValue('morphemeSuffix') ? { 
+          text: getValue('morphemeSuffix'), 
+          meaning: 'suffix meaning' 
+        } : undefined
+      },
+      etymology: {
+        language_of_origin: getValue('etymology') || 'Unknown',
+        historical_origins: 'Imported from CSV',
+        word_evolution: 'Evolution details pending AI enrichment',
+        cultural_variations: []
+      },
+      word_forms: {
+        base_form: word,
+        noun_forms: {},
+        verb_tenses: {},
+        adjective_forms: {},
+        adverb_form: '',
+        other_inflections: []
+      },
+      analysis: {
+        parts_of_speech: getValue('partOfSpeech') || 'noun',
+        synonyms: [],
+        antonyms: [],
+        collocations: [],
+        usage_examples: [],
+        example_sentence: `The word "${word}" can be used in various contexts.`
+      },
+      source_apis: ['ai_csv_import'],
+      frequency_score: 50,
+      difficulty_level: 'intermediate',
+      phonetic: getValue('pronunciation') || '',
+      quality_score: 60, // Will be improved by AI enhancement
+      enrichment_status: 'pending_ai_enhancement'
+    };
+  }
+
+  // AI-powered word profile enhancement
+  private static async aiEnhanceWordProfile(wordId: string, existingData: any): Promise<void> {
+    try {
+      console.log(`🤖 AI enhancing word profile for: ${existingData.word}`);
+      
+      // Identify missing fields
+      const missingFields = [];
+      if (!existingData.definitions?.primary || existingData.definitions.primary.includes('Definition for')) {
+        missingFields.push('definition');
+      }
+      if (!existingData.morpheme_breakdown?.root?.meaning || existingData.morpheme_breakdown.root.meaning === 'root meaning') {
+        missingFields.push('morpheme_breakdown');
+      }
+      if (!existingData.etymology?.language_of_origin || existingData.etymology.language_of_origin === 'Unknown') {
+        missingFields.push('etymology');
+      }
+      if (!existingData.analysis?.synonyms?.length) {
+        missingFields.push('synonyms');
+      }
+      if (!existingData.analysis?.usage_examples?.length) {
+        missingFields.push('usage_examples');
+      }
+
+      if (missingFields.length === 0) {
+        console.log('✅ Word profile already complete, skipping AI enhancement');
+        return;
+      }
+
+      // Call AI enhancement function
+      const { data: aiResult, error } = await supabase.functions.invoke('ai-data-enhancer', {
+        body: { 
+          word: existingData.word, 
+          existingData, 
+          missingFields 
+        }
+      });
+
+      if (!error && aiResult?.enhancements) {
+        // Merge AI enhancements with existing data
+        const enhancedData = this.mergeEnhancements(existingData, aiResult.enhancements);
+        
+        // Update the word profile
+        const { error: updateError } = await supabase
+          .from('word_profiles')
+          .update({
+            ...enhancedData,
+            quality_score: 85,
+            enrichment_status: 'ai_enhanced',
+            last_enrichment_at: new Date().toISOString()
+          })
+          .eq('id', wordId);
+
+        if (updateError) {
+          console.error('Failed to update enhanced word profile:', updateError);
+        } else {
+          console.log(`✨ Successfully AI-enhanced word: ${existingData.word}`);
+        }
+      } else {
+        console.warn('AI enhancement failed:', error);
+      }
+    } catch (error) {
+      console.error('AI enhancement error:', error);
+    }
+  }
+
+  // Merge AI enhancements with existing data
+  private static mergeEnhancements(existing: any, enhancements: any): any {
+    return {
+      ...existing,
+      definitions: {
+        ...existing.definitions,
+        ...enhancements.definitions
+      },
+      morpheme_breakdown: {
+        ...existing.morpheme_breakdown,
+        ...enhancements.morpheme_breakdown
+      },
+      etymology: {
+        ...existing.etymology,
+        ...enhancements.etymology
+      },
+      analysis: {
+        ...existing.analysis,
+        parts_of_speech: enhancements.part_of_speech || existing.analysis.parts_of_speech,
+        synonyms: enhancements.synonyms || existing.analysis.synonyms,
+        antonyms: enhancements.antonyms || existing.analysis.antonyms,
+        usage_examples: enhancements.usage_examples || existing.analysis.usage_examples,
+        collocations: enhancements.collocations || existing.analysis.collocations
+      },
+      phonetic: enhancements.pronunciation || existing.phonetic,
+      frequency_score: enhancements.frequency_score || existing.frequency_score,
+      difficulty_level: enhancements.difficulty_level || existing.difficulty_level
+    };
   }
 }
