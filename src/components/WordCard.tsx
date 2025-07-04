@@ -81,6 +81,25 @@ export function WordCard({ word, priority = false }: WordCardProps) {
             {word.description}
           </p>
           
+          {/* Morpheme Breakdown Preview */}
+          {word.morphemeBreakdown && (
+            <div className="mt-2 flex items-center gap-1 text-xs">
+              {word.morphemeBreakdown.prefix && (
+                <span className="bg-primary/10 text-primary px-2 py-1 rounded border">
+                  {word.morphemeBreakdown.prefix.text}
+                </span>
+              )}
+              <span className="bg-primary/20 text-primary px-2 py-1 rounded border font-medium">
+                {word.morphemeBreakdown.root.text}
+              </span>
+              {word.morphemeBreakdown.suffix && (
+                <span className="bg-primary/10 text-primary px-2 py-1 rounded border">
+                  {word.morphemeBreakdown.suffix.text}
+                </span>
+              )}
+            </div>
+          )}
+          
           <div className="mt-3 flex flex-wrap gap-2">
             <span className="chip bg-secondary text-secondary-foreground">
               {word.languageOrigin}
