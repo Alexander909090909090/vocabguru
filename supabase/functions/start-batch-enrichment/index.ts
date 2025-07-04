@@ -44,22 +44,8 @@ serve(async (req) => {
       )
     }
 
-    // Check if user has admin role
-    const { data: roleData, error: roleError } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .single()
-
-    if (roleError || roleData?.role !== 'admin') {
-      return new Response(
-        JSON.stringify({ error: 'Admin access required' }),
-        { 
-          status: 403, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
+    // Allow all authenticated users to start batch enrichment
+    console.log(`User ${user.id} requesting batch enrichment`)
 
     const { batchSize = 10, qualityThreshold = 70 } = await req.json()
 
