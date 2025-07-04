@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Search, Plus, LayoutGrid, Grid3X3, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import WordGrid from "@/components/WordGrid";
-import { useWords } from "@/context/WordsContext";
+import { useUnifiedWords } from "@/hooks/useUnifiedWords";
 import DictionarySearch from "@/components/DictionarySearch";
 import { searchDictionaryWord } from "@/lib/dictionaryApi";
 import { toast } from "@/components/ui/use-toast";
@@ -18,7 +18,7 @@ type FilterCategory = "all" | "prefix" | "root" | "suffix" | "origin" | "diction
 type ViewMode = "cards" | "grid";
 
 const Index = () => {
-  const { words, addWord, getWord, dictionaryWords } = useWords();
+  const { words, addWord, searchWords: searchUnifiedWords, getWordById, loading: wordsLoading, databaseCount, totalCount } = useUnifiedWords();
   const [searchQuery, setSearchQuery] = useState("");
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterCategory>("all");
@@ -29,10 +29,7 @@ const Index = () => {
   const [isSearching, setIsSearching] = useState(false);
   const navigate = useNavigate();
   
-  const filteredWords = words.filter(word => 
-    word.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    word.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredWords = searchUnifiedWords(searchQuery);
   
   const featuredWords = words.filter(word => word.featured);
 
@@ -85,7 +82,7 @@ const Index = () => {
     }
     
     const normalizedWord = searchQuery.trim().toLowerCase();
-    const existingWord = getWord(normalizedWord);
+    const existingWord = words.find(w => w.word.toLowerCase() === normalizedWord);
     
     if (existingWord) {
       navigate(`/word/${existingWord.id}`);
@@ -127,8 +124,7 @@ const Index = () => {
       return filteredWords.filter(word => word.morphemeBreakdown.suffix);
     }
     if (activeFilter === "dictionary") {
-      const dictionaryIds = dictionaryWords.map(w => w.id);
-      return filteredWords.filter(word => dictionaryIds.includes(word.id));
+      return filteredWords.filter(word => word.source === 'dictionary');
     }
     return filteredWords;
   };
@@ -198,6 +194,16 @@ const Index = () => {
                 <p className="text-lg max-w-2xl mx-auto text-muted-foreground">
                   Master language with interactive quizzes, etymology breakdowns, and daily word insights.
                 </p>
+                {wordsLoading ? (
+                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
+                    Loading comprehensive word repository...
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Exploring {totalCount} words • {databaseCount} enhanced profiles in your repository
+                  </p>
+                )}
                 
                 {showDictionarySearch ? (
                   <div className="max-w-md mx-auto">
