@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { QuickActions } from "@/components/Navigation/QuickActions";
 import { NextSteps } from "@/components/Navigation/NextSteps";
+import { EnhancedDictionaryService } from "@/services/enhancedDictionaryService";
 
 type FilterCategory = "all" | "prefix" | "root" | "suffix" | "origin" | "dictionary";
 type ViewMode = "cards" | "grid";
@@ -93,18 +94,32 @@ const Index = () => {
     setIsSearching(true);
     
     try {
-      const word = await searchDictionaryWord(normalizedWord);
+      console.log(`🔍 Enhanced search for: "${normalizedWord}"`);
       
-      if (word) {
-        addWord(word);
-        navigate(`/word/${word.id}`);
+      // Use enhanced dictionary service for comprehensive analysis
+      const result = await EnhancedDictionaryService.searchAndStoreWord(normalizedWord);
+      
+      if (result.success && result.wordId) {
+        toast({
+          title: "Word Found!",
+          description: result.message,
+        });
+        
+        // Navigate to the word detail page
+        navigate(`/word/${result.wordId}`);
         setSearchQuery("");
+      } else {
+        toast({
+          title: "Word not found",
+          description: result.message || "Could not find this word in our dictionary sources.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      console.error("Error searching word:", error);
+      console.error("Enhanced search error:", error);
       toast({
-        title: "Error",
-        description: "Failed to search for word",
+        title: "Search failed",
+        description: "An error occurred while searching. Please try again.",
         variant: "destructive",
       });
     } finally {

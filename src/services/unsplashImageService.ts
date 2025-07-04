@@ -20,36 +20,89 @@ class UnsplashImageService {
   private static readonly BASE_URL = 'https://api.unsplash.com';
   private static readonly imageCache = new Map<string, string>();
 
-  // Semantic mapping for words to search terms
+  // Comprehensive semantic mapping for words to search terms
   private static readonly semanticMapping: Record<string, string[]> = {
-    // Nature and abundance
-    abundant: ['lush landscapes', 'green mountains', 'fertile fields', 'abundance nature'],
-    superfluous: ['excess objects', 'clutter', 'unnecessary items', 'abundance waste'],
-    verdant: ['green foliage', 'lush forest', 'verdant landscape', 'green nature'],
+    // Political and Economic Systems
+    capitalism: ['business meeting', 'stock market', 'corporate office', 'financial district', 'money bills'],
+    socialism: ['community gathering', 'public services', 'collective work', 'social cooperation'],
+    democracy: ['voting booth', 'parliament building', 'citizen assembly', 'election'],
+    monarchy: ['crown jewels', 'royal palace', 'throne room', 'king queen'],
+    federation: ['unity handshake', 'united nations', 'alliance meeting', 'flags together'],
+    republic: ['government building', 'constitution document', 'civic ceremony'],
+    oligarchy: ['exclusive boardroom', 'elite gathering', 'wealthy elite'],
+    autocracy: ['single ruler', 'authoritarian leader', 'dictator portrait'],
     
-    // Academic and intellectual
-    academic: ['university library', 'books study', 'education learning', 'scholarly'],
-    intellectual: ['thinking person', 'books knowledge', 'study academic', 'contemplation'],
-    scholarly: ['ancient books', 'library study', 'research academic', 'wisdom'],
+    // Economic Concepts
+    economics: ['supply demand chart', 'market analysis', 'economic data', 'financial graphs'],
+    inflation: ['rising prices', 'expensive groceries', 'cost increase', 'price tags'],
+    recession: ['empty stores', 'job loss', 'economic decline', 'closed businesses'],
+    prosperity: ['thriving city', 'successful business', 'wealth abundance', 'economic growth'],
+    poverty: ['empty wallet', 'homeless shelter', 'food bank', 'economic hardship'],
     
-    // Emotions and states
-    melancholy: ['rainy day', 'solitary figure', 'gray clouds', 'contemplative mood'],
-    euphoric: ['celebration joy', 'bright colors', 'happy people', 'festive'],
-    serene: ['calm water', 'peaceful landscape', 'meditation zen', 'tranquil'],
+    // Science and Technology
+    biology: ['microscope cells', 'DNA helix', 'laboratory research', 'living organisms'],
+    chemistry: ['chemical laboratory', 'molecular structure', 'periodic table', 'chemical reactions'],
+    physics: ['particle accelerator', 'physics equations', 'scientific instruments', 'energy waves'],
+    technology: ['computer circuits', 'innovative devices', 'digital technology', 'tech innovation'],
+    innovation: ['light bulb idea', 'creative invention', 'breakthrough technology', 'new discovery'],
     
-    // Architecture and structures
-    architecture: ['modern building', 'classical architecture', 'geometric structure'],
-    edifice: ['grand building', 'imposing structure', 'monumental architecture'],
+    // Philosophy and Abstract Concepts
+    philosophy: ['ancient scrolls', 'thinking statue', 'philosophical books', 'meditation wisdom'],
+    wisdom: ['wise elder', 'ancient library', 'philosophical contemplation', 'knowledge books'],
+    knowledge: ['library books', 'academic learning', 'study materials', 'educational'],
+    consciousness: ['brain neurons', 'mindfulness meditation', 'awareness concept', 'mental clarity'],
+    existence: ['philosophical reflection', 'life contemplation', 'being concept', 'existential'],
     
-    // Abstract concepts
-    ephemeral: ['morning mist', 'fleeting moment', 'fading light', 'temporary beauty'],
-    immutable: ['mountain peaks', 'ancient stone', 'timeless landscape', 'eternal'],
+    // Literature and Arts
+    literature: ['classic books', 'library shelves', 'writing manuscripts', 'literary works'],
+    poetry: ['handwritten verse', 'romantic poetry', 'artistic writing', 'lyrical expression'],
+    drama: ['theater stage', 'dramatic performance', 'theatrical masks', 'stage lighting'],
+    comedy: ['laughing audience', 'humor performance', 'comedy masks', 'joyful entertainment'],
+    tragedy: ['dramatic scene', 'sorrowful performance', 'tragic masks', 'emotional drama'],
+    
+    // Nature and Environment
+    abundant: ['lush landscapes', 'overflowing harvest', 'fertile fields', 'abundance nature'],
+    superfluous: ['excess objects', 'unnecessary clutter', 'waste pile', 'abundance waste'],
+    verdant: ['green foliage', 'lush forest', 'verdant landscape', 'emerald nature'],
+    barren: ['desert landscape', 'empty field', 'dry earth', 'desolate terrain'],
+    fertile: ['rich soil', 'growing crops', 'agricultural land', 'productive farming'],
+    
+    // Academic and Intellectual
+    academic: ['university campus', 'graduation ceremony', 'scholarly research', 'educational institution'],
+    intellectual: ['thoughtful scholar', 'academic discussion', 'research study', 'contemplative reading'],
+    scholarly: ['ancient manuscripts', 'academic conference', 'research library', 'scholarly work'],
+    erudite: ['learned professor', 'extensive library', 'scholarly wisdom', 'academic excellence'],
+    
+    // Emotions and Psychological States
+    melancholy: ['solitary figure', 'autumn rain', 'contemplative mood', 'pensive reflection'],
+    euphoric: ['celebration joy', 'ecstatic happiness', 'triumph moment', 'pure bliss'],
+    serene: ['peaceful lake', 'meditation scene', 'tranquil garden', 'calm waters'],
+    anxious: ['worried expression', 'stress tension', 'nervous energy', 'mental pressure'],
+    jubilant: ['victory celebration', 'joyful crowd', 'triumph cheering', 'festive happiness'],
+    
+    // Architecture and Structures
+    architecture: ['iconic building', 'architectural design', 'structural beauty', 'building construction'],
+    edifice: ['grand cathedral', 'imposing structure', 'monumental building', 'architectural marvel'],
+    infrastructure: ['bridge construction', 'urban development', 'transportation system', 'city planning'],
+    monument: ['historical statue', 'memorial structure', 'commemorative building', 'landmark'],
+    
+    // Time and Change
+    ephemeral: ['morning mist', 'fleeting moment', 'temporary beauty', 'brief existence'],
+    immutable: ['ancient mountains', 'timeless stone', 'eternal landscape', 'unchanging nature'],
+    transient: ['passing clouds', 'temporary state', 'brief moment', 'fleeting time'],
+    perpetual: ['endless cycle', 'continuous motion', 'eternal flow', 'unending process'],
+    
+    // Social and Cultural
+    community: ['neighborhood gathering', 'social cooperation', 'group unity', 'collective action'],
+    society: ['urban civilization', 'social interaction', 'cultural diversity', 'human organization'],
+    culture: ['traditional ceremony', 'cultural festival', 'artistic expression', 'heritage celebration'],
+    tradition: ['ceremonial ritual', 'cultural heritage', 'ancestral practice', 'traditional art'],
     
     // Default fallbacks by part of speech
-    noun: ['objects still life', 'everyday items', 'simple objects'],
-    verb: ['action motion', 'dynamic movement', 'people activity'],
-    adjective: ['abstract concept', 'artistic composition', 'conceptual art'],
-    adverb: ['motion blur', 'dynamic action', 'movement energy']
+    noun: ['concrete objects', 'everyday items', 'tangible things', 'physical entities'],
+    verb: ['dynamic action', 'movement energy', 'active process', 'people activity'],
+    adjective: ['quality concept', 'descriptive scene', 'characteristic image', 'attribute visualization'],
+    adverb: ['manner of action', 'process flow', 'method demonstration', 'style of movement']
   };
 
   static async getImageForWord(word: string, partOfSpeech?: string): Promise<string | null> {
@@ -147,31 +200,95 @@ class UnsplashImageService {
     return this.imageCache.size;
   }
 
-  // Placeholder images until Unsplash is configured
+  // Contextual placeholder images with comprehensive semantic mapping
   static getPlaceholderImage(word: string): string {
     const wordLower = word.toLowerCase();
     
+    // Political & Economic Systems
+    if (['capitalism', 'business', 'corporate', 'finance'].some(k => wordLower.includes(k))) {
+      return 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400&h=300&fit=crop';
+    }
+    if (['socialism', 'community', 'collective', 'cooperation'].some(k => wordLower.includes(k))) {
+      return 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=400&h=300&fit=crop';
+    }
+    if (['democracy', 'voting', 'election', 'parliament'].some(k => wordLower.includes(k))) {
+      return 'https://images.unsplash.com/photo-1541872705-1f73c6400ec9?w=400&h=300&fit=crop';
+    }
+    if (['monarchy', 'king', 'queen', 'crown', 'royal'].some(k => wordLower.includes(k))) {
+      return 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=300&fit=crop';
+    }
+    if (['federation', 'unity', 'alliance', 'union'].some(k => wordLower.includes(k))) {
+      return 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=400&h=300&fit=crop';
+    }
+    
+    // Science & Technology
+    if (['biology', 'cellular', 'organism', 'life'].some(k => wordLower.includes(k))) {
+      return 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=400&h=300&fit=crop';
+    }
+    if (['chemistry', 'chemical', 'molecular', 'laboratory'].some(k => wordLower.includes(k))) {
+      return 'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?w=400&h=300&fit=crop';
+    }
+    if (['physics', 'quantum', 'energy', 'particle'].some(k => wordLower.includes(k))) {
+      return 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=400&h=300&fit=crop';
+    }
+    if (['technology', 'digital', 'innovation', 'tech'].some(k => wordLower.includes(k))) {
+      return 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=300&fit=crop';
+    }
+    
+    // Philosophy & Abstract
+    if (['philosophy', 'philosophical', 'wisdom', 'contemplation'].some(k => wordLower.includes(k))) {
+      return 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=300&fit=crop';
+    }
+    if (['consciousness', 'awareness', 'mindfulness', 'meditation'].some(k => wordLower.includes(k))) {
+      return 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop';
+    }
+    
+    // Literature & Arts
+    if (['literature', 'poetry', 'writing', 'literary'].some(k => wordLower.includes(k))) {
+      return 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop';
+    }
+    if (['drama', 'theater', 'performance', 'stage'].some(k => wordLower.includes(k))) {
+      return 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=400&h=300&fit=crop';
+    }
+    
     // Nature words
-    if (['abundant', 'verdant', 'lush', 'fertile'].includes(wordLower)) {
+    if (['abundant', 'verdant', 'lush', 'fertile', 'green'].some(k => wordLower.includes(k))) {
       return 'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400&h=300&fit=crop';
+    }
+    if (['barren', 'desert', 'dry', 'desolate'].some(k => wordLower.includes(k))) {
+      return 'https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=400&h=300&fit=crop';
     }
     
     // Academic words
-    if (['academic', 'scholarly', 'intellectual'].includes(wordLower)) {
+    if (['academic', 'scholarly', 'intellectual', 'university', 'education'].some(k => wordLower.includes(k))) {
       return 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=300&fit=crop';
     }
     
     // Architecture words
-    if (['architecture', 'edifice', 'structure'].includes(wordLower)) {
+    if (['architecture', 'edifice', 'structure', 'building'].some(k => wordLower.includes(k))) {
       return 'https://images.unsplash.com/photo-1487958449943-2429e8be8625?w=400&h=300&fit=crop';
     }
     
-    // Abstract concepts
-    if (['ephemeral', 'ethereal', 'sublime'].includes(wordLower)) {
-      return 'https://images.unsplash.com/photo-1523712999610-f77fbcfc3843?w=400&h=300&fit=crop';
+    // Emotional states
+    if (['melancholy', 'sad', 'sorrow', 'depression'].some(k => wordLower.includes(k))) {
+      return 'https://images.unsplash.com/photo-1494548162494-384bba4ab999?w=400&h=300&fit=crop';
+    }
+    if (['euphoric', 'joy', 'celebration', 'happiness'].some(k => wordLower.includes(k))) {
+      return 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=400&h=300&fit=crop';
+    }
+    if (['serene', 'peaceful', 'calm', 'tranquil'].some(k => wordLower.includes(k))) {
+      return 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop';
     }
     
-    // Default nature scene
+    // Abstract concepts
+    if (['ephemeral', 'ethereal', 'sublime', 'temporary'].some(k => wordLower.includes(k))) {
+      return 'https://images.unsplash.com/photo-1523712999610-f77fbcfc3843?w=400&h=300&fit=crop';
+    }
+    if (['immutable', 'eternal', 'permanent', 'unchanging'].some(k => wordLower.includes(k))) {
+      return 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop';
+    }
+    
+    // Default: Natural landscape
     return 'https://images.unsplash.com/photo-1482938289607-e9573fc25ebb?w=400&h=300&fit=crop';
   }
 }
