@@ -3,9 +3,11 @@ import { Word } from "@/data/words";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { UnifiedWord } from "@/hooks/useUnifiedWords";
 
 interface WordCardProps {
-  word: Word;
+  word: UnifiedWord;
   priority?: boolean;
 }
 
@@ -66,15 +68,31 @@ export function WordCard({ word, priority = false }: WordCardProps) {
         </div>
         
         <div className="p-4">
-          <h3 className="text-xl font-medium">{word.word}</h3>
+          <div className="flex items-start justify-between mb-2">
+            <h3 className="text-xl font-medium">{word.word}</h3>
+            {word.source && (
+              <Badge variant={word.source === 'database' ? 'default' : word.source === 'dictionary' ? 'secondary' : 'outline'} className="text-xs">
+                {word.source === 'database' ? 'Enhanced' : word.source === 'dictionary' ? 'Personal' : 'Legacy'}
+              </Badge>
+            )}
+          </div>
+          
           <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
             {word.description}
           </p>
           
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             <span className="chip bg-secondary text-secondary-foreground">
               {word.languageOrigin}
             </span>
+            <span className="chip bg-accent text-accent-foreground">
+              {word.partOfSpeech}
+            </span>
+            {word.quality_score && word.quality_score > 70 && (
+              <span className="chip bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+                Quality: {word.quality_score}%
+              </span>
+            )}
           </div>
         </div>
       </div>
