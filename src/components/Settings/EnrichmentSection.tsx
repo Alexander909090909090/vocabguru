@@ -107,39 +107,30 @@ export function EnrichmentSection() {
 
       if (error) {
         toast({
-          title: "Enrichment Failed", 
+          title: "Enrichment Failed",
           description: `Failed to start batch enrichment: ${error.message}`,
           variant: "destructive",
         });
-        setIsEnriching(false);
         return;
       }
 
       toast({
         title: "Enrichment Started",
-        description: `Processing ${data.processed} words with deep linguistic analysis.`,
+        description: "Batch enrichment process has been started successfully.",
       });
 
-      // Real progress tracking with deep enrichment
-      let currentProgress = 0;
-      const progressInterval = setInterval(async () => {
-        currentProgress += 15;
-        setEnrichmentProgress(currentProgress);
-        
-        if (currentProgress >= 100) {
-          clearInterval(progressInterval);
-          setIsEnriching(false);
-          
-          // Trigger deep enrichment for queued words
-          await processDeepEnrichment();
-          loadEnrichmentStats();
-          
-          toast({
-            title: "Enrichment Complete",
-            description: "All words have been enhanced with comprehensive linguistic analysis.",
-          });
-        }
-      }, 1500);
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setEnrichmentProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(progressInterval);
+            setIsEnriching(false);
+            loadEnrichmentStats();
+            return 100;
+          }
+          return prev + 10;
+        });
+      }, 2000);
 
     } catch (error) {
       toast({
@@ -147,35 +138,6 @@ export function EnrichmentSection() {
         description: "Error starting batch enrichment process.",
         variant: "destructive",
       });
-      setIsEnriching(false);
-    }
-  };
-
-  const processDeepEnrichment = async () => {
-    try {
-      // Get words in enrichment queue
-      const { data: queuedWords } = await supabase
-        .from('enrichment_queue')
-        .select('word_profile_id')
-        .eq('status', 'pending')
-        .limit(5);
-
-      if (queuedWords && queuedWords.length > 0) {
-        // Process each word with deep linguistic enrichment
-        for (const item of queuedWords) {
-          await supabase.functions.invoke('deep-linguistic-enrichment', {
-            body: { wordProfileId: item.word_profile_id }
-          });
-          
-          // Update queue status
-          await supabase
-            .from('enrichment_queue')
-            .update({ status: 'completed', completed_at: new Date().toISOString() })
-            .eq('word_profile_id', item.word_profile_id);
-        }
-      }
-    } catch (error) {
-      console.error('Error in deep enrichment processing:', error);
     }
   };
 
