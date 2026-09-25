@@ -598,6 +598,60 @@ export type Database = {
         }
         Relationships: []
       }
+      word_profiles_duplicates_backup: {
+        Row: {
+          analysis: Json | null
+          backed_up_at: string
+          completeness_score: number | null
+          created_at: string | null
+          data_sources: Json | null
+          definitions: Json | null
+          enrichment_status: string | null
+          etymology: Json | null
+          id: string | null
+          last_enrichment_at: string | null
+          morpheme_breakdown: Json | null
+          quality_score: number | null
+          updated_at: string | null
+          word: string | null
+          word_forms: Json | null
+        }
+        Insert: {
+          analysis?: Json | null
+          backed_up_at?: string
+          completeness_score?: number | null
+          created_at?: string | null
+          data_sources?: Json | null
+          definitions?: Json | null
+          enrichment_status?: string | null
+          etymology?: Json | null
+          id?: string | null
+          last_enrichment_at?: string | null
+          morpheme_breakdown?: Json | null
+          quality_score?: number | null
+          updated_at?: string | null
+          word?: string | null
+          word_forms?: Json | null
+        }
+        Update: {
+          analysis?: Json | null
+          backed_up_at?: string
+          completeness_score?: number | null
+          created_at?: string | null
+          data_sources?: Json | null
+          definitions?: Json | null
+          enrichment_status?: string | null
+          etymology?: Json | null
+          id?: string | null
+          last_enrichment_at?: string | null
+          morpheme_breakdown?: Json | null
+          quality_score?: number | null
+          updated_at?: string | null
+          word?: string | null
+          word_forms?: Json | null
+        }
+        Relationships: []
+      }
       word_relationships: {
         Row: {
           confidence_score: number | null
