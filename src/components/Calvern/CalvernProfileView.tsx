@@ -70,23 +70,56 @@ export function CalvernProfileView({ profile }: { profile: CalvernProfile }) {
         )}
       </Section>
 
-      <Section title="Etymology">
-        <Field label="Historical origins">{etymology.historical_origins}</Field>
-        <Field label="Language of origin">{etymology.language_of_origin}</Field>
-        {etymology.path.length > 0 && (
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-            {etymology.path.map((step, i) => (
-              <span key={i} className="flex items-center gap-2">
-                {i > 0 && <span className="text-muted-foreground">→</span>}
-                <span>
-                  <span className="text-muted-foreground">{step.language}</span> <em>{step.form}</em>{" "}
-                  <span className="text-muted-foreground">“{step.gloss}”</span>
-                </span>
+      <Section title="Meaning & Associations">
+        <Field label="Connotation">
+          {[profile.connotation.valence, profile.connotation.register].filter(Boolean).join(" · ")}
+          {profile.connotation.note && <span className="text-muted-foreground"> — {profile.connotation.note}</span>}
+        </Field>
+        {profile.semantic_web.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {profile.semantic_web.map((e, i) => (
+              <span key={i} title={e.note} className="rounded-full border border-border px-3 py-1 text-sm">
+                <span className="text-muted-foreground">{e.relation}:</span> {e.term}
               </span>
             ))}
-          </p>
+          </div>
+        )}
+        <Field label="Sound symbolism">{profile.sound_symbolism}</Field>
+      </Section>
+
+      <Section title="Etymology">
+        {etymology.certainty !== "established" && (
+          <p className="text-xs text-amber-300/90">Etymology {etymology.certainty}; sources disagree or evidence is thin.</p>
+        )}
+        <Field label="Historical origins">{etymology.historical_origins}</Field>
+        <Field label="Language of origin">{etymology.language_of_origin}</Field>
+        <Field label="First attested">{etymology.first_attested}</Field>
+        {etymology.path.length > 0 && (
+          <ol className="relative border-l border-primary/30 ml-2 space-y-3">
+            {etymology.path.map((step, i) => (
+              <li key={i} className="ml-4">
+                <span className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full bg-primary/70" />
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  {step.period} · {step.language}
+                </div>
+                <div>
+                  <em className="font-semibold">{step.form}</em>{" "}
+                  <span className="text-muted-foreground">“{step.gloss}”</span>
+                </div>
+              </li>
+            ))}
+          </ol>
         )}
         <Field label="Word evolution">{etymology.word_evolution}</Field>
+        {etymology.sense_history.length > 0 && (
+          <ul className="space-y-1 text-sm">
+            {etymology.sense_history.map((h, i) => (
+              <li key={i}>
+                <span className="text-muted-foreground">{h.period}:</span> {h.sense}
+              </li>
+            ))}
+          </ul>
+        )}
         <Field label="Cultural & regional variations">{etymology.cultural_variations}</Field>
         <Field label="Related words">
           {etymology.related_words.length
