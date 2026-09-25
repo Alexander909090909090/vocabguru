@@ -44,6 +44,9 @@ serve(async (req) => {
       )
     }
 
+    // Allow all authenticated users to analyze word quality
+    console.log(`User ${user.id} requesting word quality analysis`)
+
     // Get all word profiles for analysis
     const { data: wordProfiles, error: profilesError } = await supabase
       .from('word_profiles')

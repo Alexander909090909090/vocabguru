@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import WordGrid from "@/components/WordGrid";
 import { useWords } from "@/context/WordsContext";
 import DictionarySearch from "@/components/DictionarySearch";
-import { searchDictionaryWord } from "@/lib/dictionaryApi";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
@@ -18,7 +17,7 @@ type FilterCategory = "all" | "prefix" | "root" | "suffix" | "origin" | "diction
 type ViewMode = "cards" | "grid";
 
 const Index = () => {
-  const { words, addWord, getWord, dictionaryWords } = useWords();
+  const { words, dictionaryWords } = useWords();
   const [searchQuery, setSearchQuery] = useState("");
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterCategory>("all");
@@ -26,7 +25,6 @@ const Index = () => {
   const [showDictionarySearch, setShowDictionarySearch] = useState(false);
   const [username, setUsername] = useState("Scholar");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
-  const [isSearching, setIsSearching] = useState(false);
   const navigate = useNavigate();
   
   const filteredWords = words.filter(word => 
@@ -72,10 +70,11 @@ const Index = () => {
     setShowDictionarySearch(!showDictionarySearch);
   };
   
-  const handleSearch = async (e: React.FormEvent) => {
+  // Every search goes to Calvern, which returns the stored breakdown or creates it.
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!searchQuery.trim()) {
+    const word = searchQuery.trim().toLowerCase();
+    if (!word) {
       toast({
         title: "Please enter a word",
         description: "Type a word to search",
@@ -83,36 +82,8 @@ const Index = () => {
       });
       return;
     }
-    
-    const normalizedWord = searchQuery.trim().toLowerCase();
-    const existingWord = getWord(normalizedWord);
-    
-    if (existingWord) {
-      navigate(`/word/${existingWord.id}`);
-      setSearchQuery("");
-      return;
-    }
-    
-    setIsSearching(true);
-    
-    try {
-      const word = await searchDictionaryWord(normalizedWord);
-      
-      if (word) {
-        addWord(word);
-        navigate(`/word/${word.id}`);
-        setSearchQuery("");
-      }
-    } catch (error) {
-      console.error("Error searching word:", error);
-      toast({
-        title: "Error",
-        description: "Failed to search for word",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSearching(false);
-    }
+    navigate(`/w/${encodeURIComponent(word)}`);
+    setSearchQuery("");
   };
 
   const getFilteredWordsByCategory = () => {
@@ -219,14 +190,8 @@ const Index = () => {
                         className="w-full bg-secondary/50 border-none h-12 pl-12 focus-visible:ring-primary"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        disabled={isSearching}
                       />
                       <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      {isSearching && (
-                        <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                          <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
-                        </div>
-                      )}
                     </form>
                     <Button 
                       variant="outline" 

@@ -1,9 +1,7 @@
 
 import { Word } from "@/data/words";
-import { Volume2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { VoicePronounciation } from "./VoicePronounciation";
 
 interface WordHeaderProps {
   word: Word;
@@ -12,25 +10,6 @@ interface WordHeaderProps {
 }
 
 const WordHeader = ({ word, getGradient, isLoading }: WordHeaderProps) => {
-  // Function to speak the word using the Web Speech API
-  const speakWord = () => {
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(word.word);
-      utterance.lang = 'en-US';
-      speechSynthesis.speak(utterance);
-      
-      toast({
-        title: "Speaking",
-        description: `Pronouncing: ${word.word}`,
-      });
-    } else {
-      toast({
-        title: "Speech Not Supported",
-        description: "Your browser doesn't support speech synthesis",
-        variant: "destructive",
-      });
-    }
-  };
 
   return (
     <div 
@@ -45,25 +24,17 @@ const WordHeader = ({ word, getGradient, isLoading }: WordHeaderProps) => {
           <Badge variant="outline" className="bg-black/30 backdrop-blur-sm text-white mb-2 border-none text-xs sm:text-sm">
             {word.partOfSpeech}
           </Badge>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-1 break-words">
-              {word.word}
-            </h1>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="text-white/80 hover:text-white hover:bg-white/10 shrink-0"
-              onClick={speakWord}
-              aria-label="Pronounce word"
-            >
-              <Volume2 className="h-4 w-4 sm:h-5 sm:w-5" />
-            </Button>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-3 break-words">
+            {word.word}
+          </h1>
+          
+          <div className="mb-3">
+            <VoicePronounciation 
+              word={word.word}
+              pronunciation={word.pronunciation}
+              morphemeBreakdown={word.morphemeBreakdown}
+            />
           </div>
-          {word.pronunciation && (
-            <p className="text-white/90 text-base sm:text-lg">
-              {word.pronunciation}
-            </p>
-          )}
         </div>
         
         <Badge variant="outline" className="bg-white/20 backdrop-blur-sm text-white border-none text-xs sm:text-sm self-start md:self-end">
