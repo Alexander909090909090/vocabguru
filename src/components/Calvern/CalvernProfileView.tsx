@@ -2,12 +2,15 @@ import type { ReactNode } from "react";
 import type { CalvernProfile, CalvernMorpheme } from "@/services/calvernService";
 import {
   MORPHEME,
-  OUTLINE_CHIP,
   SEMANTIC_CHANGE,
   SEMANTIC_RELATION,
   SENSE_RELATION,
+  contextEntry,
+  domainEntry,
   entry,
   partOfSpeechEntry,
+  registerEntry,
+  sharedMorphemeEntry,
 } from "@/lib/taxonomy";
 import { TaxonomyChip } from "./TaxonomyChip";
 import { TaxonomyLegend } from "./TaxonomyLegend";
@@ -139,7 +142,11 @@ export function CalvernProfileView({ profile }: { profile: CalvernProfile }) {
           <Sub title="Related words">
             <div className="flex flex-wrap gap-1.5">
               {etymology.related_words.map((r, i) => (
-                <span key={i} className={`rounded-full border px-2 py-0.5 text-sm ${OUTLINE_CHIP}`}>
+                <span
+                  key={i}
+                  title={`Shares "${r.shared_morpheme}"`}
+                  className={`rounded-full border px-2 py-0.5 text-sm ${sharedMorphemeEntry(r.shared_morpheme, profile.morphemes).className}`}
+                >
                   {r.word} <span className="opacity-70">· {r.shared_morpheme}</span>
                 </span>
               ))}
@@ -159,8 +166,8 @@ export function CalvernProfileView({ profile }: { profile: CalvernProfile }) {
                   <div className="flex flex-wrap items-center gap-1.5">
                     <TaxonomyChip entry={partOfSpeechEntry(sense.part_of_speech)}>{sense.part_of_speech}</TaxonomyChip>
                     <TaxonomyChip entry={entry(SENSE_RELATION, sense.relation)} />
-                    {sense.domain !== "general" && <TaxonomyChip entry={entry({}, sense.domain)} />}
-                    {sense.register !== "neutral" && <TaxonomyChip entry={entry({}, sense.register)} />}
+                    {sense.domain !== "general" && <TaxonomyChip entry={domainEntry(sense.domain)} />}
+                    {sense.register !== "neutral" && <TaxonomyChip entry={registerEntry(sense.register)} />}
                   </div>
                   <p>{sense.definition}</p>
                   {sense.example && <p className="text-sm italic text-muted-foreground">“{sense.example}”</p>}
@@ -217,7 +224,7 @@ export function CalvernProfileView({ profile }: { profile: CalvernProfile }) {
         <Sub title="Usage">
           {analysis.contextual_usage.map((c, i) => (
             <p key={i} className="flex flex-wrap items-baseline gap-2">
-              <TaxonomyChip entry={entry({}, c.context)} />
+              <TaxonomyChip entry={contextEntry(c.context)} />
               <span className="italic">“{c.example}”</span>
             </p>
           ))}
