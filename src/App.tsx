@@ -10,7 +10,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { QuickActions } from "@/components/Navigation/QuickActions";
 import Index from "./pages/Index";
 import Discovery from "./pages/Discovery";
-import WordDetail from "./pages/WordDetail";
+import { LegacyWordRedirect } from "./components/LegacyWordRedirect";
 import WordProfile from "./pages/WordProfile";
 import Quiz from "./pages/Quiz";
 import Calvern from "./pages/Calvern";
@@ -52,7 +52,7 @@ const App = () => (
                 } />
                 <Route path="/word/:id" element={
                   <ProtectedRoute>
-                    <WordDetail />
+                    <LegacyWordRedirect />
                   </ProtectedRoute>
                 } />
                 <Route path="/w/:word" element={
