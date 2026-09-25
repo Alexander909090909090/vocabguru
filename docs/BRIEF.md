@@ -86,4 +86,3 @@ OPEN:       unresolved questions
 | Cleanup passes (old services, functions, tables) | ⬜ |
 | Calvern chat on the pipeline (P3) | ⬜ |
 | Study / review loop (P4) | ⬜ |
-

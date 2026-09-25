@@ -90,4 +90,3 @@ serve(async (req) => {
 
   return json({ processed: report.length, report });
 });
-

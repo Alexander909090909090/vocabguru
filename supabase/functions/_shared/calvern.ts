@@ -500,4 +500,3 @@ export function toLegacyColumns(p: CalvernProfile) {
     },
   };
 }
-

@@ -80,4 +80,3 @@ Defined once in `src/lib/taxonomy.ts`. The word page and its collapsible **Color
 | Semantic web | analogy teal · antithesis red · broader indigo · narrower sky · part of amber · associated slate |
 | Meaning change | broadening green · narrowing orange · amelioration emerald · pejoration red · metaphor pink · metonymy purple · origin/shift neutral |
 | Domain, register, context | neutral outline (labels, not categories) |
-

@@ -80,5 +80,3 @@ export function partOfSpeechEntry(pos: string): TaxonomyEntry {
 export function entry(group: TaxonomyGroup, key: string): TaxonomyEntry {
   return group[key] ?? { label: key, hint: "", className: OUTLINE_CHIP };
 }
-
-

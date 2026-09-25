@@ -7,4 +7,3 @@ export function TaxonomyChip({ entry, children }: { entry: TaxonomyEntry; childr
     </span>
   );
 }
-

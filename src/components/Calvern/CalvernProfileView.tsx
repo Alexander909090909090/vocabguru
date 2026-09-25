@@ -239,4 +239,3 @@ export function CalvernProfileView({ profile }: { profile: CalvernProfile }) {
     </div>
   );
 }
-

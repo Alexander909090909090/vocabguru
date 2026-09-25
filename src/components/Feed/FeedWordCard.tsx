@@ -63,4 +63,3 @@ export function FeedWordCard({ word, layout }: { word: FeedWord; layout: "grid" 
     </Link>
   );
 }
-

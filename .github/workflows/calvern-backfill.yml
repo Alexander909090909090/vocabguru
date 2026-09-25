@@ -41,4 +41,3 @@ jobs:
             if [ "$status" = "200" ] && grep -q '"processed":0' response.json; then echo "All words current."; break; fi
             sleep 4
           done
-
