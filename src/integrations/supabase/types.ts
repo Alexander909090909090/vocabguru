@@ -243,6 +243,36 @@ export type Database = {
           },
         ]
       }
+      morphemes: {
+        Row: {
+          created_at: string
+          form: string
+          id: string
+          kind: string
+          meaning: string
+          origin_language: string
+          source_form: string | null
+        }
+        Insert: {
+          created_at?: string
+          form: string
+          id?: string
+          kind: string
+          meaning: string
+          origin_language?: string
+          source_form?: string | null
+        }
+        Update: {
+          created_at?: string
+          form?: string
+          id?: string
+          kind?: string
+          meaning?: string
+          origin_language?: string
+          source_form?: string | null
+        }
+        Relationships: []
+      }
       morphological_components: {
         Row: {
           allomorphs: Json | null
@@ -509,6 +539,92 @@ export type Database = {
         }
         Relationships: []
       }
+      user_study_sessions: {
+        Row: {
+          completed_at: string | null
+          correct_answers: number
+          id: string
+          notes: string | null
+          session_duration: number | null
+          session_type: string
+          started_at: string
+          total_questions: number
+          user_id: string
+          words_studied: string[]
+        }
+        Insert: {
+          completed_at?: string | null
+          correct_answers?: number
+          id?: string
+          notes?: string | null
+          session_duration?: number | null
+          session_type: string
+          started_at?: string
+          total_questions?: number
+          user_id: string
+          words_studied?: string[]
+        }
+        Update: {
+          completed_at?: string | null
+          correct_answers?: number
+          id?: string
+          notes?: string | null
+          session_duration?: number | null
+          session_type?: string
+          started_at?: string
+          total_questions?: number
+          user_id?: string
+          words_studied?: string[]
+        }
+        Relationships: []
+      }
+      user_word_library: {
+        Row: {
+          added_at: string
+          id: string
+          is_favorite: boolean
+          last_studied: string | null
+          mastery_level: number
+          next_review_at: string
+          notes: string | null
+          study_count: number
+          user_id: string
+          word_id: string
+        }
+        Insert: {
+          added_at?: string
+          id?: string
+          is_favorite?: boolean
+          last_studied?: string | null
+          mastery_level?: number
+          next_review_at?: string
+          notes?: string | null
+          study_count?: number
+          user_id: string
+          word_id: string
+        }
+        Update: {
+          added_at?: string
+          id?: string
+          is_favorite?: boolean
+          last_studied?: string | null
+          mastery_level?: number
+          next_review_at?: string
+          notes?: string | null
+          study_count?: number
+          user_id?: string
+          word_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_word_library_word_id_fkey"
+            columns: ["word_id"]
+            isOneToOne: false
+            referencedRelation: "word_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhook_logs: {
         Row: {
           error_message: string | null
@@ -547,6 +663,42 @@ export type Database = {
           },
         ]
       }
+      word_morphemes: {
+        Row: {
+          gloss: string | null
+          morpheme_id: string
+          position: number
+          word_profile_id: string
+        }
+        Insert: {
+          gloss?: string | null
+          morpheme_id: string
+          position: number
+          word_profile_id: string
+        }
+        Update: {
+          gloss?: string | null
+          morpheme_id?: string
+          position?: number
+          word_profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "word_morphemes_morpheme_id_fkey"
+            columns: ["morpheme_id"]
+            isOneToOne: false
+            referencedRelation: "morphemes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "word_morphemes_word_profile_id_fkey"
+            columns: ["word_profile_id"]
+            isOneToOne: false
+            referencedRelation: "word_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       word_profiles: {
         Row: {
           analysis: Json | null
@@ -559,7 +711,10 @@ export type Database = {
           id: string
           last_enrichment_at: string | null
           morpheme_breakdown: Json | null
+          profile: Json | null
           quality_score: number | null
+          schema_version: number
+          source: string
           updated_at: string
           word: string
           word_forms: Json | null
@@ -575,7 +730,10 @@ export type Database = {
           id?: string
           last_enrichment_at?: string | null
           morpheme_breakdown?: Json | null
+          profile?: Json | null
           quality_score?: number | null
+          schema_version?: number
+          source?: string
           updated_at?: string
           word: string
           word_forms?: Json | null
@@ -591,7 +749,10 @@ export type Database = {
           id?: string
           last_enrichment_at?: string | null
           morpheme_breakdown?: Json | null
+          profile?: Json | null
           quality_score?: number | null
+          schema_version?: number
+          source?: string
           updated_at?: string
           word?: string
           word_forms?: Json | null
@@ -736,6 +897,16 @@ export type Database = {
       queue_word_for_enrichment: {
         Args: { enrichment_priority?: number; word_profile_id: string }
         Returns: undefined
+      }
+      save_calvern_profile: {
+        Args: {
+          p_legacy: Json
+          p_profile: Json
+          p_schema_version: number
+          p_source: string
+          p_word: string
+        }
+        Returns: string
       }
     }
     Enums: {
