@@ -45,7 +45,7 @@ export const SEMANTIC_RELATION: TaxonomyGroup = {
   broader: { label: "Broader", hint: "Category it belongs to", className: "bg-indigo-500/15 text-indigo-300 border-indigo-500/40" },
   narrower: { label: "Narrower", hint: "Kinds of it", className: "bg-sky-500/15 text-sky-300 border-sky-500/40" },
   part_of: { label: "Part of", hint: "Whole it belongs to", className: "bg-amber-500/15 text-amber-300 border-amber-500/40" },
-  associated: { label: "Associated", hint: "Commonly evoked", className: "bg-slate-500/15 text-slate-300 border-slate-500/40" },
+  associated: { label: "Associated", hint: "Commonly evoked", className: "bg-lime-500/15 text-lime-300 border-lime-500/40" },
 };
 
 export const SEMANTIC_CHANGE: TaxonomyGroup = {
@@ -56,7 +56,7 @@ export const SEMANTIC_CHANGE: TaxonomyGroup = {
   pejoration: { label: "Pejoration", hint: "Became more negative", className: "bg-red-500/15 text-red-300 border-red-500/40" },
   metaphor: { label: "Metaphor", hint: "Shifted by resemblance", className: "bg-pink-500/15 text-pink-300 border-pink-500/40" },
   metonymy: { label: "Metonymy", hint: "Shifted by association", className: "bg-purple-500/15 text-purple-300 border-purple-500/40" },
-  shift: { label: "Shift", hint: "Other change", className: "bg-slate-500/15 text-slate-300 border-slate-500/40" },
+  shift: { label: "Shift", hint: "Other change", className: "bg-blue-500/15 text-blue-300 border-blue-500/40" },
 };
 
 // Register: how formal or specialised the language is.
@@ -131,4 +131,3 @@ export function registerEntry(register: string): TaxonomyEntry {
 export function entry(group: TaxonomyGroup, key: string): TaxonomyEntry {
   return group[key] ?? { label: key, hint: "", className: OUTLINE_CHIP };
 }
-
