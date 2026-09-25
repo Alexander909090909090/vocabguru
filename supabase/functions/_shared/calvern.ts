@@ -1,9 +1,20 @@
 // Calvern word-profile schema: the single definition of how a word is broken down.
 // Pure TypeScript (no Deno/Node APIs) so both the edge function and the React app import it.
 
-export const CALVERN_SCHEMA_VERSION = 1;
+export const CALVERN_SCHEMA_VERSION = 2;
 
-export const SEMANTIC_RELATIONS = ["analogy", "antithesis", "broader", "narrower", "associated"] as const;
+export const SEMANTIC_RELATIONS = ["analogy", "antithesis", "broader", "narrower", "part_of", "associated"] as const;
+// How each sense relates to the core meaning (lexical semantics).
+export const SENSE_RELATIONS = [
+  "core", "extended", "metaphorical", "metonymic", "specialized", "figurative", "idiomatic", "archaic",
+] as const;
+export type SenseRelation = (typeof SENSE_RELATIONS)[number];
+// Types of semantic change across the word's history.
+export const SEMANTIC_CHANGES = [
+  "origin", "broadening", "narrowing", "amelioration", "pejoration", "metaphor", "metonymy", "shift",
+] as const;
+export type SemanticChange = (typeof SEMANTIC_CHANGES)[number];
+const FREQUENCIES = ["common", "uncommon", "rare"] as const;
 export type SemanticRelation = (typeof SEMANTIC_RELATIONS)[number];
 const VALENCES = ["positive", "neutral", "negative", "mixed"] as const;
 
@@ -21,10 +32,13 @@ export interface CalvernMorpheme {
 export interface CalvernProfile {
   word: string;
   is_real_word: boolean;
+  frequency: (typeof FREQUENCIES)[number];
+  difficulty: number;              // 1 (everyday) – 5 (specialist)
   morphemes: CalvernMorpheme[];   // in order of appearance in the word
   literal_meaning: string;         // meaning assembled from the morphemes
   memory_hook: string;             // analogy that ties the parts to the meaning
-  image_scene: string;             // concrete visual scene of the word in use (drives the thumbnail)
+  image_scene: string;             // concrete visual scene of the word in use
+  image_keywords: string[];        // 2–4 short photo-search phrases drawn from the scene, e.g. "reading glasses"
   connotation: { valence: (typeof VALENCES)[number]; register: string; note: string };
   semantic_web: { relation: SemanticRelation; term: string; note: string }[];
   sound_symbolism: string;         // only genuine phonaesthemes (e.g. "gl-" in glow, glint); "" if none
@@ -35,14 +49,20 @@ export interface CalvernProfile {
     word_evolution: string;
     cultural_variations: string;   // regional / cultural differences in use; "" if none
     path: { period: string; language: string; form: string; gloss: string }[]; // oldest → modern
-    sense_history: { period: string; sense: string }[]; // how the meaning shifted over time
+    sense_history: { period: string; sense: string; change: SemanticChange }[]; // how the meaning shifted
     related_words: { word: string; shared_morpheme: string }[];
     certainty: "established" | "probable" | "uncertain";
   };
   definitions: {
     primary: string;
-    standard: string[];
-    specialized: { domain: string; text: string }[];
+    senses: {
+      part_of_speech: string;
+      definition: string;
+      relation: SenseRelation;     // how this sense relates to the core meaning
+      domain: string;              // "general", "law", "medicine", "music"…
+      register: string;            // "neutral", "formal", "informal", "literary", "slang"…
+      example: string;
+    }[];
   };
   word_forms: { part_of_speech: string; form: string }[];
   word_forms_note: string;
@@ -73,6 +93,8 @@ const obj = (properties: Record<string, unknown>) => ({
 export const CALVERN_JSON_SCHEMA = obj({
   word: str,
   is_real_word: { type: "boolean" },
+  frequency: { type: "string", enum: [...FREQUENCIES] },
+  difficulty: { type: "integer", enum: [1, 2, 3, 4, 5] },
   morphemes: {
     type: "array",
     items: obj({
@@ -86,6 +108,7 @@ export const CALVERN_JSON_SCHEMA = obj({
   literal_meaning: str,
   memory_hook: str,
   image_scene: str,
+  image_keywords: strList,
   connotation: obj({ valence: { type: "string", enum: [...VALENCES] }, register: str, note: str }),
   semantic_web: {
     type: "array",
@@ -99,14 +122,26 @@ export const CALVERN_JSON_SCHEMA = obj({
     word_evolution: str,
     cultural_variations: str,
     path: { type: "array", items: obj({ period: str, language: str, form: str, gloss: str }) },
-    sense_history: { type: "array", items: obj({ period: str, sense: str }) },
+    sense_history: {
+      type: "array",
+      items: obj({ period: str, sense: str, change: { type: "string", enum: [...SEMANTIC_CHANGES] } }),
+    },
     related_words: { type: "array", items: obj({ word: str, shared_morpheme: str }) },
     certainty: { type: "string", enum: ["established", "probable", "uncertain"] },
   }),
   definitions: obj({
     primary: str,
-    standard: strList,
-    specialized: { type: "array", items: obj({ domain: str, text: str }) },
+    senses: {
+      type: "array",
+      items: obj({
+        part_of_speech: str,
+        definition: str,
+        relation: { type: "string", enum: [...SENSE_RELATIONS] },
+        domain: str,
+        register: str,
+        example: str,
+      }),
+    },
   }),
   word_forms: { type: "array", items: obj({ part_of_speech: str, form: str }) },
   word_forms_note: str,
@@ -142,22 +177,31 @@ Rules:
 - memory_hook: one sentence of analogy or imagery linking the parts to the modern meaning.
 - image_scene: one concrete, photographable scene that someone would describe with this word, inferred from its
   meaning (quotidian → "a kettle heating in a quiet kitchen on an ordinary morning"). No text in the scene.
+- image_keywords: 2–4 short, concrete photo-search phrases of one or two words taken from the scene, most
+  representative first (quotidian → "kettle", "morning kitchen", "commute").
 - connotation: valence, register (formal, neutral, informal, literary, technical, slang) and the value or
   judgement the word carries.
 - semantic_web: 4–10 edges to other words or ideas: analogy (works like), antithesis (opposes), broader
-  (category it belongs to), narrower (kinds of it), associated (commonly evoked). Each with a short note.
+  (category it belongs to), narrower (kinds of it), part_of (whole it belongs to), associated (commonly
+  evoked). Each with a short note.
 - sound_symbolism: only if the word contains an established phonaestheme; otherwise "". Never invent
   meanings for individual letters.
 - etymology.path: every stage the word passed through, oldest first, ending with modern English. Each stage has
   a period (century or era, e.g. "Classical Latin", "c. 1300"), the language (be specific: "Old French",
   "Yoruba", "Proto-Indo-European"), the form in that language and its gloss. Include borrowings through
   intermediate languages. first_attested is the earliest recorded English use.
-- etymology.sense_history: how the meaning shifted, oldest first, each with a period.
+- etymology.sense_history: how the meaning shifted, oldest first, each with a period and the type of change
+  (origin, broadening, narrowing, amelioration, pejoration, metaphor, metonymy, shift).
 - etymology.certainty: "established" when dictionaries agree, "probable" or "uncertain" otherwise.
   cultural_variations only if real.
 - related_words: real English words that share a morpheme with this word, naming the shared morpheme.
-- definitions: primary is one sentence. standard lists the distinct senses, most common first, as many as
-  genuinely exist (never pad). specialized is for field-specific senses (law, medicine, grammar…).
+- frequency: how common the word is in modern English. difficulty: 1 (everyday) to 5 (specialist).
+- definitions.primary: the core meaning in one sentence.
+- definitions.senses: the word's sense inventory, up to 10, most common first. Cover the core sense and its
+  extensions: metaphorical, metonymic, specialized (field-specific), figurative and idiomatic uses, and
+  notable archaic senses. Aim for 5 or more when the word genuinely supports them; never invent senses.
+  Each sense has its part of speech, a precise definition, its relation to the core meaning, its domain
+  ("general" if none), register ("neutral" if none) and a natural example sentence.
 - word_forms: only forms that exist, each labelled precisely ("plural", "past tense", "past participle",
   "present participle", "comparative", "superlative", "adverb", "noun"…). Caveats go in word_forms_note.
 - analysis.parts_of_speech: each role the word plays, with an example sentence.
@@ -194,6 +238,13 @@ function cleanList(v: unknown, max = 12): string[] {
     }
   }
   return out.slice(0, max);
+}
+
+const asArray = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+
+function oneOf<T extends string>(allowed: readonly T[], v: unknown, fallback: T): T {
+  const s = clean(v).toLowerCase() as T;
+  return allowed.includes(s) ? s : fallback;
 }
 
 // Safe property access on untrusted model output.
@@ -259,13 +310,31 @@ export function validateProfile(raw: unknown, requestedWord: string): Validation
   const ana = at(raw, "analysis");
   const pron = at(ana, "pronunciation");
 
+  const rawSenses = at(defs, "senses");
+  const senses = (Array.isArray(rawSenses) ? rawSenses : [])
+    .map((x) => ({
+      part_of_speech: clean(at(x, "part_of_speech")),
+      definition: clean(at(x, "definition")),
+      relation: oneOf(SENSE_RELATIONS, at(x, "relation"), "extended"),
+      domain: clean(at(x, "domain")) || "general",
+      register: clean(at(x, "register")) || "neutral",
+      example: clean(at(x, "example")),
+    }))
+    .filter((x, i, all) => x.definition && all.findIndex((y) => y.definition.toLowerCase() === x.definition.toLowerCase()) === i)
+    .slice(0, 10);
+
+  const rawDifficulty = Number(at(raw, "difficulty"));
+
   const profile: CalvernProfile = {
     word,
     is_real_word: true,
+    frequency: oneOf(FREQUENCIES, at(raw, "frequency"), "uncommon"),
+    difficulty: Number.isInteger(rawDifficulty) ? Math.min(Math.max(rawDifficulty, 1), 5) : 3,
     morphemes,
     literal_meaning: clean(at(raw, "literal_meaning")),
     memory_hook: clean(at(raw, "memory_hook")),
     image_scene: clean(at(raw, "image_scene")),
+    image_keywords: cleanList(at(raw, "image_keywords"), 4),
     connotation: {
       valence: VALENCES.includes(clean(at(at(raw, "connotation"), "valence")) as (typeof VALENCES)[number])
         ? (clean(at(at(raw, "connotation"), "valence")) as (typeof VALENCES)[number])
@@ -286,7 +355,14 @@ export function validateProfile(raw: unknown, requestedWord: string): Validation
       word_evolution: clean(at(ety, "word_evolution")),
       cultural_variations: clean(at(ety, "cultural_variations")),
       path: cleanObjects(at(ety, "path"), ["period", "language", "form", "gloss"], 10),
-      sense_history: cleanObjects(at(ety, "sense_history"), ["period", "sense"], 8),
+      sense_history: asArray(at(ety, "sense_history"))
+        .map((x) => ({
+          period: clean(at(x, "period")),
+          sense: clean(at(x, "sense")),
+          change: oneOf(SEMANTIC_CHANGES, at(x, "change"), "shift"),
+        }))
+        .filter((h) => h.period && h.sense)
+        .slice(0, 8),
       related_words: cleanObjects(at(ety, "related_words"), ["word", "shared_morpheme"], 10),
       certainty: CERTAINTY.includes(clean(at(ety, "certainty")) as Certainty)
         ? (clean(at(ety, "certainty")) as Certainty)
@@ -294,8 +370,7 @@ export function validateProfile(raw: unknown, requestedWord: string): Validation
     },
     definitions: {
       primary: clean(at(defs, "primary")),
-      standard: cleanList(at(defs, "standard"), 8),
-      specialized: cleanObjects(at(defs, "specialized"), ["domain", "text"], 5),
+      senses,
     },
     word_forms: cleanObjects(at(raw, "word_forms"), ["part_of_speech", "form"], 12),
     word_forms_note: clean(at(raw, "word_forms_note")),
@@ -320,6 +395,7 @@ export function validateProfile(raw: unknown, requestedWord: string): Validation
   if (morphemes.some((m) => !MORPHEME_KINDS.includes(m.kind))) errors.push("unknown morpheme kind");
   if (!morphemes.some((m) => m.kind === "root" || m.kind === "combining_form")) errors.push("no root");
   if (!profile.definitions.primary) errors.push("no primary definition");
+  if (profile.definitions.senses.length === 0) errors.push("no senses");
   if (!profile.etymology.language_of_origin) errors.push("no language of origin");
   if (profile.etymology.path.length === 0) errors.push("no etymology path");
   if (!profile.example) errors.push("no example");
@@ -354,8 +430,8 @@ export function toLegacyColumns(p: CalvernProfile) {
     },
     definitions: {
       primary: p.definitions.primary,
-      standard: p.definitions.standard,
-      contextual: p.definitions.specialized.map((s) => `${s.domain}: ${s.text}`),
+      standard: p.definitions.senses.filter((x) => x.domain === "general").map((x) => x.definition),
+      contextual: p.definitions.senses.filter((x) => x.domain !== "general").map((x) => `${x.domain}: ${x.definition}`),
     },
     word_forms: {
       base_form: p.word,
