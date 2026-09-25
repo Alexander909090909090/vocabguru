@@ -3,6 +3,10 @@
 
 export const CALVERN_SCHEMA_VERSION = 1;
 
+export const SEMANTIC_RELATIONS = ["analogy", "antithesis", "broader", "narrower", "associated"] as const;
+export type SemanticRelation = (typeof SEMANTIC_RELATIONS)[number];
+const VALENCES = ["positive", "neutral", "negative", "mixed"] as const;
+
 export const MORPHEME_KINDS = ["prefix", "root", "suffix", "combining_form", "infix"] as const;
 export type MorphemeKind = (typeof MORPHEME_KINDS)[number];
 
@@ -20,13 +24,20 @@ export interface CalvernProfile {
   morphemes: CalvernMorpheme[];   // in order of appearance in the word
   literal_meaning: string;         // meaning assembled from the morphemes
   memory_hook: string;             // analogy that ties the parts to the meaning
+  image_scene: string;             // concrete visual scene of the word in use (drives the thumbnail)
+  connotation: { valence: (typeof VALENCES)[number]; register: string; note: string };
+  semantic_web: { relation: SemanticRelation; term: string; note: string }[];
+  sound_symbolism: string;         // only genuine phonaesthemes (e.g. "gl-" in glow, glint); "" if none
   etymology: {
     language_of_origin: string;
+    first_attested: string;         // earliest recorded English use, e.g. "late 14th century"
     historical_origins: string;
     word_evolution: string;
     cultural_variations: string;   // regional / cultural differences in use; "" if none
-    path: { language: string; form: string; gloss: string }[]; // oldest → modern
+    path: { period: string; language: string; form: string; gloss: string }[]; // oldest → modern
+    sense_history: { period: string; sense: string }[]; // how the meaning shifted over time
     related_words: { word: string; shared_morpheme: string }[];
+    certainty: "established" | "probable" | "uncertain";
   };
   definitions: {
     primary: string;
@@ -74,13 +85,23 @@ export const CALVERN_JSON_SCHEMA = obj({
   },
   literal_meaning: str,
   memory_hook: str,
+  image_scene: str,
+  connotation: obj({ valence: { type: "string", enum: [...VALENCES] }, register: str, note: str }),
+  semantic_web: {
+    type: "array",
+    items: obj({ relation: { type: "string", enum: [...SEMANTIC_RELATIONS] }, term: str, note: str }),
+  },
+  sound_symbolism: str,
   etymology: obj({
     language_of_origin: str,
+    first_attested: str,
     historical_origins: str,
     word_evolution: str,
     cultural_variations: str,
-    path: { type: "array", items: obj({ language: str, form: str, gloss: str }) },
+    path: { type: "array", items: obj({ period: str, language: str, form: str, gloss: str }) },
+    sense_history: { type: "array", items: obj({ period: str, sense: str }) },
     related_words: { type: "array", items: obj({ word: str, shared_morpheme: str }) },
+    certainty: { type: "string", enum: ["established", "probable", "uncertain"] },
   }),
   definitions: obj({
     primary: str,
@@ -119,7 +140,21 @@ Rules:
   (e.g. "fluere", "-ōsus"). Do not invent morphemes: a word with no internal structure has one root.
 - literal_meaning: combine the morpheme meanings into one phrase ("flowing over, beyond").
 - memory_hook: one sentence of analogy or imagery linking the parts to the modern meaning.
-- etymology.path: oldest form first, ending with the modern English word. cultural_variations only if real.
+- image_scene: one concrete, photographable scene that someone would describe with this word, inferred from its
+  meaning (quotidian → "a kettle heating in a quiet kitchen on an ordinary morning"). No text in the scene.
+- connotation: valence, register (formal, neutral, informal, literary, technical, slang) and the value or
+  judgement the word carries.
+- semantic_web: 4–10 edges to other words or ideas: analogy (works like), antithesis (opposes), broader
+  (category it belongs to), narrower (kinds of it), associated (commonly evoked). Each with a short note.
+- sound_symbolism: only if the word contains an established phonaestheme; otherwise "". Never invent
+  meanings for individual letters.
+- etymology.path: every stage the word passed through, oldest first, ending with modern English. Each stage has
+  a period (century or era, e.g. "Classical Latin", "c. 1300"), the language (be specific: "Old French",
+  "Yoruba", "Proto-Indo-European"), the form in that language and its gloss. Include borrowings through
+  intermediate languages. first_attested is the earliest recorded English use.
+- etymology.sense_history: how the meaning shifted, oldest first, each with a period.
+- etymology.certainty: "established" when dictionaries agree, "probable" or "uncertain" otherwise.
+  cultural_variations only if real.
 - related_words: real English words that share a morpheme with this word, naming the shared morpheme.
 - definitions: primary is one sentence. standard lists the distinct senses, most common first, as many as
   genuinely exist (never pad). specialized is for field-specific senses (law, medicine, grammar…).
@@ -195,6 +230,9 @@ export function editDistance(a: string, b: string): number {
 
 const MAX_CORRECTION_DISTANCE = 2;
 
+const CERTAINTY = ["established", "probable", "uncertain"] as const;
+type Certainty = (typeof CERTAINTY)[number];
+
 export type ValidationResult =
   | { ok: true; profile: CalvernProfile }
   | { ok: false; reason: "not_a_word" | "invalid"; errors: string[] };
@@ -227,13 +265,32 @@ export function validateProfile(raw: unknown, requestedWord: string): Validation
     morphemes,
     literal_meaning: clean(at(raw, "literal_meaning")),
     memory_hook: clean(at(raw, "memory_hook")),
+    image_scene: clean(at(raw, "image_scene")),
+    connotation: {
+      valence: VALENCES.includes(clean(at(at(raw, "connotation"), "valence")) as (typeof VALENCES)[number])
+        ? (clean(at(at(raw, "connotation"), "valence")) as (typeof VALENCES)[number])
+        : "neutral",
+      register: clean(at(at(raw, "connotation"), "register")),
+      note: clean(at(at(raw, "connotation"), "note")),
+    },
+    semantic_web: cleanObjects<{ relation: SemanticRelation; term: string; note: string }>(
+      at(raw, "semantic_web"),
+      ["relation", "term", "note"],
+      10,
+    ).filter((e) => SEMANTIC_RELATIONS.includes(e.relation)),
+    sound_symbolism: clean(at(raw, "sound_symbolism")),
     etymology: {
       language_of_origin: clean(at(ety, "language_of_origin")),
+      first_attested: clean(at(ety, "first_attested")),
       historical_origins: clean(at(ety, "historical_origins")),
       word_evolution: clean(at(ety, "word_evolution")),
       cultural_variations: clean(at(ety, "cultural_variations")),
-      path: cleanObjects(at(ety, "path"), ["language", "form", "gloss"], 8),
+      path: cleanObjects(at(ety, "path"), ["period", "language", "form", "gloss"], 10),
+      sense_history: cleanObjects(at(ety, "sense_history"), ["period", "sense"], 8),
       related_words: cleanObjects(at(ety, "related_words"), ["word", "shared_morpheme"], 10),
+      certainty: CERTAINTY.includes(clean(at(ety, "certainty")) as Certainty)
+        ? (clean(at(ety, "certainty")) as Certainty)
+        : "uncertain",
     },
     definitions: {
       primary: clean(at(defs, "primary")),
@@ -264,6 +321,7 @@ export function validateProfile(raw: unknown, requestedWord: string): Validation
   if (!morphemes.some((m) => m.kind === "root" || m.kind === "combining_form")) errors.push("no root");
   if (!profile.definitions.primary) errors.push("no primary definition");
   if (!profile.etymology.language_of_origin) errors.push("no language of origin");
+  if (profile.etymology.path.length === 0) errors.push("no etymology path");
   if (!profile.example) errors.push("no example");
 
   return errors.length ? { ok: false, reason: "invalid", errors } : { ok: true, profile };
