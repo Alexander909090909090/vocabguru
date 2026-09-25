@@ -1,0 +1,36 @@
+# Regenerates stale word profiles and works through the word queue, a few words per run,
+# by calling the calvern-backfill edge function. Idles once everything is current.
+# Needs one repository secret: SUPABASE_SERVICE_ROLE_KEY.
+name: calvern-backfill
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Words per run (1-20)"
+        default: "4"
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Run one backfill batch
+        env:
+          SUPABASE_URL: https://pivvbookarqnqynfmaxc.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          LIMIT: ${{ github.event.inputs.limit || '4' }}
+        run: |
+          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::error::Repository secret SUPABASE_SERVICE_ROLE_KEY is not set"; exit 1
+          fi
+          status=$(curl -sS -o response.json -w "%{http_code}" --max-time 540 \
+            -X POST "$SUPABASE_URL/functions/v1/calvern-backfill" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"limit\": $LIMIT}") || status=000
+          echo "HTTP $status"; cat response.json 2>/dev/null; echo
+          # Infrastructure hiccups (paused project, model overload) are not failures; the next run retries.
+          if [ "$status" != "200" ]; then echo "::warning::backfill returned $status"; fi

@@ -63,3 +63,24 @@ OPEN:       unresolved questions
 - **SYNTHESIS:** Supabase stays the single source of truth. Airtable is a one-time import source (206 words). The AI is an open-weight model on Groq's free tier, called from the edge function.
 - **NEXT:** Operator: grant GitHub push and Supabase access, create a Groq key. Claude: migrate, deploy, seed, verify in the live app.
 - **OPEN:** Whether to keep the non-English entries (aseptique, indiciaire, biopharmaceutique) in a separate French track.
+
+### BRIEF — Core loop live — 2025-09-25
+- **THESIS:** Calvern runs in Supabase (Google Gemini free tier, fallback model on overload). `superfluous` generated and stored end to end. The home feed reads profiles from the database. Word queue seeded (190), 3 junk rows quarantined.
+- **ANTITHESIS:** Photo search found nothing for long scenes. Definitions were a flat list with no link between senses and the core meaning. Regeneration needed a trigger.
+- **SYNTHESIS:** Schema v2: sense inventory (up to 10, each tagged by relation to the core), semantic-change types, frequency and difficulty, photo keywords. Regeneration runs on view and every 15 minutes via GitHub Actions (`calvern-backfill.yml`).
+- **NEXT:** Owner: add the `SUPABASE_SERVICE_ROLE_KEY` repository secret. Claude: verify the first backfill batches, then run the cleanup passes.
+- **OPEN:** Remove the old enrichment functions and the 10 empty tables. Move the Calvern chat onto the pipeline (P3). Study loop (P4).
+
+## Progress tracker
+| Item | Status |
+|---|---|
+| Duplicates merged, core migration | ✅ |
+| Calvern pipeline live (Gemini) | ✅ |
+| P1 backend: queue, quarantine, popularity, images | ✅ |
+| Home feed from database | ✅ |
+| Schema v2 (senses, change types, frequency, difficulty, photo keywords) | ⏳ shipping |
+| Backfill trigger (GitHub Action) | ⏳ waiting on repository secret |
+| ~627 words regenerated | ⏳ 1 done |
+| Cleanup passes (old services, functions, tables) | ⬜ |
+| Calvern chat on the pipeline (P3) | ⬜ |
+| Study / review loop (P4) | ⬜ |

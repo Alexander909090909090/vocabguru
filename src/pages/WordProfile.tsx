@@ -72,6 +72,11 @@ const WordProfile = () => {
             {analysis.data && analysis.data.profile.word !== word.toLowerCase() && (
               <p className="text-sm text-muted-foreground">Showing results for “{analysis.data.profile.word}” (you typed “{word}”)</p>
             )}
+            {analysis.data && (
+              <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
+                {analysis.data.profile.frequency} · difficulty {analysis.data.profile.difficulty}/5
+              </p>
+            )}
             {analysis.data?.profile.analysis.pronunciation.ipa[0] && (
               <p className="text-muted-foreground mt-1">{analysis.data.profile.analysis.pronunciation.ipa[0]}</p>
             )}

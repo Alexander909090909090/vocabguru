@@ -115,7 +115,9 @@ export function CalvernProfileView({ profile }: { profile: CalvernProfile }) {
           <ul className="space-y-1 text-sm">
             {etymology.sense_history.map((h, i) => (
               <li key={i}>
-                <span className="text-muted-foreground">{h.period}:</span> {h.sense}
+                <span className="text-muted-foreground">{h.period}</span>{" "}
+                <span className="rounded-full border border-border px-1.5 text-xs text-muted-foreground">{h.change}</span>{" "}
+                {h.sense}
               </li>
             ))}
           </ul>
@@ -129,17 +131,32 @@ export function CalvernProfileView({ profile }: { profile: CalvernProfile }) {
       </Section>
 
       <Section title="Definitions">
-        <Field label="Primary">{definitions.primary}</Field>
-        {definitions.standard.length > 0 && (
-          <ul className="list-disc pl-5 space-y-1">
-            {definitions.standard.map((d, i) => (
-              <li key={i}>{d}</li>
+        <p className="text-lg">{definitions.primary}</p>
+        {definitions.senses.length > 0 && (
+          <ol className="space-y-3">
+            {definitions.senses.map((sense, i) => (
+              <li key={i} className="flex gap-3">
+                <span className="w-5 shrink-0 text-right text-muted-foreground">{i + 1}.</span>
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    <span className="italic text-muted-foreground">{sense.part_of_speech}</span>
+                    {sense.relation !== "core" && (
+                      <span className="rounded-full border border-primary/30 px-2 text-primary">{sense.relation}</span>
+                    )}
+                    {sense.domain !== "general" && (
+                      <span className="rounded-full border border-border px-2 text-muted-foreground">{sense.domain}</span>
+                    )}
+                    {sense.register !== "neutral" && (
+                      <span className="rounded-full border border-border px-2 text-muted-foreground">{sense.register}</span>
+                    )}
+                  </div>
+                  <p>{sense.definition}</p>
+                  {sense.example && <p className="text-sm italic text-muted-foreground">“{sense.example}”</p>}
+                </div>
+              </li>
             ))}
-          </ul>
+          </ol>
         )}
-        {definitions.specialized.map((s, i) => (
-          <Field key={i} label={`Specialized (${s.domain})`}>{s.text}</Field>
-        ))}
       </Section>
 
       <Section title="Word Forms & Inflections">

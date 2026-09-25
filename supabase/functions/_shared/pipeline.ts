@@ -119,17 +119,8 @@ async function generate(word: string): Promise<Generated> {
 
 // --- Illustration: free stock photo matched to Calvern's image scene -----------
 
-const STOPWORDS = new Set("a an the of in on at to with and or for by from into over under its their his her".split(" "));
-
-async function findImage(scene: string): Promise<{ url: string; credit: string } | null> {
-  const query = scene
-    .toLowerCase()
-    .replace(/[^a-z\s]/g, " ")
-    .split(/\s+/)
-    .filter((w) => w.length > 2 && !STOPWORDS.has(w))
-    .slice(0, 6)
-    .join(" ");
-  if (!query) return null;
+// Openverse matches every query word, so search short phrases one at a time, most representative first.
+async function searchOpenverse(query: string): Promise<{ url: string; credit: string } | null> {
   try {
     const res = await fetch(
       `https://api.openverse.org/v1/images/?q=${encodeURIComponent(query)}&page_size=5&mature=false&aspect_ratio=wide`,
@@ -146,6 +137,14 @@ async function findImage(scene: string): Promise<{ url: string; credit: string }
   } catch {
     return null;
   }
+}
+
+async function findImage(profile: CalvernProfile): Promise<{ url: string; credit: string } | null> {
+  for (const phrase of profile.image_keywords.slice(0, 4)) {
+    const hit = await searchOpenverse(phrase);
+    if (hit) return hit;
+  }
+  return null;
 }
 
 // --- Orchestration --------------------------------------------------------------
@@ -200,8 +199,8 @@ export async function analyzeAndStore(
   if (saveError) return { ok: false, status: 500, error: saveError.message };
 
   // Existing pictures are kept; only words without one get a stock photo.
-  if (!existing?.image_url && profile.image_scene) {
-    const image = await findImage(profile.image_scene);
+  if (!existing?.image_url && profile.image_keywords.length > 0) {
+    const image = await findImage(profile);
     if (image) await db.from("word_profiles").update({ image_url: image.url, image_credit: image.credit }).eq("id", id);
   }
 
