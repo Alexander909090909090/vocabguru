@@ -18,7 +18,10 @@ const AI_API_KEY = Deno.env.get("AI_API_KEY") ?? Deno.env.get("OPENAI_API_KEY");
 // AI_MODEL_PRIMARY lets us override a stale existing AI_MODEL secret without exposing or replacing credentials.
 const AI_MODEL = Deno.env.get("AI_MODEL_PRIMARY") ?? Deno.env.get("AI_MODEL") ?? "gpt-4o-mini";
 const AI_FALLBACK_MODEL = Deno.env.get("AI_FALLBACK_MODEL");
-const MODELS = [AI_MODEL, ...(AI_FALLBACK_MODEL && AI_FALLBACK_MODEL !== AI_MODEL ? [AI_FALLBACK_MODEL] : [])];
+const GOOGLE_OPENAI_COMPAT_FALLBACKS = AI_BASE_URL.includes("generativelanguage.googleapis.com")
+  ? ["gemini-3.flash-preview", "gemini-3.1-flash-lite"]
+  : [];
+const MODELS = [...new Set([AI_MODEL, AI_FALLBACK_MODEL, ...GOOGLE_OPENAI_COMPAT_FALLBACKS].filter(Boolean) as string[])];
 const MAX_ATTEMPTS = 2;
 // Edge functions have a wall-clock limit; a stalled model must hand over to the fallback in time.
 const MODEL_TIMEOUT_MS = 35_000;
@@ -228,7 +231,11 @@ export async function analyzeAndStore(
     generated = await generate(word);
   } catch (e) {
     console.error("calvern: model error", word, e);
-    return { ok: false, status: 502, error: "Calvern could not be reached. Try again shortly." };
+    if (existing?.profile) {
+      console.warn(`calvern: serving cached profile for ${word} after model failure`);
+      return { ok: true, id: existing.id, profile: existing.profile, cached: true };
+    }
+    return { ok: false, status: 503, error: "Calvern is temporarily busy. Try again shortly." };
   }
 
   if (!generated.ok) {
