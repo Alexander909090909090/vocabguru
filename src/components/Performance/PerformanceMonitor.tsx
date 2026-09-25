@@ -26,7 +26,7 @@ export function PerformanceMonitor() {
 
   useEffect(() => {
     // Only show in development or when explicitly enabled
-    const showMonitor = process.env.NODE_ENV === 'development' || 
+    const showMonitor = import.meta.env.DEV || 
                        localStorage.getItem('vocabguru-show-performance') === 'true';
     setIsVisible(showMonitor);
 
