@@ -709,12 +709,20 @@ export type Database = {
           enrichment_status: string | null
           etymology: Json | null
           id: string
+          image_credit: string | null
+          image_url: string | null
           last_enrichment_at: string | null
+          last_regen_error: string | null
+          last_viewed_at: string | null
+          lookup_count: number
           morpheme_breakdown: Json | null
           profile: Json | null
           quality_score: number | null
+          quarantine_reason: string | null
+          regen_attempts: number
           schema_version: number
           source: string
+          status: string
           updated_at: string
           word: string
           word_forms: Json | null
@@ -728,12 +736,20 @@ export type Database = {
           enrichment_status?: string | null
           etymology?: Json | null
           id?: string
+          image_credit?: string | null
+          image_url?: string | null
           last_enrichment_at?: string | null
+          last_regen_error?: string | null
+          last_viewed_at?: string | null
+          lookup_count?: number
           morpheme_breakdown?: Json | null
           profile?: Json | null
           quality_score?: number | null
+          quarantine_reason?: string | null
+          regen_attempts?: number
           schema_version?: number
           source?: string
+          status?: string
           updated_at?: string
           word: string
           word_forms?: Json | null
@@ -747,12 +763,20 @@ export type Database = {
           enrichment_status?: string | null
           etymology?: Json | null
           id?: string
+          image_credit?: string | null
+          image_url?: string | null
           last_enrichment_at?: string | null
+          last_regen_error?: string | null
+          last_viewed_at?: string | null
+          lookup_count?: number
           morpheme_breakdown?: Json | null
           profile?: Json | null
           quality_score?: number | null
+          quarantine_reason?: string | null
+          regen_attempts?: number
           schema_version?: number
           source?: string
+          status?: string
           updated_at?: string
           word?: string
           word_forms?: Json | null
@@ -810,6 +834,36 @@ export type Database = {
           updated_at?: string | null
           word?: string | null
           word_forms?: Json | null
+        }
+        Relationships: []
+      }
+      word_queue: {
+        Row: {
+          attempts: number
+          created_at: string
+          last_error: string | null
+          processed_at: string | null
+          source: string
+          status: string
+          word: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          last_error?: string | null
+          processed_at?: string | null
+          source: string
+          status?: string
+          word: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          last_error?: string | null
+          processed_at?: string | null
+          source?: string
+          status?: string
+          word?: string
         }
         Relationships: []
       }
@@ -894,10 +948,19 @@ export type Database = {
         Args: { word_profile_id: string }
         Returns: Json
       }
+      note_regen_failure: {
+        Args: { p_error: string; p_max_attempts: number; p_word: string }
+        Returns: undefined
+      }
+      quarantine_word: {
+        Args: { p_reason: string; p_word: string }
+        Returns: undefined
+      }
       queue_word_for_enrichment: {
         Args: { enrichment_priority?: number; word_profile_id: string }
         Returns: undefined
       }
+      record_word_lookup: { Args: { p_id: string }; Returns: undefined }
       save_calvern_profile: {
         Args: {
           p_legacy: Json
