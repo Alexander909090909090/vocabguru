@@ -30,11 +30,13 @@ const WordProfile = () => {
     queryKey: ["library-entry", user?.id, wordId],
     enabled: Boolean(user && wordId),
     queryFn: async () => {
+      if (!user || !wordId) return false;
+
       const { data, error } = await supabase
         .from("user_word_library")
         .select("id")
-        .eq("user_id", user!.id)
-        .eq("word_id", wordId!)
+        .eq("user_id", user.id)
+        .eq("word_id", wordId)
         .maybeSingle();
       if (error) throw error;
       return Boolean(data);

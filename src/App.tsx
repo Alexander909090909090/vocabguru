@@ -7,6 +7,7 @@ import { WordsProvider } from "@/context/WordsContext";
 import { QuizProvider } from "@/context/QuizContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { QuickActions } from "@/components/Navigation/QuickActions";
 import Index from "./pages/Index";
 import Discovery from "./pages/Discovery";
@@ -39,57 +40,59 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-              <Routes>
-                <Route path="/" element={
-                  <ProtectedRoute>
-                    <Index />
-                  </ProtectedRoute>
-                } />
-                <Route path="/discovery" element={
-                  <ProtectedRoute>
-                    <Discovery />
-                  </ProtectedRoute>
-                } />
-                <Route path="/word/:id" element={
-                  <ProtectedRoute>
-                    <LegacyWordRedirect />
-                  </ProtectedRoute>
-                } />
-                <Route path="/w/:word" element={
-                  <ProtectedRoute>
-                    <WordProfile />
-                  </ProtectedRoute>
-                } />
-                <Route path="/quiz" element={
-                  <ProtectedRoute>
-                    <QuizProvider>
-                      <Quiz />
-                    </QuizProvider>
-                  </ProtectedRoute>
-                } />
-                <Route path="/calvern" element={
-                  <ProtectedRoute>
-                    <Calvern />
-                  </ProtectedRoute>
-                } />
-                <Route path="/settings" element={
-                  <ProtectedRoute>
-                    <Settings />
-                  </ProtectedRoute>
-                } />
-                <Route path="/profile" element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                } />
-                <Route path="/study" element={
-                  <ProtectedRoute>
-                    <StudyCenter />
-                  </ProtectedRoute>
-                } />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-              <QuickActions />
+              <ErrorBoundary>
+                <Routes>
+                  <Route path="/" element={
+                    <ProtectedRoute>
+                      <Index />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/discovery" element={
+                    <ProtectedRoute>
+                      <Discovery />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/word/:id" element={
+                    <ProtectedRoute>
+                      <LegacyWordRedirect />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/w/:word" element={
+                    <ProtectedRoute>
+                      <WordProfile />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/quiz" element={
+                    <ProtectedRoute>
+                      <QuizProvider>
+                        <Quiz />
+                      </QuizProvider>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/calvern" element={
+                    <ProtectedRoute>
+                      <Calvern />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/settings" element={
+                    <ProtectedRoute>
+                      <Settings />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/profile" element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/study" element={
+                    <ProtectedRoute>
+                      <StudyCenter />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <QuickActions />
+              </ErrorBoundary>
             </div>
           </BrowserRouter>
         </TooltipProvider>
