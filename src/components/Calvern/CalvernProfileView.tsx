@@ -1,29 +1,27 @@
 import type { ReactNode } from "react";
 import type { CalvernProfile, CalvernMorpheme } from "@/services/calvernService";
-
-const KIND_STYLES: Record<CalvernMorpheme["kind"], string> = {
-  prefix: "bg-sky-500/15 text-sky-300 border-sky-500/30",
-  root: "bg-violet-500/15 text-violet-300 border-violet-500/30",
-  combining_form: "bg-violet-500/15 text-violet-300 border-violet-500/30",
-  infix: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  suffix: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-};
-
-const KIND_LABEL: Record<CalvernMorpheme["kind"], string> = {
-  prefix: "Prefix",
-  root: "Root",
-  combining_form: "Combining form",
-  infix: "Infix",
-  suffix: "Suffix",
-};
+import {
+  MORPHEME,
+  OUTLINE_CHIP,
+  SEMANTIC_CHANGE,
+  SEMANTIC_RELATION,
+  SENSE_RELATION,
+  entry,
+  partOfSpeechEntry,
+} from "@/lib/taxonomy";
+import { TaxonomyChip } from "./TaxonomyChip";
+import { TaxonomyLegend } from "./TaxonomyLegend";
 
 const hyphenate = (m: CalvernMorpheme) =>
   m.kind === "prefix" ? `${m.form}-` : m.kind === "suffix" ? `-${m.form}` : m.form;
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, children, aside }: { title: string; children: ReactNode; aside?: ReactNode }) {
   return (
-    <section className="glass-card rounded-2xl p-6 space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{title}</h2>
+    <section className="glass-card space-y-3 rounded-2xl p-6">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{title}</h2>
+        {aside}
+      </div>
       {children}
     </section>
   );
@@ -39,63 +37,74 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+function Sub({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="space-y-2 border-t border-border/50 pt-3">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
 const list = (items: string[]) => (items.length ? items.join(", ") : null);
 
+function DepthMeter({ profile }: { profile: CalvernProfile }) {
+  const q = profile.quality;
+  if (!q) return null;
+  const tone = q.depth >= 85 ? "text-emerald-300" : q.depth >= 70 ? "text-sky-300" : "text-amber-300";
+  const layers = Object.entries(q.layers).map(([k, v]) => `${k} ${v}`).join(" · ");
+  return (
+    <span title={layers} className={`text-xs font-semibold ${tone}`}>
+      Depth {q.depth}/100
+    </span>
+  );
+}
+
+// Layout follows the Calvern directive: morphemes → etymology → definitions → forms → analysis → example.
 export function CalvernProfileView({ profile }: { profile: CalvernProfile }) {
   const { etymology, definitions, analysis } = profile;
 
   return (
     <div className="space-y-5">
-      <Section title="Morpheme Breakdown">
+      <TaxonomyLegend />
+
+      <Section title="Morpheme Breakdown" aside={<DepthMeter profile={profile} />}>
         <div className="flex flex-wrap items-stretch gap-2">
           {profile.morphemes.map((m, i) => (
-            <div key={i} className={`rounded-xl border px-4 py-3 min-w-[7rem] ${KIND_STYLES[m.kind]}`}>
-              <div className="text-xs uppercase tracking-wide opacity-80">{KIND_LABEL[m.kind]}</div>
+            <div key={i} className={`min-w-[7rem] rounded-xl border px-4 py-3 ${entry(MORPHEME, m.kind).className}`}>
+              <div className="text-xs uppercase tracking-wide opacity-80">{entry(MORPHEME, m.kind).label}</div>
               <div className="text-xl font-bold">{hyphenate(m)}</div>
               <div className="text-sm text-foreground/90">“{m.meaning}”</div>
-              <div className="text-xs opacity-80 mt-1">
+              <div className="mt-1 text-xs opacity-80">
                 {m.origin_language}
-                {m.source_form && <> · <em>{m.source_form}</em></>}
+                {m.source_form && (
+                  <>
+                    {" "}
+                    · <em>{m.source_form}</em>
+                  </>
+                )}
               </div>
             </div>
           ))}
         </div>
         {profile.literal_meaning && (
           <p className="text-muted-foreground">
-            Literally: <span className="text-foreground italic">{profile.literal_meaning}</span>
+            Literally: <span className="italic text-foreground">{profile.literal_meaning}</span>
           </p>
         )}
         {profile.memory_hook && (
-          <p className="rounded-lg bg-primary/10 border border-primary/20 px-4 py-3 text-sm">{profile.memory_hook}</p>
+          <p className="rounded-lg border border-primary/20 bg-primary/10 px-4 py-3 text-sm">{profile.memory_hook}</p>
         )}
-      </Section>
-
-      <Section title="Meaning & Associations">
-        <Field label="Connotation">
-          {[profile.connotation.valence, profile.connotation.register].filter(Boolean).join(" · ")}
-          {profile.connotation.note && <span className="text-muted-foreground"> — {profile.connotation.note}</span>}
-        </Field>
-        {profile.semantic_web.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {profile.semantic_web.map((e, i) => (
-              <span key={i} title={e.note} className="rounded-full border border-border px-3 py-1 text-sm">
-                <span className="text-muted-foreground">{e.relation}:</span> {e.term}
-              </span>
-            ))}
-          </div>
-        )}
-        <Field label="Sound symbolism">{profile.sound_symbolism}</Field>
       </Section>
 
       <Section title="Etymology">
         {etymology.certainty !== "established" && (
           <p className="text-xs text-amber-300/90">Etymology {etymology.certainty}; sources disagree or evidence is thin.</p>
         )}
-        <Field label="Historical origins">{etymology.historical_origins}</Field>
         <Field label="Language of origin">{etymology.language_of_origin}</Field>
         <Field label="First attested">{etymology.first_attested}</Field>
         {etymology.path.length > 0 && (
-          <ol className="relative border-l border-primary/30 ml-2 space-y-3">
+          <ol className="relative ml-2 space-y-3 border-l border-primary/30">
             {etymology.path.map((step, i) => (
               <li key={i} className="ml-4">
                 <span className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full bg-primary/70" />
@@ -110,24 +119,33 @@ export function CalvernProfileView({ profile }: { profile: CalvernProfile }) {
             ))}
           </ol>
         )}
-        <Field label="Word evolution">{etymology.word_evolution}</Field>
+        <Field label="Historical origins">{etymology.historical_origins}</Field>
         {etymology.sense_history.length > 0 && (
-          <ul className="space-y-1 text-sm">
-            {etymology.sense_history.map((h, i) => (
-              <li key={i}>
-                <span className="text-muted-foreground">{h.period}</span>{" "}
-                <span className="rounded-full border border-border px-1.5 text-xs text-muted-foreground">{h.change}</span>{" "}
-                {h.sense}
-              </li>
-            ))}
-          </ul>
+          <Sub title="How the meaning changed">
+            <ul className="space-y-1.5 text-sm">
+              {etymology.sense_history.map((h, i) => (
+                <li key={i} className="flex flex-wrap items-center gap-2">
+                  <span className="text-muted-foreground">{h.period}</span>
+                  <TaxonomyChip entry={entry(SEMANTIC_CHANGE, h.change)} />
+                  <span>{h.sense}</span>
+                </li>
+              ))}
+            </ul>
+          </Sub>
         )}
+        <Field label="Word evolution">{etymology.word_evolution}</Field>
         <Field label="Cultural & regional variations">{etymology.cultural_variations}</Field>
-        <Field label="Related words">
-          {etymology.related_words.length
-            ? etymology.related_words.map((r) => `${r.word} (${r.shared_morpheme})`).join(", ")
-            : null}
-        </Field>
+        {etymology.related_words.length > 0 && (
+          <Sub title="Related words">
+            <div className="flex flex-wrap gap-1.5">
+              {etymology.related_words.map((r, i) => (
+                <span key={i} className={`rounded-full border px-2 py-0.5 text-sm ${OUTLINE_CHIP}`}>
+                  {r.word} <span className="opacity-70">· {r.shared_morpheme}</span>
+                </span>
+              ))}
+            </div>
+          </Sub>
+        )}
       </Section>
 
       <Section title="Definitions">
@@ -138,17 +156,11 @@ export function CalvernProfileView({ profile }: { profile: CalvernProfile }) {
               <li key={i} className="flex gap-3">
                 <span className="w-5 shrink-0 text-right text-muted-foreground">{i + 1}.</span>
                 <div className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                    <span className="italic text-muted-foreground">{sense.part_of_speech}</span>
-                    {sense.relation !== "core" && (
-                      <span className="rounded-full border border-primary/30 px-2 text-primary">{sense.relation}</span>
-                    )}
-                    {sense.domain !== "general" && (
-                      <span className="rounded-full border border-border px-2 text-muted-foreground">{sense.domain}</span>
-                    )}
-                    {sense.register !== "neutral" && (
-                      <span className="rounded-full border border-border px-2 text-muted-foreground">{sense.register}</span>
-                    )}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <TaxonomyChip entry={partOfSpeechEntry(sense.part_of_speech)}>{sense.part_of_speech}</TaxonomyChip>
+                    <TaxonomyChip entry={entry(SENSE_RELATION, sense.relation)} />
+                    {sense.domain !== "general" && <TaxonomyChip entry={entry({}, sense.domain)} />}
+                    {sense.register !== "neutral" && <TaxonomyChip entry={entry({}, sense.register)} />}
                   </div>
                   <p>{sense.definition}</p>
                   {sense.example && <p className="text-sm italic text-muted-foreground">“{sense.example}”</p>}
@@ -159,24 +171,62 @@ export function CalvernProfileView({ profile }: { profile: CalvernProfile }) {
         )}
       </Section>
 
-      <Section title="Word Forms & Inflections">
-        {profile.word_forms.map((f, i) => (
-          <Field key={i} label={f.part_of_speech}>{f.form}</Field>
-        ))}
-        {profile.word_forms_note && <p className="text-sm text-muted-foreground">{profile.word_forms_note}</p>}
-      </Section>
+      {(profile.word_forms.length > 0 || profile.word_forms_note) && (
+        <Section title="Word Forms & Inflections">
+          <div className="flex flex-wrap gap-2">
+            {profile.word_forms.map((f, i) => (
+              <span key={i} className="flex items-center gap-1.5">
+                <TaxonomyChip entry={partOfSpeechEntry(f.part_of_speech)}>{f.part_of_speech}</TaxonomyChip>
+                <span className="font-medium">{f.form}</span>
+              </span>
+            ))}
+          </div>
+          {profile.word_forms_note && <p className="text-sm text-muted-foreground">{profile.word_forms_note}</p>}
+        </Section>
+      )}
 
       <Section title="Analysis of the Word">
-        {analysis.parts_of_speech.map((p, i) => (
-          <Field key={i} label={p.part_of_speech}>“{p.example}”</Field>
-        ))}
-        {analysis.contextual_usage.map((c, i) => (
-          <Field key={`ctx-${i}`} label={c.context}>“{c.example}”</Field>
-        ))}
-        <Field label="Common collocations">{list(analysis.collocations)}</Field>
-        <Field label="Synonyms">{list(analysis.synonyms)}</Field>
-        <Field label="Antonyms">{list(analysis.antonyms)}</Field>
-        <Field label="Cultural & historical significance">{analysis.cultural_significance}</Field>
+        {analysis.parts_of_speech.length > 0 && (
+          <div className="space-y-2">
+            {analysis.parts_of_speech.map((p, i) => (
+              <p key={i} className="flex flex-wrap items-center gap-2">
+                <TaxonomyChip entry={partOfSpeechEntry(p.part_of_speech)}>{p.part_of_speech}</TaxonomyChip>
+                <span className="italic">“{p.example}”</span>
+              </p>
+            ))}
+          </div>
+        )}
+
+        <Sub title="Meaning & associations">
+          <Field label="Connotation">
+            {[profile.connotation.valence, profile.connotation.register].filter(Boolean).join(" · ")}
+            {profile.connotation.note && <span className="text-muted-foreground"> — {profile.connotation.note}</span>}
+          </Field>
+          {profile.semantic_web.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {profile.semantic_web.map((e, i) => (
+                <TaxonomyChip key={i} entry={{ ...entry(SEMANTIC_RELATION, e.relation), hint: e.note }}>
+                  <span className="opacity-75">{entry(SEMANTIC_RELATION, e.relation).label}:</span>&nbsp;{e.term}
+                </TaxonomyChip>
+              ))}
+            </div>
+          )}
+          <Field label="Sound symbolism">{profile.sound_symbolism}</Field>
+        </Sub>
+
+        <Sub title="Usage">
+          {analysis.contextual_usage.map((c, i) => (
+            <p key={i} className="flex flex-wrap items-baseline gap-2">
+              <TaxonomyChip entry={entry({}, c.context)} />
+              <span className="italic">“{c.example}”</span>
+            </p>
+          ))}
+          <Field label="Common collocations">{list(analysis.collocations)}</Field>
+          <Field label="Synonyms">{list(analysis.synonyms)}</Field>
+          <Field label="Antonyms">{list(analysis.antonyms)}</Field>
+          <Field label="Cultural & historical significance">{analysis.cultural_significance}</Field>
+        </Sub>
+
         <Field label="Pronunciation">
           {[analysis.pronunciation.ipa.join(" or "), analysis.pronunciation.syllables].filter(Boolean).join(" · ") ||
             null}
@@ -189,3 +239,4 @@ export function CalvernProfileView({ profile }: { profile: CalvernProfile }) {
     </div>
   );
 }
+

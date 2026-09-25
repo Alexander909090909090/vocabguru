@@ -47,3 +47,37 @@ older profiles are then regenerated automatically (when viewed, and by the backf
 ## Rules
 - Lists hold only what genuinely exists; empty sections are hidden, never filled with placeholders.
 - A profile is rejected if it lacks morphemes, a root, a primary definition, at least one sense, a language of origin, an etymology path or an example.
+
+## Quality gates (enforced in code)
+
+**Gate 1: validity (hard).** A profile is rejected and never stored unless it has: morphemes with a root, a primary definition, at least one sense, a language of origin, an etymology path, and an example. The word must be the one requested, or a spelling correction within 2 letters.
+
+**Gate 2: depth (scored).** `quality.depth` (0–100) is computed by code from the profile itself:
+
+| Layer | Full marks when | Points |
+|---|---|---|
+| Morphology | every morpheme has meaning + origin + source form; literal meaning present | 25 |
+| Senses | ≥5 senses (≥2 for rare specialist words) and ≥2 sense types | 20 |
+| History | ≥3 timeline stages, ≥2 meaning changes, first attested | 20 |
+| Semantic web | ≥5 links, ≥3 related words | 15 |
+| Usage | ≥3 contexts, ≥3 collocations, ≥2 forms, examples on senses | 15 |
+| Sound | IPA + syllables | 5 |
+
+Below **70**, the pipeline regenerates once more and keeps the deeper result.
+
+**Gate 3: grounding.** Every generation receives evidence from two free dictionaries (Free Dictionary API, Wiktionary). Etymology certainty is marked, never assumed.
+
+**Integrity.** `quality.fingerprint` is a SHA-256 hash of the stored profile, so any change to a word's content is detectable.
+
+## Color taxonomy
+Defined once in `src/lib/taxonomy.ts`. The word page and its collapsible **Color key** both render from it.
+
+| Group | Colors |
+|---|---|
+| Morphemes | prefix sky · root violet · combining form fuchsia · infix amber · suffix emerald |
+| Parts of speech | noun orange · verb rose · adjective yellow · adverb lime · other slate |
+| Sense types | literal in blues (core, extended, specialized) · figurative in pinks (metaphorical, metonymic, figurative, idiomatic) · archaic stone |
+| Semantic web | analogy teal · antithesis red · broader indigo · narrower sky · part of amber · associated slate |
+| Meaning change | broadening green · narrowing orange · amelioration emerald · pejoration red · metaphor pink · metonymy purple · origin/shift neutral |
+| Domain, register, context | neutral outline (labels, not categories) |
+

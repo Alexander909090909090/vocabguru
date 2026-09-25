@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { FeedWord } from "@/hooks/useWordFeed";
+import { MORPHEME, entry } from "@/lib/taxonomy";
 
 // Stable gradient per word: the placeholder whenever no image exists.
 function gradient(seed: string) {
@@ -7,11 +8,7 @@ function gradient(seed: string) {
   return `linear-gradient(135deg, hsl(${hash % 360}, 70%, 45%), hsl(${(hash * 7) % 360}, 70%, 35%))`;
 }
 
-const CHIP: Record<string, string> = {
-  prefix: "bg-sky-500/15 text-sky-300 border-sky-500/30",
-  suffix: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-};
-const chipClass = (kind: string) => CHIP[kind] ?? "bg-violet-500/15 text-violet-300 border-violet-500/30";
+const chipClass = (kind: string) => entry(MORPHEME, kind).className;
 const hyphenate = (kind: string, form: string) =>
   kind === "prefix" ? `${form}-` : kind === "suffix" ? `-${form}` : form;
 
@@ -66,3 +63,4 @@ export function FeedWordCard({ word, layout }: { word: FeedWord; layout: "grid" 
     </Link>
   );
 }
+
