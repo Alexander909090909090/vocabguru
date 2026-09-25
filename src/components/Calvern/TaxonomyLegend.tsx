@@ -24,6 +24,10 @@ export function TaxonomyLegend() {
               </div>
             </div>
           ))}
+          <p className="text-xs text-muted-foreground">
+            Subject areas (politics, law, biology…) each keep one consistent color. Related words take the color of the
+            morpheme they share.
+          </p>
         </div>
       )}
     </section>
