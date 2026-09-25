@@ -15,7 +15,8 @@ import {
 
 const AI_BASE_URL = (Deno.env.get("AI_BASE_URL") ?? "https://api.openai.com/v1").replace(/\/+$/, "");
 const AI_API_KEY = Deno.env.get("AI_API_KEY") ?? Deno.env.get("OPENAI_API_KEY");
-const AI_MODEL = Deno.env.get("AI_MODEL") ?? "gpt-4o-mini";
+// AI_MODEL_PRIMARY lets us override a stale existing AI_MODEL secret without exposing or replacing credentials.
+const AI_MODEL = Deno.env.get("AI_MODEL_PRIMARY") ?? Deno.env.get("AI_MODEL") ?? "gpt-4o-mini";
 const AI_FALLBACK_MODEL = Deno.env.get("AI_FALLBACK_MODEL");
 const MODELS = [AI_MODEL, ...(AI_FALLBACK_MODEL && AI_FALLBACK_MODEL !== AI_MODEL ? [AI_FALLBACK_MODEL] : [])];
 const MAX_ATTEMPTS = 2;
