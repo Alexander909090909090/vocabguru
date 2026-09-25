@@ -5,21 +5,19 @@ import { Input } from "@/components/ui/input";
 import { Search, Plus, LayoutGrid, Grid3X3, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import WordGrid from "@/components/WordGrid";
-import { useUnifiedWords } from "@/hooks/useUnifiedWords";
+import { useWords } from "@/context/WordsContext";
 import DictionarySearch from "@/components/DictionarySearch";
-import { searchDictionaryWord } from "@/lib/dictionaryApi";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { QuickActions } from "@/components/Navigation/QuickActions";
 import { NextSteps } from "@/components/Navigation/NextSteps";
-import { EnhancedDictionaryService } from "@/services/enhancedDictionaryService";
 
 type FilterCategory = "all" | "prefix" | "root" | "suffix" | "origin" | "dictionary";
 type ViewMode = "cards" | "grid";
 
 const Index = () => {
-  const { words, addWord, searchWords: searchUnifiedWords, getWordById, loading: wordsLoading, databaseCount, totalCount } = useUnifiedWords();
+  const { words, dictionaryWords } = useWords();
   const [searchQuery, setSearchQuery] = useState("");
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterCategory>("all");
@@ -27,10 +25,12 @@ const Index = () => {
   const [showDictionarySearch, setShowDictionarySearch] = useState(false);
   const [username, setUsername] = useState("Scholar");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
-  const [isSearching, setIsSearching] = useState(false);
   const navigate = useNavigate();
   
-  const filteredWords = searchUnifiedWords(searchQuery);
+  const filteredWords = words.filter(word => 
+    word.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    word.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
   
   const featuredWords = words.filter(word => word.featured);
 
@@ -70,10 +70,11 @@ const Index = () => {
     setShowDictionarySearch(!showDictionarySearch);
   };
   
-  const handleSearch = async (e: React.FormEvent) => {
+  // Every search goes to Calvern, which returns the stored breakdown or creates it.
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!searchQuery.trim()) {
+    const word = searchQuery.trim().toLowerCase();
+    if (!word) {
       toast({
         title: "Please enter a word",
         description: "Type a word to search",
@@ -81,50 +82,8 @@ const Index = () => {
       });
       return;
     }
-    
-    const normalizedWord = searchQuery.trim().toLowerCase();
-    const existingWord = words.find(w => w.word.toLowerCase() === normalizedWord);
-    
-    if (existingWord) {
-      navigate(`/word/${existingWord.id}`);
-      setSearchQuery("");
-      return;
-    }
-    
-    setIsSearching(true);
-    
-    try {
-      console.log(`🔍 Enhanced search for: "${normalizedWord}"`);
-      
-      // Use enhanced dictionary service for comprehensive analysis
-      const result = await EnhancedDictionaryService.searchAndStoreWord(normalizedWord);
-      
-      if (result.success && result.wordId) {
-        toast({
-          title: "Word Found!",
-          description: result.message,
-        });
-        
-        // Navigate to the word detail page
-        navigate(`/word/${result.wordId}`);
-        setSearchQuery("");
-      } else {
-        toast({
-          title: "Word not found",
-          description: result.message || "Could not find this word in our dictionary sources.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Enhanced search error:", error);
-      toast({
-        title: "Search failed",
-        description: "An error occurred while searching. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSearching(false);
-    }
+    navigate(`/w/${encodeURIComponent(word)}`);
+    setSearchQuery("");
   };
 
   const getFilteredWordsByCategory = () => {
@@ -139,7 +98,8 @@ const Index = () => {
       return filteredWords.filter(word => word.morphemeBreakdown.suffix);
     }
     if (activeFilter === "dictionary") {
-      return filteredWords.filter(word => word.source === 'dictionary');
+      const dictionaryIds = dictionaryWords.map(w => w.id);
+      return filteredWords.filter(word => dictionaryIds.includes(word.id));
     }
     return filteredWords;
   };
@@ -209,16 +169,6 @@ const Index = () => {
                 <p className="text-lg max-w-2xl mx-auto text-muted-foreground">
                   Master language with interactive quizzes, etymology breakdowns, and daily word insights.
                 </p>
-                {wordsLoading ? (
-                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                    <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
-                    Loading comprehensive word repository...
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Exploring {totalCount} words • {databaseCount} enhanced profiles in your repository
-                  </p>
-                )}
                 
                 {showDictionarySearch ? (
                   <div className="max-w-md mx-auto">
@@ -240,14 +190,8 @@ const Index = () => {
                         className="w-full bg-secondary/50 border-none h-12 pl-12 focus-visible:ring-primary"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        disabled={isSearching}
                       />
                       <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      {isSearching && (
-                        <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                          <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
-                        </div>
-                      )}
                     </form>
                     <Button 
                       variant="outline" 

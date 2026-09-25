@@ -11,6 +11,7 @@ import { QuickActions } from "@/components/Navigation/QuickActions";
 import Index from "./pages/Index";
 import Discovery from "./pages/Discovery";
 import WordDetail from "./pages/WordDetail";
+import WordProfile from "./pages/WordProfile";
 import Quiz from "./pages/Quiz";
 import Calvern from "./pages/Calvern";
 import Integrations from "./pages/Integrations";
@@ -52,6 +53,11 @@ const App = () => (
                 <Route path="/word/:id" element={
                   <ProtectedRoute>
                     <WordDetail />
+                  </ProtectedRoute>
+                } />
+                <Route path="/w/:word" element={
+                  <ProtectedRoute>
+                    <WordProfile />
                   </ProtectedRoute>
                 } />
                 <Route path="/quiz" element={
