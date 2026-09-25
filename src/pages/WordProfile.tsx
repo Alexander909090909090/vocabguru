@@ -51,10 +51,14 @@ const WordProfile = () => {
   };
 
   const regenerate = async () => {
-    await queryClient.fetchQuery({
-      queryKey: ["calvern", word.toLowerCase()],
-      queryFn: () => analyzeWord(word, true),
-    });
+    try {
+      await queryClient.fetchQuery({
+        queryKey: ["calvern", word.toLowerCase()],
+        queryFn: () => analyzeWord(word, true),
+      });
+    } catch {
+      // The failure is stored on the query and shown in the error card below.
+    }
   };
 
   return (

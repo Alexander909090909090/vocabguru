@@ -4,14 +4,15 @@
 //   2. then pending words in word_queue (imports, and later: neighbours of saved words)
 // Scheduled by pg_cron; safe to run repeatedly. Service role only.
 //
-// Body (optional): { "limit": 5 }
+// Body (optional): { "limit": 1 }. Keep it at 1–2: each word can take up to a minute and edge functions
+// have a wall-clock limit, so callers loop over many short calls instead of one long one.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { CALVERN_SCHEMA_VERSION, normalizeWord } from "../_shared/calvern.ts";
 import { aiConfigured, analyzeAndStore } from "../_shared/pipeline.ts";
 
-const MAX_LIMIT = 20;
+const MAX_LIMIT = 2;
 const MAX_ATTEMPTS = 3;
 
 const json = (body: unknown, status = 200) =>
@@ -23,7 +24,7 @@ serve(async (req) => {
   if (!aiConfigured()) return json({ error: "AI not configured" }, 503);
 
   const body = await req.json().catch(() => ({}));
-  const limit = Math.min(Math.max(Number(body.limit) || 5, 1), MAX_LIMIT);
+  const limit = Math.min(Math.max(Number(body.limit) || 1, 1), MAX_LIMIT);
   const db = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey);
   const report: { word: string; outcome: string }[] = [];
 

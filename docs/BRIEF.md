@@ -78,8 +78,10 @@ OPEN:       unresolved questions
 | Calvern pipeline live (Gemini) | ✅ |
 | P1 backend: queue, quarantine, popularity, images | ✅ |
 | Home feed from database | ✅ |
-| Schema v2 (senses, change types, frequency, difficulty, photo keywords) | ⏳ shipping |
-| Backfill trigger (GitHub Action) | ⏳ waiting on repository secret |
+| Schema v2 (senses, change types, frequency, difficulty, photo keywords) | ✅ |
+| Quality gates: Depth Score, fingerprint, two-dictionary grounding | ⏳ shipping |
+| Color taxonomy + legend; page in directive order | ⏳ shipping |
+| Backfill trigger (GitHub Action, one word per call) | ⏳ waiting on repository secret |
 | ~627 words regenerated | ⏳ 1 done |
 | Cleanup passes (old services, functions, tables) | ⬜ |
 | Calvern chat on the pipeline (P3) | ⬜ |

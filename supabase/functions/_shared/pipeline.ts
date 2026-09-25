@@ -8,6 +8,7 @@ import {
   CALVERN_SCHEMA_VERSION,
   CALVERN_SYSTEM_PROMPT,
   type CalvernProfile,
+  MIN_DEPTH,
   toLegacyColumns,
   validateProfile,
 } from "./calvern.ts";
@@ -18,40 +19,68 @@ const AI_MODEL = Deno.env.get("AI_MODEL") ?? "gpt-4o-mini";
 const AI_FALLBACK_MODEL = Deno.env.get("AI_FALLBACK_MODEL");
 const MODELS = [AI_MODEL, ...(AI_FALLBACK_MODEL && AI_FALLBACK_MODEL !== AI_MODEL ? [AI_FALLBACK_MODEL] : [])];
 const MAX_ATTEMPTS = 2;
+// Edge functions have a wall-clock limit; a stalled model must hand over to the fallback in time.
+const MODEL_TIMEOUT_MS = 35_000;
 
 export const aiConfigured = () => Boolean(AI_API_KEY);
 
 // --- Grounding: dictionary evidence handed to the model ----------------------
 
-async function fetchEvidence(word: string): Promise<string> {
+const stripHtml = (html: string) => html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+
+async function freeDictionary(word: string): Promise<string[]> {
   try {
     const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`, {
       signal: AbortSignal.timeout(4000),
     });
-    if (res.status === 404) return "Dictionary evidence: no entry found in the Free Dictionary API.";
-    if (!res.ok) return "";
+    if (res.status === 404) return ["Free Dictionary API: no entry."];
+    if (!res.ok) return [];
     const entries = (await res.json()) as {
       phonetic?: string;
       origin?: string;
       meanings?: { partOfSpeech: string; definitions: { definition: string }[] }[];
     }[];
-    const senses = entries
-      .flatMap((e) => e.meanings ?? [])
-      .flatMap((m) => m.definitions.slice(0, 3).map((d) => `(${m.partOfSpeech}) ${d.definition}`))
-      .slice(0, 8);
     const origin = entries.map((e) => e.origin).find(Boolean);
     const phonetic = entries.map((e) => e.phonetic).find(Boolean);
     return [
-      "Dictionary evidence (Free Dictionary API; use it to stay accurate, do not copy blindly):",
-      phonetic && `Phonetic: ${phonetic}`,
-      origin && `Origin note: ${origin}`,
-      ...senses.map((s) => `- ${s}`),
-    ]
-      .filter(Boolean)
-      .join("\n");
+      "Free Dictionary API:",
+      ...(phonetic ? [`Phonetic: ${phonetic}`] : []),
+      ...(origin ? [`Origin note: ${origin}`] : []),
+      ...entries
+        .flatMap((e) => e.meanings ?? [])
+        .flatMap((m) => m.definitions.slice(0, 3).map((d) => `- (${m.partOfSpeech}) ${d.definition}`))
+        .slice(0, 8),
+    ];
   } catch {
-    return "";
+    return [];
   }
+}
+
+async function wiktionary(word: string): Promise<string[]> {
+  try {
+    const res = await fetch(`https://en.wiktionary.org/api/rest_v1/page/definition/${encodeURIComponent(word)}`, {
+      signal: AbortSignal.timeout(4000),
+      headers: { "User-Agent": "VocabGuru/1.0 (Calvern word profiles)" },
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { en?: { partOfSpeech: string; definitions: { definition: string }[] }[] };
+    const senses = (data.en ?? [])
+      .flatMap((p) => p.definitions.slice(0, 4).map((d) => `- (${p.partOfSpeech}) ${stripHtml(d.definition)}`))
+      .filter((line) => line.length > 8)
+      .slice(0, 12);
+    return senses.length ? ["Wiktionary:", ...senses] : [];
+  } catch {
+    return [];
+  }
+}
+
+// Grounding: real dictionary evidence handed to the model, from two independent free sources.
+async function fetchEvidence(word: string): Promise<string> {
+  const [fd, wk] = await Promise.all([freeDictionary(word), wiktionary(word)]);
+  const lines = [...fd, ...wk];
+  return lines.length
+    ? ["Dictionary evidence (use it to stay accurate and to find senses; do not copy blindly):", ...lines].join("\n")
+    : "";
 }
 
 // --- Generation ---------------------------------------------------------------
@@ -60,6 +89,7 @@ async function callModel(word: string, evidence: string, structured: boolean, mo
   const task = `Word: ${word}${evidence ? `\n\n${evidence}` : ""}`;
   return await fetch(`${AI_BASE_URL}/chat/completions`, {
     method: "POST",
+    signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
     headers: { Authorization: `Bearer ${AI_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model,
@@ -87,14 +117,21 @@ type Generated =
 async function generate(word: string): Promise<Generated> {
   const evidence = await fetchEvidence(word);
   let lastErrors: string[] = [];
+  let best: { profile: CalvernProfile; model: string } | null = null;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     let res: Response | undefined;
     let used = AI_MODEL;
     for (const model of MODELS) {
       used = model;
-      res = await callModel(word, evidence, true, model);
-      // Providers without json_schema support reject it with 400; fall back to plain JSON mode.
-      if (res.status === 400) res = await callModel(word, evidence, false, model);
+      try {
+        res = await callModel(word, evidence, true, model);
+        // Providers without json_schema support reject it with 400; fall back to plain JSON mode.
+        if (res.status === 400) res = await callModel(word, evidence, false, model);
+      } catch (e) {
+        console.warn(`calvern: ${model} timed out or failed (${e}), trying next model`);
+        res = undefined;
+        continue;
+      }
       // Overloaded or rate-limited: try the next model.
       if (res.status !== 429 && res.status < 500) break;
       console.warn(`calvern: ${model} returned ${res.status}, trying next model`);
@@ -110,11 +147,26 @@ async function generate(word: string): Promise<Generated> {
       continue;
     }
     const result = validateProfile(parsed, word);
-    if (result.ok) return { ok: true, profile: result.profile, model: used };
+    if (result.ok) {
+      if (!best || result.profile.quality.depth > best.profile.quality.depth) best = { profile: result.profile, model: used };
+      // Quality gate: below the minimum depth, try once more and keep the deeper profile.
+      if (result.profile.quality.depth >= MIN_DEPTH) break;
+      console.warn(`calvern: ${word} depth ${result.profile.quality.depth} < ${MIN_DEPTH}, regenerating`);
+      continue;
+    }
     if (result.reason === "not_a_word") return result;
     lastErrors = result.errors;
   }
+  if (best) return { ok: true, ...best };
   return { ok: false, reason: "invalid", errors: lastErrors };
+}
+
+// Content fingerprint: SHA-256 over the profile (minus the fingerprint itself), so any change is detectable.
+async function fingerprint(profile: CalvernProfile): Promise<string> {
+  const { quality, ...content } = profile;
+  const bytes = new TextEncoder().encode(JSON.stringify({ ...content, depth: quality.depth }));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 // --- Illustration: free stock photo matched to Calvern's image scene -----------
@@ -189,6 +241,7 @@ export async function analyzeAndStore(
   }
 
   const { profile, model } = generated;
+  profile.quality.fingerprint = await fingerprint(profile);
   const { data: id, error: saveError } = await db.rpc("save_calvern_profile", {
     p_word: profile.word, // may be a spelling correction of `word`
     p_profile: profile,

@@ -76,6 +76,56 @@ export interface CalvernProfile {
     pronunciation: { ipa: string[]; syllables: string };
   };
   example: string;
+  // Computed by code, never by the model.
+  quality: ProfileQuality;
+}
+
+export interface ProfileQuality {
+  depth: number; // 0–100
+  layers: { morphology: number; senses: number; history: number; web: number; usage: number; sound: number };
+  fingerprint: string; // SHA-256 of the profile content, set when stored
+}
+
+// Minimum depth a profile must reach; below it the pipeline regenerates (up to its attempt limit).
+export const MIN_DEPTH = 70;
+
+const ratio = (n: number, target: number) => Math.min(n / target, 1);
+
+// Depth Score: measures completeness against the schema's targets, layer by layer.
+export function scoreDepth(p: Omit<CalvernProfile, "quality">): Omit<ProfileQuality, "fingerprint"> {
+  const ms = p.morphemes;
+  const morphology =
+    (ms.length ? ms.filter((m) => m.meaning && m.origin_language && m.source_form).length / ms.length : 0) * 20 +
+    (p.literal_meaning ? 5 : 0);
+
+  // Rare specialist words honestly have few senses; they are not penalised for it.
+  const senseTarget = p.frequency === "rare" && p.difficulty >= 4 ? 2 : 5;
+  const senses = p.definitions.senses;
+  const relationKinds = new Set(senses.map((x) => x.relation)).size;
+  const sensesScore = ratio(senses.length, senseTarget) * 14 + (relationKinds >= 2 || senseTarget === 2 ? 6 : 0);
+
+  const e = p.etymology;
+  const history = ratio(e.path.length, 3) * 8 + ratio(e.sense_history.length, 2) * 8 + (e.first_attested ? 4 : 0);
+
+  const web = ratio(p.semantic_web.length, 5) * 9 + ratio(e.related_words.length, 3) * 6;
+
+  const a = p.analysis;
+  const exampled = senses.length ? senses.filter((x) => x.example).length / senses.length : 0;
+  const usage =
+    ratio(a.contextual_usage.length, 3) * 4 + ratio(a.collocations.length, 3) * 4 +
+    ratio(p.word_forms.length, 2) * 3 + exampled * 4;
+
+  const sound = (a.pronunciation.ipa.length ? 3 : 0) + (a.pronunciation.syllables ? 2 : 0);
+
+  const layers = {
+    morphology: Math.round(morphology),
+    senses: Math.round(sensesScore),
+    history: Math.round(history),
+    web: Math.round(web),
+    usage: Math.round(usage),
+    sound,
+  };
+  return { depth: Object.values(layers).reduce((x, y) => x + y, 0), layers };
 }
 
 // ---------------------------------------------------------------------------
@@ -387,7 +437,10 @@ export function validateProfile(raw: unknown, requestedWord: string): Validation
       },
     },
     example: clean(at(raw, "example")),
+    quality: { depth: 0, layers: { morphology: 0, senses: 0, history: 0, web: 0, usage: 0, sound: 0 }, fingerprint: "" },
   };
+
+  profile.quality = { ...scoreDepth(profile), fingerprint: "" };
 
   const errors: string[] = [];
   if (answered !== word) errors.push(`model answered for "${answered}"`);
